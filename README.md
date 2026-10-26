@@ -256,10 +256,13 @@ $env:CHECK_UPDATE='1'; npm run check:ui
 
 脚本会模拟一个远端更高构建号，确认更新遮罩出现、页面自动刷新且存档保留。
 
-也可以直接检查线上部署的版本，验证 GitHub Pages 子路径、PWA 和 Service Worker：
+也可以直接检查线上部署的版本，验证 GitHub Pages 子路径、PWA 和 Service Worker（公网首次加载较慢，要放宽等待时间）：
 
 ```powershell
-$env:CHECK_URL='https://himlaya.github.io/xiaoman-garden/'; npm run check:ui
+$env:CHECK_URL='https://himlaya.github.io/xiaoman-garden/'
+$env:CHECK_SW_TIMEOUT='30000'
+$env:CHECK_RELOAD_WAIT='10000'
+npm run check:ui
 ```
 
 ## 目前的边界

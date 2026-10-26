@@ -12,6 +12,7 @@ const BASE = RAW_BASE.endsWith('/') ? RAW_BASE : RAW_BASE + '/';
 const WIDTH = Number(process.env.CHECK_WIDTH || 430);
 const HEIGHT = Number(process.env.CHECK_HEIGHT || 900);
 const SW_WAIT = Number(process.env.CHECK_SW_TIMEOUT || 8000);
+const RELOAD_WAIT = Number(process.env.CHECK_RELOAD_WAIT || 2500);
 const OUT = path.resolve(__dirname, '..', 'screenshots', process.env.CHECK_DIR || '');
 const PORT = 9333;
 const USER_DATA = path.join(os.tmpdir(), 'xiaoman-edge-profile-' + Date.now());
@@ -235,7 +236,7 @@ async function main() {
   console.log('SAVED', JSON.stringify(savedBeforeReload));
 
   await cdp.send('Page.reload', { ignoreCache: true });
-  await sleep(1800);
+  await sleep(RELOAD_WAIT);
   const afterReload = await evaluate(`(() => { const state = window.Game && Game.getState(); return state ? { coins: state.player.coins, streak: state.checkin.streak, seenIntro: state.settings.seenIntro, checkinAvailable: Game.checkinView().available, introVisible: !!document.querySelector('.sheet-intro') } : null; })()`);
   console.log('AFTER_RELOAD', JSON.stringify(afterReload));
   await shot('14-reloaded');
