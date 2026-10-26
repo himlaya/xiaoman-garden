@@ -11,45 +11,40 @@
 
 ## 一、网页 / PWA 上线
 
-### 自动部署（GitHub Pages）
+### 自动部署（已启用）
 
-仓库中已经配置好 GitHub Actions 流水线：`.github/workflows/deploy-pages.yml`。
+线上地址：**https://himlaya.github.io/xiaoman-garden/**
+源码仓库：**https://github.com/himlaya/xiaoman-garden**
 
-它的行为：
+仓库中的 GitHub Actions 流水线（`.github/workflows/deploy-pages.yml`）已经配置并成功运行：
 
 1. 每次 push 到 `main` / `master`，先安装依赖并跑 `npm test`；
 2. 测试通过后，把 `www/` 原样上传到 GitHub Pages；
 3. 网站 HTTPS、免服务器、免运维；
 4. 网页客户端会自动检查 `version.json` 并刷新到新版本。
 
-**第一次启用（只需做一次）：**
-
-1. 在 GitHub 创建一个仓库。GitHub 免费版的 Pages 需要**公开仓库**；如果代码不能公开，改用 Cloudflare Pages 等支持私有仓库的平台。
-2. 把本项目推送到仓库的 `main` 分支。
-   - 如果这台电脑还没有安装 Git，可以用 GitHub Desktop，或者在安装了 Git 的电脑上推送。
-3. 打开仓库的 **Settings → Pages → Build and deployment → Source**，选择 **GitHub Actions**。
-4. 推送一次代码，或在 **Actions → Deploy web game → Run workflow** 手动触发。
-5. 部署完成后，页面地址通常是：
+**之后每次发布，只要运行项目根目录的：**
 
 ```text
-https://<你的GitHub用户名>.github.io/<仓库名>/
+publish.cmd 0.2.0 2
 ```
 
-可以在 **Settings → Pages** 绑定自定义域名。
-
-**之后每次发布：**
+或者手动执行同样的步骤：
 
 ```bash
 npm run version:set -- 0.2.0 2
 npm test
+npm run sync:native
 git add .
-git commit -m "release: v0.2.0"
+git commit -m "release: v0.2.0 build 2"
 git push
 ```
 
-推送后流水线会自动跑测试并部署。网页/PWA 用户下次打开或回到页面时，客户端会发现新版本并自动刷新。
+推送后流水线会自动跑测试并部署。网页 / PWA 用户下次打开或回到页面时，客户端会发现新版本并自动刷新。
 
-> 本机目前没有安装 Git，也没有 GitHub 登录状态，因此最后一步的仓库创建和 push 需要你的账号授权。配置文件和流水线已经就位。
+> 这台电脑上的 Git / GitHub CLI 是装在 `.tools/` 里的便携版，并且 GitHub 已登录；`publish.cmd` 会自动使用它们。换一台电脑时需要自己安装 Git 和 GitHub CLI 并登录。
+>
+> 如果代码不能公开，GitHub 免费版 Pages 不适用，可以改用 Cloudflare Pages 或自有服务器。
 
 ### 手动部署 / 其他平台
 

@@ -1,6 +1,11 @@
 # 小满花园 · 原型 v0.1
 
+[![Deploy web game](https://github.com/himlaya/xiaoman-garden/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/himlaya/xiaoman-garden/actions/workflows/deploy-pages.yml)
+
 > 每天收一颗花种，浇一点水，等一朵花慢慢开。
+
+**在线试玩：** https://himlaya.github.io/xiaoman-garden/
+**源码仓库：** https://github.com/himlaya/xiaoman-garden
 
 一个手机优先的花草养成小游戏。当前是**可运行的前端原型**：不需要后端、不需要安装依赖就能在电脑浏览器里玩；同一套网页同时提供 PWA，并包含 **Android、iOS、HarmonyOS NEXT** 三套原生工程。
 
@@ -169,12 +174,20 @@ npm run ios:open
 
 仓库里已经配置好 **GitHub Actions → GitHub Pages** 自动部署流水线：`.github/workflows/deploy-pages.yml`。push 到 `main` / `master` 后会自动跑测试，测试通过就把 `www/` 发布上线；网页客户端随后会自动检查并更新。
 
-只需要把项目推送到 GitHub 仓库，并在仓库 **Settings → Pages** 里把 Source 设为 **GitHub Actions**。这台电脑目前没有 Git / GitHub 登录，所以仓库创建和首次 push 需要你的账号授权。
+线上地址：**https://himlaya.github.io/xiaoman-garden/**
 
-最常用的一条命令：
+之后每次发布，双击项目根目录的 `publish.cmd`，按提示输入新版本号和构建号即可：
+
+```text
+publish.cmd 0.2.0 2
+```
+
+它会自动更新版本、跑测试、同步三端资源、提交并推送；GitHub Actions 接着完成测试和部署。也可以手动执行：
 
 ```bash
 npm run version:set -- 0.2.0 2
+npm test
+npm run sync:native
 git add .
 git commit -m "release: v0.2.0"
 git push
@@ -212,6 +225,7 @@ xiaoman-garden/
 ├─ scripts/generate-native-assets.py  # 重新生成三端图标 / 启动图
 ├─ tests/                        # 13 个规则 / 版本一致性测试
 ├─ .github/workflows/            # GitHub Pages 自动测试 + 部署
+├─ publish.cmd                   # 一键发版：版本、测试、同步、提交、推送
 ├─ start-game.cmd                # Windows 双击启动试玩
 ├─ capacitor.config.json         # Android / iOS 原生壳配置
 ├─ RELEASE.md                    # 上线、缓存刷新和商店发版流程
@@ -241,6 +255,12 @@ $env:CHECK_UPDATE='1'; npm run check:ui
 ```
 
 脚本会模拟一个远端更高构建号，确认更新遮罩出现、页面自动刷新且存档保留。
+
+也可以直接检查线上部署的版本，验证 GitHub Pages 子路径、PWA 和 Service Worker：
+
+```powershell
+$env:CHECK_URL='https://himlaya.github.io/xiaoman-garden/'; npm run check:ui
+```
 
 ## 目前的边界
 

@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "description": "小满花园：签到领花种、浇水施肥、等花开的移动端花园小游戏",
+  "homepage": "https://himlaya.github.io/xiaoman-garden/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/himlaya/xiaoman-garden.git"
+  },
   "scripts": {
     "dev": "node scripts/serve.js",
     "test": "node --test tests/*.test.js",

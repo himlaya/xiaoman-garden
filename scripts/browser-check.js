@@ -7,9 +7,11 @@ const os = require('node:os');
 const path = require('node:path');
 
 const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
-const BASE = 'http://127.0.0.1:4173/';
+const RAW_BASE = process.env.CHECK_URL || 'http://127.0.0.1:4173/';
+const BASE = RAW_BASE.endsWith('/') ? RAW_BASE : RAW_BASE + '/';
 const WIDTH = Number(process.env.CHECK_WIDTH || 430);
 const HEIGHT = Number(process.env.CHECK_HEIGHT || 900);
+const SW_WAIT = Number(process.env.CHECK_SW_TIMEOUT || 8000);
 const OUT = path.resolve(__dirname, '..', 'screenshots', process.env.CHECK_DIR || '');
 const PORT = 9333;
 const USER_DATA = path.join(os.tmpdir(), 'xiaoman-edge-profile-' + Date.now());
@@ -185,7 +187,7 @@ async function main() {
 
   const workerReady = await evaluate(`Promise.race([
     navigator.serviceWorker && navigator.serviceWorker.ready.then((registration) => !!registration.active),
-    new Promise((resolve) => setTimeout(() => resolve(false), 2500))
+    new Promise((resolve) => setTimeout(() => resolve(false), ${SW_WAIT}))
   ])`);
   console.log('SERVICE_WORKER_READY', workerReady);
 
