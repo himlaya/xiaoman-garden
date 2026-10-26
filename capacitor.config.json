@@ -1,0 +1,16 @@
+{
+  "appId": "com.xiaoman.garden",
+  "appName": "小满花园",
+  "webDir": "www",
+  "backgroundColor": "#f6f0e3",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#f6f0e3"
+  },
+  "ios": {
+    "backgroundColor": "#f6f0e3",
+    "contentInset": "always"
+  }
+}

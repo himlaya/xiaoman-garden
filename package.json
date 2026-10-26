@@ -1,0 +1,30 @@
+{
+  "name": "xiaoman-garden",
+  "version": "0.1.0",
+  "private": true,
+  "description": "小满花园：签到领花种、浇水施肥、等花开的移动端花园小游戏",
+  "scripts": {
+    "dev": "node scripts/serve.js",
+    "test": "node --test tests/*.test.js",
+    "check:ui": "node scripts/browser-check.js",
+    "version:set": "node scripts/set-version.js",
+    "sync:harmony": "node scripts/sync-harmony.js",
+    "sync:native": "npm run sync:harmony && cap copy android && cap copy ios",
+    "android:copy": "cap copy android",
+    "android:open": "cap open android",
+    "ios:copy": "cap copy ios",
+    "ios:open": "cap open ios",
+    "cap:sync": "cap sync"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.0",
+    "@capacitor/core": "^7.4.0",
+    "@capacitor/ios": "^7.4.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.0"
+  }
+}

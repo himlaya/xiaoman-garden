@@ -1,0 +1,10 @@
+# HarmonyOS build outputs
+.hvigor/
+.idea/
+build/
+entry/build/
+oh_modules/
+local.properties
+*.hap
+*.app
+.signing/

@@ -1,0 +1,240 @@
+# 小满花园 · 更新与上线
+
+这份说明解决两个不同的问题：
+
+1. **网页 / PWA 更新**：把新的 `www/` 传到线上；网页客户端会自己检查版本，保存进度后自动刷新。
+2. **原生 App 更新**：Android / iOS / HarmonyOS 安装包里的网页是打包进去的，必须重新构建并提交商店。
+
+目前游戏没有后端，所有数据都是本地的，所以网页端可以纯静态托管，不需要买服务器跑 Node。
+
+---
+
+## 一、网页 / PWA 上线
+
+### 自动部署（GitHub Pages）
+
+仓库中已经配置好 GitHub Actions 流水线：`.github/workflows/deploy-pages.yml`。
+
+它的行为：
+
+1. 每次 push 到 `main` / `master`，先安装依赖并跑 `npm test`；
+2. 测试通过后，把 `www/` 原样上传到 GitHub Pages；
+3. 网站 HTTPS、免服务器、免运维；
+4. 网页客户端会自动检查 `version.json` 并刷新到新版本。
+
+**第一次启用（只需做一次）：**
+
+1. 在 GitHub 创建一个仓库。GitHub 免费版的 Pages 需要**公开仓库**；如果代码不能公开，改用 Cloudflare Pages 等支持私有仓库的平台。
+2. 把本项目推送到仓库的 `main` 分支。
+   - 如果这台电脑还没有安装 Git，可以用 GitHub Desktop，或者在安装了 Git 的电脑上推送。
+3. 打开仓库的 **Settings → Pages → Build and deployment → Source**，选择 **GitHub Actions**。
+4. 推送一次代码，或在 **Actions → Deploy web game → Run workflow** 手动触发。
+5. 部署完成后，页面地址通常是：
+
+```text
+https://<你的GitHub用户名>.github.io/<仓库名>/
+```
+
+可以在 **Settings → Pages** 绑定自定义域名。
+
+**之后每次发布：**
+
+```bash
+npm run version:set -- 0.2.0 2
+npm test
+git add .
+git commit -m "release: v0.2.0"
+git push
+```
+
+推送后流水线会自动跑测试并部署。网页/PWA 用户下次打开或回到页面时，客户端会发现新版本并自动刷新。
+
+> 本机目前没有安装 Git，也没有 GitHub 登录状态，因此最后一步的仓库创建和 push 需要你的账号授权。配置文件和流水线已经就位。
+
+### 手动部署 / 其他平台
+
+| 场景 | 推荐 | 说明 |
+| --- | --- | --- |
+| 快速上线 / 海外访问 | GitHub Pages、Cloudflare Pages、Vercel、Netlify | 连接仓库或直接上传 `www/`，自动 HTTPS |
+| 国内访问 | 腾讯云 COS + CDN、阿里云 OSS + CDN、华为云 OBS | 需要有备案的域名与国内 CDN |
+| 自己已有服务器 | Nginx / Caddy 静态站 | 把 `www/` 作为站点根目录 |
+
+这是一个**无构建步骤的纯静态站**：
+
+- 发布目录：项目里的 `www/`
+- 构建命令：不需要
+- 路由：只有一个 `index.html`，不需要 SPA 重写
+- 必须启用 **HTTPS**，否则 PWA 安装和 Service Worker 不生效
+
+### 每次发新版
+
+1. 修改版本号和内部构建号：
+
+```bash
+npm run version:set -- 0.2.0 2
+```
+
+它会同时更新：`package.json`、Android、iOS、HarmonyOS、`www/version.json`、`www/js/version.js`、`www/sw.js` 的缓存版本。
+
+2. 跑测试和界面检查（版本一致性现在是 13 个自动测试的一部分）：
+
+```bash
+npm test
+npm run check:ui
+```
+
+想连自动更新流程一起测：
+
+```powershell
+$env:CHECK_UPDATE='1'; npm run check:ui
+```
+
+3. 同步三端资源（准备原生发版时再需要）：
+
+```bash
+npm run sync:native
+```
+
+4. 把 `www/` 目录的新内容上传到托管平台。`version.json` 必须一起上传，客户端靠它判断是否有新版本。
+
+> 不需要把 `android/`、`ios/`、`harmony/` 或 `node_modules/` 上传到网页服务器。网页只需要 `www/`。
+
+### 客户端自动更新机制
+
+网页 / PWA 的更新逻辑在 `www/js/updater.js`：
+
+- 启动 5 秒后检查 `./version.json`；
+- 在线前台时每 5 分钟检查一次；
+- 从后台切回、恢复网络时也会补检查；
+- 远端 `build` 大于当前 `www/js/version.js` 的 `build` 时，先调用 `Game.save()` 保存进度；
+- 如果用户正在输入文字、打开签到/植物详情等弹窗，会等当前操作安全结束再刷新；
+- 刷新前显示「花园换新中」遮罩，正常情况下 1.3 秒后自动刷新；
+- `sessionStorage` 会记录本次构建的更新尝试，防止 CDN 没刷新时反复自动刷新。若更新尝试后仍是旧版本，会显示手动更新条。
+- 「我的」页面底部有「检查更新」按钮，可以随时手动检查。
+
+这适用于普通网页和已添加到主屏幕的 PWA。设备离线时检查会静默失败，恢复网络后再次检查。
+
+### 缓存与 PWA 更新
+
+项目使用 Service Worker 缓存掉线页面。新版本上传后：
+
+- 普通网页用户和已安装 PWA：自动更新器会发现新构建，保存进度并自动刷新。
+- 如果 CDN 缓存了旧文件，需要**刷新 CDN 缓存**，至少针对：
+  - `/index.html`
+  - `/sw.js`
+  - `/version.json`
+  - `/manifest.webmanifest`
+  - `/js/*`
+  - `/css/*`
+
+建议缓存策略：
+
+```text
+index.html          Cache-Control: no-cache
+sw.js               Cache-Control: no-cache
+version.json        Cache-Control: no-cache, no-store
+manifest.webmanifest Cache-Control: no-cache
+js / css / icons    Cache-Control: public, max-age=3600, must-revalidate
+```
+
+本项目没有文件名 hash 的构建流程，因此更新后最好主动刷新一次 CDN 上以上文件，或者把所有静态文件都设置成短缓存。
+
+`version:set` 会自动把 `www/sw.js` 的 `CACHE_NAME` 改掉（例如 `xiaoman-garden-v0.2.0-2`），这样旧缓存会在新 Service Worker 激活时被清理。
+
+### 如果你想让“发布”也自动化
+
+客户端自动更新解决的是“用户打开页面后如何拿到新版”。如果还想让“代码一提交就自动部署”，需要把项目放进 Git 仓库，再把仓库连接到托管平台：
+
+- Cloudflare Pages / Vercel / Netlify：连接 Git 仓库 → push 到主分支自动部署
+- 腾讯云 / 阿里云：可用 CLI + 对象存储上传脚本，接 CI/CD
+- 本项目的 `www/` 是纯静态目录，不需要构建命令
+
+这一步需要你的 Git 仓库和托管平台账号，配置本身不在代码里。
+
+### 国内网页上线提醒
+
+如果使用国内域名 + 国内服务器 / CDN，通常先完成 **ICP 备案**，并准备好隐私政策和用户协议。境外托管（如 Cloudflare Pages）不需要国内 ICP，但国内访问速度和稳定性会因线路而异。
+
+---
+
+## 二、原生 App 如何更新
+
+**重点：线上更新 `www/` 不会自动更新已经安装的 Android / iOS / HarmonyOS App。** 三端原生工程都把网页打包进了安装包，所以原生版本需要重新构建、签名和提交商店。网页端的自动更新器无法跨过这个限制。
+
+### Android
+
+1. 执行 `npm run version:set -- 0.2.0 2` 并同步资源。
+2. 用 Android Studio 打开 `android/`。
+3. 在 `build.gradle` 中版本已更新为 `versionCode 2` / `versionName "0.2.0"`。
+4. 生成签名版 **AAB**（Google Play）或 **APK**（国内应用商店 / 直接安装）。
+5. 上传到目标商店：
+
+- Google Play：内部测试 / 封闭测试 → 正式发布
+- 华为应用市场、小米应用商店、OPPO 软件商店、vivo 应用商店、应用宝等：分别提交 APK，按各商店要求审核
+
+首次签名用的 keystore 必须长期保存，后续同包名更新必须使用同一签名。
+
+### iOS
+
+1. 在 Mac 上执行：
+
+```bash
+npx cap sync ios
+```
+
+2. 用 Xcode 打开 `ios/App/App.xcworkspace`（不要只开 `.xcodeproj`）。
+3. 在 Xcode 中配置 Team、Bundle ID 和签名。
+4. 递增版本：`CURRENT_PROJECT_VERSION` 是构建号，`MARKETING_VERSION` 是用户看到的版本号。
+5. Xcode → Product → Archive → 上传到 App Store Connect。
+6. 先用 **TestFlight** 内测，再提交 App Store 审核。
+
+普通用户不能像网页一样绕开 App Store 更新，因此 iOS 每次更新都要走审核；热更新 JS 包要遵守苹果对动态代码分发的规则，不建议拿它来绕过审核。
+
+### HarmonyOS NEXT
+
+1. 用 DevEco Studio 打开 `harmony/`。
+2. 执行 `npm run sync:harmony` 同步最新网页。
+3. 在 `AppScope/app.json5` 中版本由 `version:set` 更新。
+4. 配置签名，构建签名后的 `.app` / `.hap`。
+5. 在 **AppGallery Connect** 创建版本，先做内部测试，再提交审核发布。
+
+如果还需要导出纯血鸿蒙的安装包，必须有华为开发者账号、签名证书和 DevEco Studio；Windows 上只能准备工程，不能替代 Mac 上的 iOS 构建。
+
+---
+
+## 三、内测分发（不上商店）
+
+- **Android**：直接把签名 APK 发给测试人员，或使用 Google Play 内部测试、Firebase App Distribution。
+- **iOS**：TestFlight 是最稳的公开测试方式；Ad Hoc 需要收集设备 UDID，不适合大范围分发。
+- **HarmonyOS**：AppGallery Connect 内部测试 / 邀请测试。
+- **网页**：用 Cloudflare Pages 预览地址、Vercel Preview 或局域网地址。
+
+不要用网页地址来代替原生商店更新：它只能更新网页端，不会更新手机里已安装的 App。
+
+---
+
+## 四、国内上架前需要准备
+
+这些不属于代码，但会影响能否公开下发：
+
+- 各平台开发者账号与实名认证
+- 隐私政策、用户协议、权限说明
+- 国内 **App 备案**（在境内应用商店上架时通常需要）
+- 软件著作权（部分商店 / 游戏类目要求）
+- 如果按网络游戏运营，可能还涉及游戏版号等资质，需按发行地区与商店要求核对
+- 应用图标、截图、版本说明、测试账号（如后续加入账号系统）
+
+当前游戏没有联网功能，也有助于降低隐私合规和服务器运维压力。
+
+---
+
+## 五、推荐的发布顺序
+
+如果是小步更新，建议：
+
+1. **先发 PWA / 网页**：验证新玩法、数值和 UI。
+2. 稳定后执行 `version:set`，同步原生工程。
+3. Android 先走内部测试，iOS 走 TestFlight，HarmonyOS 走 AppGallery 内部测试。
+4. 三端测试通过后再同时提交正式审核。
+
+这样网页可以每天更新，原生包只在必要的时候发版，不必为了改一朵花的文案就走一次商店审核。
