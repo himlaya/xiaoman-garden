@@ -81,10 +81,13 @@
       const rest = total % 60;
       return rest ? minutes + '分' + rest + '秒' : minutes + '分钟';
     }
-    const hours = Math.floor(total / 3600);
+    const days = Math.floor(total / 86400);
+    const hours = Math.floor((total % 86400) / 3600);
     const minutes = Math.floor((total % 3600) / 60);
-    if (minutes === 0) return hours + '小时';
-    return hours + '小时' + minutes + '分';
+    if (days > 0) {
+      return days + '天' + (hours ? hours + '小时' : '');
+    }
+    return hours + '小时' + (minutes ? minutes + '分' : '');
   }
 
   function formatCountdown(seconds) {
@@ -96,9 +99,21 @@
       const rest = total % 60;
       return rest ? minutes + '分' + String(rest).padStart(2, '0') + '秒' : minutes + '分钟';
     }
-    const hours = Math.floor(total / 3600);
-    const minutes = Math.floor((total % 3600) / 60);
-    return hours + '小时' + (minutes ? minutes + '分' : '');
+    if (total < 86400) {
+      const hours = Math.floor(total / 3600);
+      const minutes = Math.floor((total % 3600) / 60);
+      return hours + '小时' + (minutes ? minutes + '分' : '');
+    }
+    const days = Math.floor(total / 86400);
+    const hours = Math.floor((total % 86400) / 3600);
+    return days + '天' + (hours ? hours + '小时' : '');
+  }
+
+  function formatWait(seconds) {
+    const total = Math.max(0, Math.ceil(Number(seconds) || 0));
+    if (total < 60) return total + '秒';
+    if (total < 3600) return Math.ceil(total / 60) + '分';
+    return Math.ceil(total / 3600) + '小时';
   }
 
   function prettyDate(date) {
@@ -437,6 +452,7 @@
           (owned ? Art.flower(flower.id, 'bloom') : '<div class="silhouette">' + Art.flower(flower.id, 'bud') + '</div>') +
           '<span class="album-index">NO.' + String(index + 1).padStart(2, '0') + '</span>' +
           '<span class="album-rarity ' + rarityClass(flower.rarity) + '">' + (owned ? rarityLabel(flower.rarity) : '未遇见') + '</span>' +
+          (owned ? '<button class="album-3d" type="button" data-open-3d-flower="' + flower.id + '" aria-label="用3D查看' + esc(flower.name) + '">3D</button>' : '') +
         '</div>' +
         '<div class="album-info">' +
           '<h3>' + (owned ? esc(flower.name) : '？？？') + '</h3>' +
@@ -524,7 +540,7 @@
     const stats = Game.stats();
     const level = Game.levelInfo(state.player.xp);
     const checkin = Game.checkinView();
-    const speedOptions = [1, 60, 300];
+    const speedOptions = DATA.speeds;
     const localVersion = (window.XIAOMAN_VERSION && window.XIAOMAN_VERSION.version) || '0.1.0';
     const localBuild = (window.XIAOMAN_VERSION && window.XIAOMAN_VERSION.build) || 1;
     return '<section class="screen profile-screen">' +
@@ -561,7 +577,7 @@
           '<div class="speed-options">' + speedOptions.map(function (speed) {
             return '<button class="' + (state.settings.speed === speed ? 'active' : '') + '" data-action="set-speed" data-speed="' + speed + '">' + (speed === 1 ? '正常速度' : speed + '×') + '</button>';
           }).join('') + '</div>' +
-          '<p class="debug-hint">原型版花期是分钟级的，正常速度下也可以很快看到花开。</p>' +
+          '<p class="debug-hint">成长和花期按现实参考时间的 1/5 流动；想马上看花，可以切到 3600×。</p>' +
         '</div>' +
       '</details>' +
       '<div class="danger-zone"><button class="reset-link" data-action="open-reset">重新打理这座花园</button><p>会清空当前存档，重新开始。</p></div>' +
@@ -756,7 +772,7 @@
         '</button>'
       : '<div class="detail-actions">' +
           '<button class="detail-care water js-detail-water" data-action="water" data-slot="' + view.slot + '"' + (view.waterWait > 0 ? ' disabled' : '') + '>' +
-            ICONS.drop + '<span><strong>' + (view.waterWait > 0 ? '等 ' + view.waterWait + ' 秒' : '浇一次水') + '</strong><small>湿润后生长 ×1.5</small></span>' +
+            ICONS.drop + '<span><strong>' + (view.waterWait > 0 ? '等 ' + formatWait(view.waterWait) : '浇一次水') + '</strong><small>湿润后生长 ×1.5</small></span>' +
           '</button>' +
           '<button class="detail-care fert" data-action="fertilize" data-slot="' + view.slot + '">' +
             ICONS.fertilizer + '<span><strong>施一点肥</strong><small>立刻推进 18% 成长</small></span>' +
@@ -784,6 +800,11 @@
         (isBloom ? '' : '<p class="detail-remaining js-detail-remaining">' + (view.buffed ? '土壤湿润，正在以 1.5 倍速度长大。' : '还在慢慢长大，' + (speed > 1 ? '时光沙漏 ×' + speed + ' 正在加速。' : '大约还需 ' + formatCountdown(view.remainingSeconds) + '。')) + '</p>') +
       '</div>' +
       '<blockquote class="flower-quote">' + esc(flower.cardLine) + '</blockquote>' +
+      '<button class="three-d-entry" type="button" data-open-3d="' + view.slot + '">' +
+        '<span class="three-d-badge" aria-hidden="true">3D</span>' +
+        '<span class="three-d-copy"><strong>打开 3D 花房</strong><small>轻轻转动，看看花的另一面</small></span>' +
+        ICONS.arrow +
+      '</button>' +
       actions;
   }
 
@@ -994,7 +1015,7 @@
       celebrate('harvest');
       showToast('花开好了！' + flower.name + '正在等你采摘。', { tone: 'flower', duration: 3200 });
     } else if (type === 'water') {
-      showToast('土壤湿润了，接下来 90 秒会长得更快。', { tone: 'info' });
+      showToast('土壤湿润了，接下来 2 小时会长得更快。', { tone: 'info' });
     } else {
       showToast('施了肥，' + flower.name + '悄悄长大了一截。', { tone: 'success' });
     }
@@ -1205,7 +1226,7 @@
         const waiting = view.waterWait > 0;
         if (waterButton.disabled !== waiting) waterButton.disabled = waiting;
         waterButton.classList.toggle('is-waiting', waiting);
-        waterLabel.textContent = waiting ? view.waterWait + 's' : '浇水';
+        waterLabel.textContent = waiting ? formatWait(view.waterWait) : '浇水';
       }
       if (view.isBloom) {
         const freshLabel = plot.querySelector('.js-fresh-label');
@@ -1238,7 +1259,7 @@
       const waiting = view.waterWait > 0;
       waterButton.disabled = waiting;
       const label = waterButton.querySelector('strong');
-      if (label) label.textContent = waiting ? '等 ' + view.waterWait + ' 秒' : '浇一次水';
+      if (label) label.textContent = waiting ? '等 ' + formatWait(view.waterWait) : '浇一次水';
     }
     const remaining = sheet.querySelector('.js-detail-remaining');
     if (remaining) {

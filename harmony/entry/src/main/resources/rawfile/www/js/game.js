@@ -137,7 +137,7 @@
       settings: {
         sound: raw.settings?.sound !== false,
         reduceMotion: raw.settings?.reduceMotion === true,
-        speed: [1, 60, 300].includes(Number(raw.settings?.speed)) ? Number(raw.settings.speed) : 1,
+        speed: DATA.speeds.includes(Number(raw.settings?.speed)) ? Number(raw.settings.speed) : 1,
         seenIntro: raw.settings?.seenIntro === true
       },
       meta: {
@@ -669,7 +669,7 @@
 
   function setSpeed(speed) {
     const next = Number(speed);
-    if (![1, 60, 300].includes(next)) return { ok: false };
+    if (!DATA.speeds.includes(next)) return { ok: false };
     state.settings.speed = next;
     persist();
     return { ok: true, speed: next };

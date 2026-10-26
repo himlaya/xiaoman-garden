@@ -1,9 +1,17 @@
 /* 小满花园 · 内容与数值
- * 原型版的花期统一使用「分钟级」时间，方便在电脑和手机上快速体验。
- * 想调整难度，只要改这里的 growSeconds / bloomSeconds / 价格即可。
+ * 花朵的成长与花期按「现实参考周期 × 1/5」折算：
+ * 现实 4 天的成长，游戏里约 19 小时 12 分；现实 12 天约 2 天 9 小时 36 分。
+ * 想调整节奏，只要改这里的 realGrowDays / realBloomDays 或 TIME_SCALE。
  */
 (function () {
   'use strict';
+
+  const TIME_SCALE = 1 / 5;
+  const REAL_DAY_SECONDS = 24 * 60 * 60;
+
+  function gameSecondsForRealDays(days) {
+    return Math.round(days * REAL_DAY_SECONDS * TIME_SCALE);
+  }
 
   const FLOWERS = [
     {
@@ -14,8 +22,10 @@
       shape: 'daisy',
       seedPrice: 20,
       sellPrice: 46,
-      growSeconds: 120,
-      bloomSeconds: 45 * 60,
+      realGrowDays: 4,
+      realBloomDays: 5,
+      growSeconds: gameSecondsForRealDays(4),
+      bloomSeconds: gameSecondsForRealDays(5),
       xp: 12,
       bonusSeedChance: 0.28,
       colors: {
@@ -39,8 +49,10 @@
       shape: 'tulip',
       seedPrice: 35,
       sellPrice: 88,
-      growSeconds: 240,
-      bloomSeconds: 60 * 60,
+      realGrowDays: 6,
+      realBloomDays: 6,
+      growSeconds: gameSecondsForRealDays(6),
+      bloomSeconds: gameSecondsForRealDays(6),
       xp: 20,
       bonusSeedChance: 0.24,
       colors: {
@@ -64,8 +76,10 @@
       shape: 'hyacinth',
       seedPrice: 60,
       sellPrice: 150,
-      growSeconds: 360,
-      bloomSeconds: 90 * 60,
+      realGrowDays: 7,
+      realBloomDays: 7,
+      growSeconds: gameSecondsForRealDays(7),
+      bloomSeconds: gameSecondsForRealDays(7),
       xp: 30,
       bonusSeedChance: 0.22,
       colors: {
@@ -89,8 +103,10 @@
       shape: 'rose',
       seedPrice: 100,
       sellPrice: 252,
-      growSeconds: 480,
-      bloomSeconds: 120 * 60,
+      realGrowDays: 8,
+      realBloomDays: 8,
+      growSeconds: gameSecondsForRealDays(8),
+      bloomSeconds: gameSecondsForRealDays(8),
       xp: 45,
       bonusSeedChance: 0.18,
       colors: {
@@ -114,8 +130,10 @@
       shape: 'sunflower',
       seedPrice: 150,
       sellPrice: 390,
-      growSeconds: 600,
-      bloomSeconds: 180 * 60,
+      realGrowDays: 9,
+      realBloomDays: 9,
+      growSeconds: gameSecondsForRealDays(9),
+      bloomSeconds: gameSecondsForRealDays(9),
       xp: 65,
       bonusSeedChance: 0.16,
       colors: {
@@ -139,8 +157,10 @@
       shape: 'hydrangea',
       seedPrice: 240,
       sellPrice: 640,
-      growSeconds: 720,
-      bloomSeconds: 240 * 60,
+      realGrowDays: 10,
+      realBloomDays: 10,
+      growSeconds: gameSecondsForRealDays(10),
+      bloomSeconds: gameSecondsForRealDays(10),
       xp: 95,
       bonusSeedChance: 0.12,
       colors: {
@@ -164,8 +184,10 @@
       shape: 'lily',
       seedPrice: 380,
       sellPrice: 1020,
-      growSeconds: 900,
-      bloomSeconds: 360 * 60,
+      realGrowDays: 12,
+      realBloomDays: 12,
+      growSeconds: gameSecondsForRealDays(12),
+      bloomSeconds: gameSecondsForRealDays(12),
       xp: 140,
       bonusSeedChance: 0.1,
       colors: {
@@ -234,15 +256,17 @@
 
   const CARE = {
     water: {
-      cooldownSeconds: 20,
-      instantProgress: 0.035,
+      cooldownSeconds: 30 * 60,
+      instantProgress: 0.02,
       boostMultiplier: 1.5,
-      boostSeconds: 90
+      boostSeconds: 2 * 60 * 60
     },
     fertilizer: {
       progressBoost: 0.18
     }
   };
+
+  const SPEEDS = [1, 60, 300, 3600];
 
   const XP_PER_LEVEL = 100;
   const LEVEL_TITLES = [
@@ -254,12 +278,13 @@
   ];
 
   const TIPS = [
-    '浇水后的 90 秒内，花儿会以 1.5 倍速度生长。',
+    '浇水后 2 小时内，花儿会以 1.5 倍速度生长；两次浇水之间要等半小时。',
     '施肥能立刻推进一截成长，肥料可以从签到、花市和今日任务里获得。',
     '花开后不要着急，花期内采摘还会得到新鲜加成。',
     '每天签到会送你一颗不一样的花种，连续签到第 7 天有铃兰。',
-    '不同花的花期不一样，稀有花虽然等得久，但花束也更值钱。',
-    '花儿会在离线时继续长大，下次回来记得看看它们。'
+    '花儿的成长与花期按现实参考时间的五分之一流动，稀有花虽然等得久，但花束也更值钱。',
+    '花儿会在离线时继续长大，下次回来记得看看它们。',
+    '调试卡里的时光沙漏可以把时间加速到 3600 倍，想先看看花开可以用它。'
   ];
 
   const WEATHER = [
@@ -272,6 +297,9 @@
   window.GameData = {
     version: 1,
     saveKey: 'xiaoman-garden-save-v1',
+    timeScale: TIME_SCALE,
+    realDaySeconds: REAL_DAY_SECONDS,
+    gameSecondsForRealDays: gameSecondsForRealDays,
     flowers: FLOWERS,
     flowerMap: Object.fromEntries(FLOWERS.map(function (flower) { return [flower.id, flower]; })),
     rarity: RARITY,
@@ -284,6 +312,7 @@
     fertilizerPrice: FERTILIZER_PRICE,
     fertilizerBundle: FERTILIZER_BUNDLE,
     care: CARE,
+    speeds: SPEEDS,
     xpPerLevel: XP_PER_LEVEL,
     levelTitles: LEVEL_TITLES,
     tips: TIPS,

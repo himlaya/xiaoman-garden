@@ -119,7 +119,7 @@ test('漏签会重新开始连续签到，并回到第 1 天奖励', () => {
 
 test('种植、浇水、施肥、开花和采摘构成完整循环', () => {
   const h = makeHarness();
-  const { Game } = h;
+  const { Game, Data } = h;
   Game.boot();
   const coinsBefore = Game.getState().player.coins;
 
@@ -141,8 +141,9 @@ test('种植、浇水、施肥、开花和采摘构成完整循环', () => {
   assert.ok(fertilizer.view.progress > water.view.progress);
   assert.equal(Game.getPlantView(0).canFertilize, true);
 
-  Game.setSpeed(60);
-  h.advance(4000);
+  Game.setSpeed(3600);
+  assert.equal(Game.getState().settings.speed, 3600);
+  h.advance(Data.flowerMap.daisy.growSeconds * 1000);
   const events = Game.tick();
   assert.ok(events.some((event) => event.type === 'bloom'));
   const bloom = Game.getPlantView(0);
@@ -164,8 +165,7 @@ test('花开久了新鲜度会下降，但依然可以采摘', () => {
   const { Game, Data } = h;
   Game.boot();
   Game.plantSeed(0, 'daisy');
-  Game.setSpeed(60);
-  h.advance(4000);
+  h.advance(Data.flowerMap.daisy.growSeconds * 1000);
   Game.tick();
   assert.equal(Game.getPlantView(0).isBloom, true);
 
@@ -179,11 +179,11 @@ test('花开久了新鲜度会下降，但依然可以采摘', () => {
 
 test('每日花事任务可以领取一次，奖励会进入仓库', () => {
   const h = makeHarness();
-  const { Game } = h;
+  const { Game, Data } = h;
   Game.boot();
   Game.plantSeed(0, 'daisy');
   Game.waterPlant(0);
-  h.advance(21 * 1000);
+  h.advance(Data.care.water.cooldownSeconds * 1000 + 1000);
   Game.waterPlant(0);
   const views = Game.dailyQuestViews();
   const waterQuest = views.find((quest) => quest.id === 'water');
@@ -239,6 +239,19 @@ test('不同花种拥有不同的生长时间和花期', () => {
   assert.ok(sunflower.growSeconds > tulip.growSeconds);
   assert.ok(sunflower.bloomSeconds > daisy.bloomSeconds);
   assert.ok(Data.flowers.length >= 7);
+});
+
+test('成长与花期按现实参考的五分之一折算', () => {
+  const { Data } = makeHarness();
+  assert.equal(Data.timeScale, 0.2);
+  Data.flowers.forEach(function (flower) {
+    assert.equal(flower.growSeconds, Math.round(flower.realGrowDays * Data.realDaySeconds * Data.timeScale));
+    assert.equal(flower.bloomSeconds, Math.round(flower.realBloomDays * Data.realDaySeconds * Data.timeScale));
+  });
+  assert.equal(Data.flowerMap.daisy.growSeconds, 69120);
+  assert.equal(Data.flowerMap.daisy.bloomSeconds, 86400);
+  assert.equal(Data.care.water.cooldownSeconds, 1800);
+  assert.equal(Data.care.water.boostSeconds, 7200);
 });
 
 test('更改名字会裁剪空白并限制长度', () => {

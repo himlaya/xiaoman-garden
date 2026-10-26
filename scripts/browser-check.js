@@ -96,7 +96,8 @@ async function main() {
   await waitForServer();
   const edge = spawn(EDGE, [
     '--headless=new',
-    '--disable-gpu',
+    '--use-angle=swiftshader',
+    '--enable-unsafe-swiftshader',
     '--hide-scrollbars',
     '--no-first-run',
     '--no-default-browser-check',
@@ -219,12 +220,32 @@ async function main() {
   await evaluate(`(() => { const details = document.querySelector('.debug-card'); if (details) details.open = true; return true; })()`);
   await sleep(350);
   await shot('11-profile-debug');
-  await click('[data-action="set-speed"][data-speed="300"]', 400);
+  await click('[data-action="set-speed"][data-speed="3600"]', 400);
   await click('.tab-button[data-tab="garden"]', 500);
   await evaluate(`document.getElementById('screen-root').scrollTop = 0; true`);
-  await sleep(2800);
+  await sleep(18000);
   await shot('12-bloom');
   console.log('bloom state:', await evaluate(`Game.getPlantView(0).isBloom`));
+
+  let threeDReady = false;
+  await click('.plot[data-slot="0"] [data-action="open-plant"]', 700);
+  await evaluate(`document.querySelector('[data-open-3d]') && document.querySelector('[data-open-3d]').scrollIntoView({block:'center'})`);
+  await click('[data-open-3d]', 1600);
+  const threeD = await evaluate(`(() => {
+    const canvas = document.querySelector('.flower3d-canvas');
+    return {
+      overlay: !!document.querySelector('[data-flower3d]'),
+      canvas: !!canvas,
+      canvasWidth: canvas ? canvas.width : 0,
+      fallback: !!document.querySelector('.flower3d-fallback:not([hidden])'),
+      title: document.querySelector('.flower3d-name') ? document.querySelector('.flower3d-name').textContent : null
+    };
+  })()`);
+  console.log('THREE_D', JSON.stringify(threeD));
+  threeDReady = !!(threeD.overlay && threeD.canvas && threeD.canvasWidth && !threeD.fallback);
+  await shot('12b-3d-bloom');
+  await click('.flower3d-close', 450);
+  await click('.sheet-close', 350);
 
   const hasHarvest = await evaluate(`!!document.querySelector('.plot[data-slot="0"] [data-action="harvest"]')`);
   if (hasHarvest) {
@@ -288,7 +309,7 @@ async function main() {
   await sleep(400);
   try { fs.rmSync(USER_DATA, { recursive: true, force: true }); } catch (error) { /* ignore */ }
   const layoutBroken = layout.docWidth > layout.viewport + 1 || layout.screenScrollWidth > layout.screenClientWidth + 1;
-  if (testErrors.length || cdp.errors.length || layout.unlabeledButtons.length || layoutBroken || !workerReady || !updateCheckOk) {
+  if (testErrors.length || cdp.errors.length || layout.unlabeledButtons.length || layoutBroken || !workerReady || !updateCheckOk || !threeDReady) {
     process.exitCode = 1;
   }
 }

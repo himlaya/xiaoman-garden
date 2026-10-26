@@ -71,7 +71,7 @@ npm run version:set -- 0.2.0 2
 
 它会同时更新：`package.json`、Android、iOS、HarmonyOS、`www/version.json`、`www/js/version.js`、`www/sw.js` 的缓存版本。
 
-2. 跑测试和界面检查（版本一致性现在是 13 个自动测试的一部分）：
+2. 跑测试和界面检查（版本一致性现在是 14 个自动测试的一部分）：
 
 ```bash
 npm test
