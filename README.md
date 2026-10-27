@@ -1,4 +1,4 @@
-# 小满花园 · 原型 v0.2
+# 小满花园 · 原型 v0.3
 
 [![Deploy web game](https://github.com/himlaya/xiaoman-garden/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/himlaya/xiaoman-garden/actions/workflows/deploy-pages.yml)
 
@@ -8,6 +8,8 @@
 **源码仓库：** https://github.com/himlaya/xiaoman-garden
 
 一个手机优先的花草养成小游戏。当前是**可运行的前端原型**：不需要后端、不需要安装依赖就能在电脑浏览器里玩；同一套网页同时提供 PWA，并包含 **Android、iOS、HarmonyOS NEXT** 三套原生工程。
+
+花的数值、任务、奖励和文案由 **Python 内容源**维护，再生成前端使用的静态数据；网页、3D 和动画仍由现有前端运行时负责。
 
 ## 作者的一句话
 
@@ -37,7 +39,8 @@
 
 ## 在电脑上运行
 
-需要 Node.js 20+（Node 18 也能跑，但推荐 20+）。
+需要 Node.js 20+。  
+维护花的数值、任务和发版，还需要 Python 3.10+。
 
 ```bash
 cd D:\xiaoman-garden
@@ -86,7 +89,23 @@ HTTPS 不是局域网预览的必需条件；但 iOS 要把网页“添加到主
 | 蓝绣球 | 珍稀 | 240 金币 | 2 天 | 2 天 | 640 金币 |
 | 铃兰 | 珍稀 | 380 金币 | 2 天 9 小时 36 分 | 2 天 9 小时 36 分 | 1020 金币 |
 
-现实参考周期分别取 4/5、6/6、7/7、8/8、9/9、10/10、12/12 天，再乘以 `TIME_SCALE = 1/5` 得到游戏时间。数值都集中在 `www/js/data.js`，可以直接改 `realGrowDays` / `realBloomDays` 或 `TIME_SCALE`。
+现实参考周期分别取 4/5、6/6、7/7、8/8、9/9、10/10、12/12 天，再乘以 `TIME_SCALE = 1/5` 得到游戏时间。
+
+### Python 内容源
+
+花的数值、签到奖励、每日任务、价格、文案和调试速度都集中在：
+
+```text
+content/garden.py
+```
+
+修改后运行下面的命令，会生成前端使用的 `www/js/data.js`：
+
+```bash
+python tools/build_content.py
+```
+
+`www/js/data.js` 是自动生成文件，不要直接编辑。想加花、改价格或改成长时间，只改 Python 内容源，再运行生成器即可。
 
 ### 原型调试
 

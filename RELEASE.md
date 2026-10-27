@@ -26,17 +26,24 @@
 **之后每次发布，只要运行项目根目录的：**
 
 ```text
-publish.cmd 0.2.0 2
+publish.cmd 0.3.0 3
 ```
 
-或者手动执行同样的步骤：
+或者直接用 Python：
 
 ```bash
-npm run version:set -- 0.2.0 2
+python tools/publish.py 0.3.0 3
+```
+
+它会先根据 `content/garden.py` 生成 `www/js/data.js`，再跑内容测试和 JS 测试、更新版本、同步三端资源、提交并推送。手动执行时等价于：
+
+```bash
+python tools/build_content.py
 npm test
+npm run version:set -- 0.3.0 3
 npm run sync:native
 git add .
-git commit -m "release: v0.2.0 build 2"
+git commit -m "release: v0.3.0 build 3"
 git push
 ```
 
@@ -54,39 +61,47 @@ git push
 | 国内访问 | 腾讯云 COS + CDN、阿里云 OSS + CDN、华为云 OBS | 需要有备案的域名与国内 CDN |
 | 自己已有服务器 | Nginx / Caddy 静态站 | 把 `www/` 作为站点根目录 |
 
-这是一个**无构建步骤的纯静态站**：
+这是一个**内容由 Python 生成、部署仍然是纯静态**的站点：
 
+- 内容源：`content/garden.py`
+- 生成命令：`python tools/build_content.py`
 - 发布目录：项目里的 `www/`
-- 构建命令：不需要
+- 托管端不需要运行 Python，因为 `www/js/data.js` 会随仓库一起发布
 - 路由：只有一个 `index.html`，不需要 SPA 重写
 - 必须启用 **HTTPS**，否则 PWA 安装和 Service Worker 不生效
 
 ### 每次发新版
 
-1. 修改版本号和内部构建号：
+1. 修改花的数值、任务或文案：
 
-```bash
-npm run version:set -- 0.2.0 2
+```text
+content/garden.py
 ```
 
-它会同时更新：`package.json`、Android、iOS、HarmonyOS、`www/version.json`、`www/js/version.js`、`www/sw.js` 的缓存版本。
-
-2. 跑测试和界面检查（版本一致性现在是 14 个自动测试的一部分）：
+2. 生成前端数据并跑测试（`publish.cmd` 会代做）：
 
 ```bash
+python tools/build_content.py
 npm test
 npm run check:ui
 ```
 
-想连自动更新流程一起测：
+现在 `npm test` 会跑 **4 个 Python 内容测试 + 14 个 JS 规则测试**。想连自动更新流程一起测：
 
 ```powershell
 $env:CHECK_UPDATE='1'; npm run check:ui
 ```
 
-3. 同步三端资源（准备原生发版时再需要）：
+3. 发版。推荐直接运行：
 
 ```bash
+python tools/publish.py 0.3.0 3
+```
+
+它会在内部更新版本号并同步资源；如果你要手动控制：
+
+```bash
+npm run version:set -- 0.3.0 3
 npm run sync:native
 ```
 
@@ -134,7 +149,7 @@ js / css / icons    Cache-Control: public, max-age=3600, must-revalidate
 
 本项目没有文件名 hash 的构建流程，因此更新后最好主动刷新一次 CDN 上以上文件，或者把所有静态文件都设置成短缓存。
 
-`version:set` 会自动把 `www/sw.js` 的 `CACHE_NAME` 改掉（例如 `xiaoman-garden-v0.2.0-2`），这样旧缓存会在新 Service Worker 激活时被清理。
+`version:set` 会自动把 `www/sw.js` 的 `CACHE_NAME` 改掉（例如 `xiaoman-garden-v0.3.0-3`），这样旧缓存会在新 Service Worker 激活时被清理。
 
 ### 如果你想让“发布”也自动化
 
@@ -158,9 +173,9 @@ js / css / icons    Cache-Control: public, max-age=3600, must-revalidate
 
 ### Android
 
-1. 执行 `npm run version:set -- 0.2.0 2` 并同步资源。
+1. 执行 `python tools/publish.py 0.3.0 3`（或 `npm run version:set -- 0.3.0 3`）并同步资源。
 2. 用 Android Studio 打开 `android/`。
-3. 在 `build.gradle` 中版本已更新为 `versionCode 2` / `versionName "0.2.0"`。
+3. 在 `build.gradle` 中版本已更新为 `versionCode 3` / `versionName "0.3.0"`。
 4. 生成签名版 **AAB**（Google Play）或 **APK**（国内应用商店 / 直接安装）。
 5. 上传到目标商店：
 
