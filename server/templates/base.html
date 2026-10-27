@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f0e3">
+  <title>{% block title %}小满花园{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
+</head>
+<body>
+  <main class="auth-shell">
+    <div class="auth-glow auth-glow-a"></div>
+    <div class="auth-glow auth-glow-b"></div>
+    <section class="auth-card">
+      <a class="auth-brand" href="{{ url_for('login') }}">
+        <span class="auth-logo" aria-hidden="true">✿</span>
+        <span><strong>小满花园</strong><small>XIAOMAN GARDEN</small></span>
+      </a>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="auth-messages" role="status">
+            {% for category, message in messages %}
+              <p class="auth-message {{ category }}">{{ message }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+      <p class="auth-foot">本地账号 · 数据保存在这台电脑的 SQLite 数据库</p>
+    </section>
+  </main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

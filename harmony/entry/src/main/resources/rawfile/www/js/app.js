@@ -5,6 +5,7 @@
   const DATA = window.GameData;
   const Game = window.Game;
   const Art = window.Art;
+  const ACCOUNT = window.__ACCOUNT__ || null;
 
   const TABS = [
     { id: 'garden', label: '花园', icon: 'leaf' },
@@ -543,8 +544,16 @@
     const speedOptions = DATA.speeds;
     const localVersion = (window.XIAOMAN_VERSION && window.XIAOMAN_VERSION.version) || '0.1.0';
     const localBuild = (window.XIAOMAN_VERSION && window.XIAOMAN_VERSION.build) || 1;
+    const accountCard = ACCOUNT
+      ? '<div class="account-card">' +
+          '<span class="account-avatar">' + esc(Array.from(ACCOUNT.username || '园')[0]) + '</span>' +
+          '<div class="account-copy"><span>当前账号 · 本地 SQLite</span><strong>' + esc(ACCOUNT.username) + '</strong><small data-account-status>已连接到本地数据库</small></div>' +
+          '<button class="account-logout" type="button" data-account-logout>退出</button>' +
+        '</div>'
+      : '';
     return '<section class="screen profile-screen">' +
       '<div class="page-heading"><p class="eyebrow">THE GARDENER</p><h1>园丁手帐</h1><p>把日子过成一座花园。</p></div>' +
+      accountCard +
       '<div class="profile-card">' +
         '<div class="avatar">' + Art.flower('rose', 'bloom') + '<span class="avatar-badge">Lv.' + level.level + '</span></div>' +
         '<div class="profile-copy"><span class="profile-kicker">' + level.title + '</span><h2>' + esc(state.player.name) + '</h2><p>花园第 ' + stats.days + ' 天 · 已照料 ' + stats.totalCare + ' 次</p></div>' +
@@ -1385,6 +1394,14 @@
   }
 
   function registerServiceWorker() {
+    if (ACCOUNT) {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations()
+          .then(function (registrations) { registrations.forEach(function (registration) { registration.unregister(); }); })
+          .catch(function () { /* 账号模式不依赖离线缓存 */ });
+      }
+      return;
+    }
     if (!('serviceWorker' in navigator) || !/^https?:$/.test(window.location.protocol)) return;
     window.addEventListener('load', function () {
       navigator.serviceWorker.register('./sw.js').catch(function () { /* 开发环境不打断体验 */ });

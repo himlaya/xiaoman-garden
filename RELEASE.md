@@ -26,13 +26,13 @@
 **之后每次发布，只要运行项目根目录的：**
 
 ```text
-publish.cmd 0.3.1 4
+publish.cmd 0.4.0 4
 ```
 
 或者直接用 Python：
 
 ```bash
-python tools/publish.py 0.3.1 4
+python tools/publish.py 0.4.0 4
 ```
 
 它会先根据 `content/garden.py` 生成 `www/js/data.js`，再跑内容测试和 JS 测试、更新版本、同步三端资源、提交并推送。手动执行时等价于：
@@ -40,7 +40,7 @@ python tools/publish.py 0.3.1 4
 ```bash
 python tools/build_content.py
 npm test
-npm run version:set -- 0.3.1 4
+npm run version:set -- 0.4.0 4
 npm run sync:native
 git add .
 git commit -m "release: v0.3.1 build 4"
@@ -86,7 +86,7 @@ npm test
 npm run check:ui
 ```
 
-现在 `npm test` 会跑 **4 个 Python 内容测试 + 14 个 JS 规则测试**。想连自动更新流程一起测：
+现在 `npm test` 会跑 **4 个 Python 内容测试 + 4 个 Flask/SQLite 账号测试 + 14 个 JS 规则测试**。想连自动更新流程一起测：
 
 ```powershell
 $env:CHECK_UPDATE='1'; npm run check:ui
@@ -95,13 +95,13 @@ $env:CHECK_UPDATE='1'; npm run check:ui
 3. 发版。推荐直接运行：
 
 ```bash
-python tools/publish.py 0.3.1 4
+python tools/publish.py 0.4.0 4
 ```
 
 它会在内部更新版本号并同步资源；如果你要手动控制：
 
 ```bash
-npm run version:set -- 0.3.1 4
+npm run version:set -- 0.4.0 4
 npm run sync:native
 ```
 
@@ -149,7 +149,7 @@ js / css / icons    Cache-Control: public, max-age=3600, must-revalidate
 
 本项目没有文件名 hash 的构建流程，因此更新后最好主动刷新一次 CDN 上以上文件，或者把所有静态文件都设置成短缓存。
 
-`version:set` 会自动把 `www/sw.js` 的 `CACHE_NAME` 改掉（例如 `xiaoman-garden-v0.3.1-4`），这样旧缓存会在新 Service Worker 激活时被清理。
+`version:set` 会自动把 `www/sw.js` 的 `CACHE_NAME` 改掉（例如 `xiaoman-garden-v0.4.0-4`），这样旧缓存会在新 Service Worker 激活时被清理。
 
 ### 如果你想让“发布”也自动化
 
@@ -157,9 +157,28 @@ js / css / icons    Cache-Control: public, max-age=3600, must-revalidate
 
 - Cloudflare Pages / Vercel / Netlify：连接 Git 仓库 → push 到主分支自动部署
 - 腾讯云 / 阿里云：可用 CLI + 对象存储上传脚本，接 CI/CD
-- 本项目的 `www/` 是纯静态目录，不需要构建命令
+- 本项目的 `www/` 是静态目录，托管端不需要构建命令；Python 内容生成和 Flask 账号服务都在本地/CI 侧完成。
 
 这一步需要你的 Git 仓库和托管平台账号，配置本身不在代码里。
+
+### 本地账号版（SQLite）
+
+账号功能不在 GitHub Pages 上，因为它需要一个 Python 后端。当前版本在本地运行：
+
+```powershell
+start-account.cmd
+```
+
+打开 `http://127.0.0.1:8000`，注册后每个账号有独立存档。数据在：
+
+```text
+server/data/garden.sqlite3
+```
+
+- SQLite 是 Python 自带的，不需要安装 MySQL/PostgreSQL
+- 账号版会关闭 Service Worker，避免离线缓存串账号
+- 要备份就停止 Flask 后复制 `server/data/`
+- 若要公开给其他设备使用，需要把 Flask 部署到有 HTTPS 的服务器，并设置反向代理、限流和 `GARDEN_COOKIE_SECURE=1`；不能直接把当前本地服务暴露到公网
 
 ### 国内网页上线提醒
 
@@ -173,9 +192,9 @@ js / css / icons    Cache-Control: public, max-age=3600, must-revalidate
 
 ### Android
 
-1. 执行 `python tools/publish.py 0.3.1 4`（或 `npm run version:set -- 0.3.1 4`）并同步资源。
+1. 执行 `python tools/publish.py 0.4.0 4`（或 `npm run version:set -- 0.4.0 4`）并同步资源。
 2. 用 Android Studio 打开 `android/`。
-3. 在 `build.gradle` 中版本已更新为 `versionCode 3` / `versionName "0.3.0"`。
+3. 在 `build.gradle` 中版本已更新为 `versionCode 4` / `versionName "0.4.0"`。
 4. 生成签名版 **AAB**（Google Play）或 **APK**（国内应用商店 / 直接安装）。
 5. 上传到目标商店：
 

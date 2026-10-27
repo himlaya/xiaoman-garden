@@ -5156,3 +5156,97 @@ body.flower3d-open {
     display: none;
   }
 }
+
+/* ---------------- 账号 / 本地数据库 ---------------- */
+
+.account-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 13px;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 6% 10%, rgba(231, 198, 128, 0.18), transparent 38%),
+    rgba(249, 246, 234, 0.78);
+  box-shadow: 0 5px 14px rgba(72, 64, 42, 0.045);
+}
+
+.account-avatar {
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  flex: 0 0 35px;
+  border-radius: 11px;
+  color: #fbf3df;
+  background: linear-gradient(145deg, #718965, #445e46);
+  box-shadow: 0 4px 10px rgba(60, 82, 58, 0.17);
+  font-family: var(--font-display);
+  font-size: 15px;
+}
+
+.account-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.account-copy > span {
+  color: #9ba391;
+  font-size: 7px;
+  letter-spacing: 0.04em;
+}
+
+.account-copy strong {
+  overflow: hidden;
+  color: #354b39;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-copy small {
+  overflow: hidden;
+  color: #8c9a83;
+  font-size: 7px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-copy small[data-status="error"] {
+  color: #ad705a;
+}
+
+.account-copy small[data-status="pending"],
+.account-copy small[data-status="syncing"] {
+  color: #aa854a;
+}
+
+.account-logout {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border: 1px solid rgba(106, 125, 95, 0.18);
+  border-radius: 8px;
+  color: #778672;
+  background: rgba(255, 252, 245, 0.66);
+  font-size: 8px;
+  font-weight: 600;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.account-logout:hover:not(:disabled) {
+  color: #a46752;
+  background: rgba(255, 249, 241, 0.96);
+}
+
+.account-logout:disabled {
+  opacity: 0.5;
+}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}注册 · 小满花园{% endblock %}
+{% block content %}
+  <p class="auth-eyebrow">A NEW GARDEN</p>
+  <h1>给自己一座花园</h1>
+  <p class="auth-lead">账号只保存在这台电脑上。注册后，每个账号有独立的花园进度。</p>
+  <form method="post" action="{{ url_for('register') }}" class="auth-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>
+      <span>用户名</span>
+      <input name="username" value="{{ username }}" autocomplete="username" maxlength="20" minlength="3" required autofocus>
+      <small>3–20 位中文、字母、数字或下划线</small>
+    </label>
+    <label>
+      <span>密码</span>
+      <input name="password" type="password" autocomplete="new-password" minlength="6" required>
+      <small>至少 6 位</small>
+    </label>
+    <label>
+      <span>再输一次密码</span>
+      <input name="confirmation" type="password" autocomplete="new-password" minlength="6" required>
+    </label>
+    <button type="submit" class="auth-submit">注册并进入花园</button>
+  </form>
+  <p class="auth-switch">已经有账号？<a href="{{ url_for('login') }}">去登录</a></p>
+{% endblock %}
+{% block scripts %}
+<script>
+  try { localStorage.removeItem('xiaoman-garden-save-v1'); } catch (error) {}
+</script>
+{% endblock %}

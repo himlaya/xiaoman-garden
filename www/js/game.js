@@ -202,10 +202,19 @@
   function persist() {
     state.updatedAt = Date.now();
     state.meta.lastSeen = Date.now();
+    let serialized = null;
     try {
-      window.localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+      serialized = JSON.stringify(state);
+      window.localStorage.setItem(SAVE_KEY, serialized);
     } catch (error) {
       /* 隐私模式下不能写入时，游戏仍可在本次会话里运行 */
+    }
+    if (serialized && typeof window.dispatchEvent === 'function' && typeof window.CustomEvent === 'function') {
+      try {
+        window.dispatchEvent(new window.CustomEvent('xiaoman:save', { detail: { serialized: serialized } }));
+      } catch (error) {
+        /* 同步扩展失败不影响本地存档 */
+      }
     }
   }
 

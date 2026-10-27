@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}登录 · 小满花园{% endblock %}
+{% block content %}
+  <p class="auth-eyebrow">WELCOME BACK</p>
+  <h1>回到你的花园</h1>
+  <p class="auth-lead">登录后，花盆、金币和签到会跟着账号走。</p>
+  <form method="post" action="{{ url_for('login') }}" class="auth-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>
+      <span>用户名</span>
+      <input name="username" value="{{ username }}" autocomplete="username" maxlength="20" required autofocus>
+    </label>
+    <label>
+      <span>密码</span>
+      <input name="password" type="password" autocomplete="current-password" required>
+    </label>
+    <button type="submit" class="auth-submit">进入花园</button>
+  </form>
+  <p class="auth-switch">还没有账号？<a href="{{ url_for('register') }}">注册一个</a></p>
+{% endblock %}
+{% block scripts %}
+<script>
+  try { localStorage.removeItem('xiaoman-garden-save-v1'); } catch (error) {}
+</script>
+{% endblock %}

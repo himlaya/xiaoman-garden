@@ -1,4 +1,4 @@
-# 小满花园 · 原型 v0.3
+# 小满花园 · 原型 v0.4
 
 [![Deploy web game](https://github.com/himlaya/xiaoman-garden/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/himlaya/xiaoman-garden/actions/workflows/deploy-pages.yml)
 
@@ -55,6 +55,40 @@ npm run dev
 
 > `npm run dev` 使用一个零依赖的小型静态服务器，所以只是为了试玩的话**不需要 `npm install`**。
 > 不建议直接双击 `www/index.html`：部分浏览器在 `file://` 下会限制本地存档。
+
+## 本地账号版（SQLite）
+
+账号版和单机版共用同一套网页，额外启动一个 Flask + SQLite 本地服务：
+
+```powershell
+start-account.cmd
+```
+
+或：
+
+```powershell
+python -m pip install -r requirements.txt
+python -m server.app
+```
+
+打开：
+
+**http://127.0.0.1:8000**
+
+第一次先注册账号。登录后，花园进度按账号保存在：
+
+```text
+server/data/garden.sqlite3
+```
+
+SQLite 是 Python 自带的嵌入式数据库，**不需要另外安装 MySQL/PostgreSQL**。数据库、密码哈希和登录会话都在本地。
+
+- 换账号：在「我的」页面点「退出」，再登录另一个账号。
+- 备份：停止服务后复制 `server/data/`。
+- GitHub Pages 线上地址仍然是**访客本地存档版**，没有登录后端。
+- 账号版会关闭 Service Worker，需要联网访问本地 Flask 服务。
+
+详细说明和 API 见 [server/README.md](server/README.md)。
 
 ### 手机同一局域网预览
 

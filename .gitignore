@@ -2,6 +2,7 @@ node_modules/
 __pycache__/
 *.py[cod]
 .DS_Store
+.idea/
 *.log
 npm-debug.log*
 android/.gradle/
@@ -26,7 +27,12 @@ harmony/entry/build/
 .harmony-ref/
 .harmony-ref-tree.json
 .tools/
+.venv/
 # 本地维护手册，不随仓库发布
 MAINTENANCE.md
+server/data/
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
 preview-*.png
 screenshots/
