@@ -24,5 +24,7 @@ harmony/entry/build/
 .harmony-ref/
 .harmony-ref-tree.json
 .tools/
+# 本地维护手册，不随仓库发布
+MAINTENANCE.md
 preview-*.png
 screenshots/
