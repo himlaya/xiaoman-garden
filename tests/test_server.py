@@ -140,3 +140,162 @@ class AccountServerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class MarketServerTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        data_dir = Path(self.temp.name)
+        self.app = create_app({
+            "TESTING": True,
+            "SECRET_KEY": "market-test-secret",
+            "DATA_DIR": str(data_dir),
+            "DATABASE": str(data_dir / "market.sqlite3"),
+        })
+        self.seller = self.app.test_client()
+        self.buyer = self.app.test_client()
+        self._register(self.seller, "卖家阿青")
+        self._register(self.buyer, "买家小满")
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    @staticmethod
+    def _csrf(html: str) -> str:
+        match = re.search(r'name="csrf_token" value="([^"]+)"', html)
+        if not match:
+            raise AssertionError("页面中没有 csrf_token")
+        return match.group(1)
+
+    def _register(self, client, username: str):
+        page = client.get("/register")
+        token = self._csrf(page.get_data(as_text=True))
+        response = client.post(
+            "/register",
+            data={
+                "csrf_token": token,
+                "username": username,
+                "password": "secret123",
+                "confirmation": "secret123",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+
+    @staticmethod
+    def _item(item_id: str = "itm_market_test_1"):
+        return {
+            "id": item_id,
+            "kind": "seed",
+            "flowerId": "daisy",
+            "grade": "rare",
+            "templateId": "frost",
+            "patternSeed": 123456,
+            "wear": 0.12,
+            "createdAt": 1000,
+            "provenance": {"grower": "卖家阿青", "source": "shop"},
+        }
+
+    @staticmethod
+    def _save(coins: int, items: list):
+        return {
+            "player": {"name": "测试园丁", "coins": coins},
+            "garden": [None, None, None, None],
+            "items": items,
+            "updatedAt": 1000,
+        }
+
+    def _payload(self, client):
+        page = client.get("/")
+        self.assertEqual(page.status_code, 200)
+        match = re.search(
+            r'<script type="application/json" id="account-bootstrap">(.*?)</script>',
+            page.get_data(as_text=True),
+            re.S,
+        )
+        self.assertIsNotNone(match)
+        return json.loads(match.group(1))
+
+    def _put_save(self, client, payload):
+        account = self._payload(client)
+        response = client.post(
+            "/api/save",
+            json=payload,
+            headers={"X-CSRF-Token": account["account"]["csrfToken"]},
+        )
+        self.assertEqual(response.status_code, 200)
+        return account
+
+    def _market_action(self, client, action: str, body: dict):
+        account = self._payload(client)
+        return client.post(
+            "/api/market/" + action,
+            json=body,
+            headers={"X-CSRF-Token": account["account"]["csrfToken"]},
+        )
+
+    def test_list_buy_and_ownership_transfer(self):
+        seller_item = self._item()
+        self._put_save(self.seller, self._save(10, [seller_item]))
+        self._put_save(self.buyer, self._save(200, []))
+
+        listed = self._market_action(self.seller, "list", {"itemId": seller_item["id"], "price": 50})
+        self.assertEqual(listed.status_code, 200)
+        listed_data = listed.get_json()
+        self.assertTrue(listed_data["ok"])
+        self.assertEqual(listed_data["save"]["items"], [])
+        listing_id = listed_data["listing"]["id"]
+
+        market = self.buyer.get("/api/market").get_json()
+        self.assertEqual(len(market["listings"]), 1)
+        self.assertEqual(market["listings"][0]["item"]["id"], seller_item["id"])
+
+        bought = self._market_action(self.buyer, "buy", {"listingId": listing_id})
+        self.assertEqual(bought.status_code, 200)
+        buyer_save = bought.get_json()["save"]
+        self.assertEqual(buyer_save["player"]["coins"], 150)
+        self.assertEqual(buyer_save["items"][0]["id"], seller_item["id"])
+
+        seller_save = self._payload(self.seller)["save"]
+        self.assertEqual(seller_save["player"]["coins"], 60)
+        self.assertEqual(seller_save["items"], [])
+        self.assertEqual(self.buyer.get("/api/market").get_json()["listings"], [])
+
+    def test_cancel_returns_item_and_self_buy_is_rejected(self):
+        item = self._item()
+        self._put_save(self.seller, self._save(10, [item]))
+        listed = self._market_action(self.seller, "list", {"itemId": item["id"], "price": 30}).get_json()
+        listing_id = listed["listing"]["id"]
+
+        own_buy = self._market_action(self.seller, "buy", {"listingId": listing_id})
+        self.assertEqual(own_buy.status_code, 400)
+        self.assertEqual(own_buy.get_json()["error"], "own_listing")
+
+        cancelled = self._market_action(self.seller, "cancel", {"listingId": listing_id})
+        self.assertEqual(cancelled.status_code, 200)
+        self.assertEqual(cancelled.get_json()["save"]["items"][0]["id"], item["id"])
+
+        # 已下架的挂单不能再次购买
+        missing = self._market_action(self.buyer, "buy", {"listingId": listing_id})
+        self.assertEqual(missing.status_code, 404)
+
+    def test_market_requires_csrf_and_escrow_cannot_be_duplicated(self):
+        item = self._item()
+        self._put_save(self.seller, self._save(10, [item]))
+        no_csrf = self.seller.post("/api/market/list", json={"itemId": item["id"], "price": 30})
+        self.assertEqual(no_csrf.status_code, 403)
+
+        listed = self._market_action(self.seller, "list", {"itemId": item["id"], "price": 30}).get_json()
+        self.assertTrue(listed["ok"])
+
+        # 旧存档再次上传也不能把托管中的物品复制回来。
+        self._put_save(self.seller, self._save(999, [item]))
+        seller_save = self._payload(self.seller)["save"]
+        self.assertEqual(seller_save["items"], [])
+        self.assertEqual(seller_save["player"]["coins"], 999)
+
+    def test_listing_price_validation(self):
+        item = self._item()
+        self._put_save(self.seller, self._save(10, [item]))
+        for price in (0, -1, 100000, "50", True):
+            response = self._market_action(self.seller, "list", {"itemId": item["id"], "price": price})
+            self.assertEqual(response.status_code, 400, price)

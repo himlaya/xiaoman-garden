@@ -39,6 +39,7 @@ USERNAME_RE = re.compile(r"^[A-Za-z0-9_\u4e00-\u9fff]{3,20}$")
 SAVE_KEY = "xiaoman-garden-save-v1"
 CSRF_HEADER = "X-CSRF-Token"
 MAX_SAVE_BYTES = 512 * 1024
+MAX_MARKET_PRICE = 99999
 INDEX_PLACEHOLDER = "<!-- ACCOUNT_BOOTSTRAP -->"
 
 
@@ -241,11 +242,22 @@ def create_app(test_config: dict | None = None) -> Flask:
         payload = request.get_json(silent=True)
         if not isinstance(payload, dict) or "player" not in payload or "garden" not in payload:
             return jsonify({"ok": False, "error": "invalid_save"}), 400
+        database = get_db()
+        # 已经挂在市场上的物品处于托管状态，旧存档不能把它重新塞回仓库。
+        escrowed = database.execute(
+            "SELECT item_id FROM market_listings WHERE seller_id = ? AND status = 'active'",
+            (user["id"],),
+        ).fetchall()
+        if escrowed and isinstance(payload.get("items"), list):
+            escrowed_ids = {row["item_id"] for row in escrowed}
+            payload["items"] = [
+                item for item in payload["items"]
+                if not (isinstance(item, dict) and item.get("id") in escrowed_ids)
+            ]
         encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
         if len(encoded.encode("utf-8")) > MAX_SAVE_BYTES:
             return jsonify({"ok": False, "error": "too_large"}), 413
         updated_at = utc_now()
-        database = get_db()
         database.execute(
             """
             INSERT INTO saves (user_id, payload, updated_at) VALUES (?, ?, ?)
@@ -255,6 +267,210 @@ def create_app(test_config: dict | None = None) -> Flask:
         )
         database.commit()
         return jsonify({"ok": True, "updatedAt": updated_at})
+
+    def _load_save(database, user_id: int):
+        row = database.execute(
+            "SELECT payload FROM saves WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+        if not row:
+            return None
+        try:
+            payload = json.loads(row["payload"])
+        except (TypeError, ValueError):
+            return None
+        if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
+            return None
+        if not isinstance(payload.get("player"), dict):
+            return None
+        return payload
+
+    def _write_save(database, user_id: int, payload: dict) -> str:
+        updated_at = utc_now()
+        database.execute(
+            """
+            INSERT INTO saves (user_id, payload, updated_at) VALUES (?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at
+            """,
+            (user_id, json.dumps(payload, ensure_ascii=False, separators=(",", ":")), updated_at),
+        )
+        return updated_at
+
+    def _listing_payload(row, current_id: int) -> dict:
+        try:
+            item = json.loads(row["item_json"])
+        except (TypeError, ValueError):
+            item = None
+        return {
+            "id": row["id"],
+            "seller": row["seller_name"],
+            "sellerId": row["seller_id"],
+            "mine": row["seller_id"] == current_id,
+            "price": row["price"],
+            "item": item,
+            "createdAt": row["created_at"],
+        }
+
+    @app.get("/api/market")
+    @login_required
+    def api_market():
+        user = current_user()
+        rows = get_db().execute(
+            """
+            SELECT l.*, u.username AS seller_name
+            FROM market_listings l
+            JOIN users u ON u.id = l.seller_id
+            WHERE l.status = 'active'
+            ORDER BY l.created_at DESC, l.id DESC
+            LIMIT 80
+            """,
+        ).fetchall()
+        listings = [_listing_payload(row, user["id"]) for row in rows]
+        return jsonify({"ok": True, "listings": listings})
+
+    @app.post("/api/market/list")
+    def api_market_list():
+        user = current_user()
+        if not user:
+            return jsonify({"ok": False, "error": "auth"}), 401
+        if not csrf_ok(request.headers.get(CSRF_HEADER)):
+            return jsonify({"ok": False, "error": "csrf"}), 403
+        payload = request.get_json(silent=True) or {}
+        item_id = payload.get("itemId")
+        price = payload.get("price")
+        if not isinstance(item_id, str) or not item_id:
+            return jsonify({"ok": False, "error": "item"}), 400
+        if not isinstance(price, int) or isinstance(price, bool) or price < 1 or price > MAX_MARKET_PRICE:
+            return jsonify({"ok": False, "error": "price"}), 400
+        database = get_db()
+        database.execute("BEGIN IMMEDIATE")
+        try:
+            save = _load_save(database, user["id"])
+            if save is None:
+                database.rollback()
+                return jsonify({"ok": False, "error": "save_missing"}), 409
+            index = next(
+                (i for i, item in enumerate(save["items"]) if isinstance(item, dict) and item.get("id") == item_id),
+                None,
+            )
+            if index is None:
+                database.rollback()
+                return jsonify({"ok": False, "error": "item_missing"}), 404
+            item = save["items"].pop(index)
+            if item.get("kind") not in {"seed", "bouquet"}:
+                database.rollback()
+                return jsonify({"ok": False, "error": "item_invalid"}), 400
+            created_at = utc_now()
+            cursor = database.execute(
+                "INSERT INTO market_listings (seller_id, item_id, item_json, price, status, created_at) VALUES (?, ?, ?, ?, 'active', ?)",
+                (user["id"], item_id, json.dumps(item, ensure_ascii=False), price, created_at),
+            )
+            _write_save(database, user["id"], save)
+            database.commit()
+        except Exception:
+            database.rollback()
+            raise
+        row = database.execute(
+            """
+            SELECT l.*, u.username AS seller_name
+            FROM market_listings l JOIN users u ON u.id = l.seller_id
+            WHERE l.id = ?
+            """,
+            (cursor.lastrowid,),
+        ).fetchone()
+        return jsonify({"ok": True, "save": save, "listing": _listing_payload(row, user["id"])})
+
+    @app.post("/api/market/cancel")
+    def api_market_cancel():
+        user = current_user()
+        if not user:
+            return jsonify({"ok": False, "error": "auth"}), 401
+        if not csrf_ok(request.headers.get(CSRF_HEADER)):
+            return jsonify({"ok": False, "error": "csrf"}), 403
+        payload = request.get_json(silent=True) or {}
+        listing_id = payload.get("listingId")
+        if not isinstance(listing_id, int) or isinstance(listing_id, bool):
+            return jsonify({"ok": False, "error": "listing"}), 400
+        database = get_db()
+        database.execute("BEGIN IMMEDIATE")
+        try:
+            listing = database.execute(
+                "SELECT * FROM market_listings WHERE id = ? AND status = 'active'",
+                (listing_id,),
+            ).fetchone()
+            if not listing or listing["seller_id"] != user["id"]:
+                database.rollback()
+                return jsonify({"ok": False, "error": "listing_missing"}), 404
+            save = _load_save(database, user["id"])
+            if save is None:
+                database.rollback()
+                return jsonify({"ok": False, "error": "save_missing"}), 409
+            item = json.loads(listing["item_json"])
+            if not any(isinstance(current, dict) and current.get("id") == item.get("id") for current in save["items"]):
+                save["items"].append(item)
+            database.execute(
+                "UPDATE market_listings SET status = 'cancelled' WHERE id = ?",
+                (listing_id,),
+            )
+            _write_save(database, user["id"], save)
+            database.commit()
+        except Exception:
+            database.rollback()
+            raise
+        return jsonify({"ok": True, "save": save})
+
+    @app.post("/api/market/buy")
+    def api_market_buy():
+        user = current_user()
+        if not user:
+            return jsonify({"ok": False, "error": "auth"}), 401
+        if not csrf_ok(request.headers.get(CSRF_HEADER)):
+            return jsonify({"ok": False, "error": "csrf"}), 403
+        payload = request.get_json(silent=True) or {}
+        listing_id = payload.get("listingId")
+        if not isinstance(listing_id, int) or isinstance(listing_id, bool):
+            return jsonify({"ok": False, "error": "listing"}), 400
+        database = get_db()
+        database.execute("BEGIN IMMEDIATE")
+        try:
+            listing = database.execute(
+                "SELECT * FROM market_listings WHERE id = ? AND status = 'active'",
+                (listing_id,),
+            ).fetchone()
+            if not listing:
+                database.rollback()
+                return jsonify({"ok": False, "error": "listing_missing"}), 404
+            if listing["seller_id"] == user["id"]:
+                database.rollback()
+                return jsonify({"ok": False, "error": "own_listing"}), 400
+            buyer_save = _load_save(database, user["id"])
+            seller_save = _load_save(database, listing["seller_id"])
+            if buyer_save is None or seller_save is None:
+                database.rollback()
+                return jsonify({"ok": False, "error": "save_missing"}), 409
+            price = listing["price"]
+            buyer_coins = buyer_save.get("player", {}).get("coins", 0)
+            if not isinstance(buyer_coins, int) or buyer_coins < price:
+                database.rollback()
+                return jsonify({"ok": False, "error": "coins"}), 400
+            item = json.loads(listing["item_json"])
+            if any(isinstance(current, dict) and current.get("id") == item.get("id") for current in buyer_save["items"]):
+                database.rollback()
+                return jsonify({"ok": False, "error": "duplicate_item"}), 409
+            buyer_save["player"]["coins"] = buyer_coins - price
+            buyer_save["items"].append(item)
+            seller_save["player"]["coins"] = int(seller_save.get("player", {}).get("coins", 0)) + price
+            database.execute(
+                "UPDATE market_listings SET status = 'sold', buyer_id = ?, sold_at = ? WHERE id = ?",
+                (user["id"], utc_now(), listing_id),
+            )
+            _write_save(database, user["id"], buyer_save)
+            _write_save(database, listing["seller_id"], seller_save)
+            database.commit()
+        except Exception:
+            database.rollback()
+            raise
+        return jsonify({"ok": True, "save": buyer_save})
 
     @app.get("/api/save")
     @login_required

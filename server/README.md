@@ -6,6 +6,8 @@
 - Cookie 登录会话
 - 每个账号一份花园存档
 - 账号存档自动同步到本地 SQLite
+- 玩家市场：种子/花束挂单、托管、购买、下架
+- 市场交易使用 SQLite 事务同时更新买卖双方存档
 
 ## 启动
 
@@ -28,7 +30,7 @@ http://127.0.0.1:8000
 ## 数据在哪里
 
 ```text
-server/data/garden.sqlite3    ← 账号、密码哈希、每人的花园存档
+server/data/garden.sqlite3    ← 账号、密码哈希、每人的花园存档、市场挂单
 server/data/secret_key        ← 登录 Cookie 的签名密钥
 ```
 
@@ -55,4 +57,15 @@ python -m unittest discover -s tests -p test_server.py -v
 
 - `POST /api/save`：需要登录 Cookie 和 `X-CSRF-Token` 请求头
 - `GET /api/save`：读取当前账号存档
+- `GET /api/market`：查看在售物品
+- `POST /api/market/list`：`{itemId, price}`，把物品移入市场托管
+- `POST /api/market/buy`：`{listingId}`，买家扣币、卖家收币并转移物品
+- `POST /api/market/cancel`：`{listingId}`，把托管物品退回卖家仓库
 - `POST /logout`：需要 `X-CSRF-Token`
+
+## 物品与市场边界
+
+- 种子和成品花束都是唯一物品，`items` 存在各自账号的存档里。
+- 挂单时物品会从卖家存档移除，放进 `market_listings` 托管；下架时退回。
+- 市场是一口价，没有报价、还价、手续费和历史成交页。
+- 客户端存档仍由本地 Flask 信任接收，当前适合本机多账号测试；公网交易前需要把金币和物品发行改成更严格的服务端权威逻辑，并加 HTTPS、限流、风控。

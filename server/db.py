@@ -21,6 +21,25 @@ CREATE TABLE IF NOT EXISTS saves (
     updated_at TEXT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS market_listings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    seller_id INTEGER NOT NULL,
+    item_id TEXT NOT NULL,
+    item_json TEXT NOT NULL,
+    price INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL,
+    buyer_id INTEGER,
+    sold_at TEXT,
+    FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS market_active_item
+    ON market_listings(item_id) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS market_active_listings
+    ON market_listings(status, created_at);
 """
 
 

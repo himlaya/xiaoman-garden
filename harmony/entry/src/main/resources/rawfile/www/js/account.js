@@ -15,6 +15,7 @@
   var retryTimer = 0;
   var statusText = '已连接到本地数据库';
   var statusTone = 'ok';
+  var suspended = false;
 
   function currentRaw() {
     try {
@@ -49,6 +50,7 @@
   function syncNow(options) {
     var opts = options || {};
     var raw = currentRaw();
+    if (suspended) return Promise.resolve();
     if (!raw) return Promise.resolve();
     if (!opts.force && raw === lastSynced) return Promise.resolve();
     if (syncing) return Promise.resolve();
@@ -81,6 +83,7 @@
       setStatus('同步失败，稍后重试', 'error');
       window.clearTimeout(retryTimer);
       retryTimer = window.setTimeout(function () { syncNow({ force: true }); }, 8000);
+      if (opts.strict) throw error;
     }).finally(function () {
       syncing = false;
     });
@@ -92,10 +95,12 @@
   });
 
   window.addEventListener('pagehide', function () {
+    if (suspended) return;
     if (currentRaw() !== lastSynced) syncNow({ force: true, keepalive: true });
   });
 
   document.addEventListener('visibilitychange', function () {
+    if (suspended) return;
     if (document.visibilityState === 'hidden' && currentRaw() !== lastSynced) {
       syncNow({ force: true, keepalive: true });
     }
@@ -123,6 +128,15 @@
   schedule(1500);
   window.XiaomanAccount = {
     sync: syncNow,
+    suspend: function () {
+      suspended = true;
+      window.clearTimeout(timer);
+      window.clearTimeout(retryTimer);
+    },
+    resume: function () {
+      suspended = false;
+      schedule(900);
+    },
     get account() { return account; }
   };
 })();

@@ -3,6 +3,7 @@
   'use strict';
 
   const DATA = window.GameData;
+  const Items = window.GardenItems;
   const SAVE_KEY = DATA.saveKey;
   const DAY_MS = 24 * 60 * 60 * 1000;
   const MAX_GARDEN = DATA.maxPots;
@@ -32,10 +33,8 @@
     return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : fallback;
   }
 
-  function emptyInventory() {
-    const inventory = {};
-    FLOWER_IDS.forEach(function (id) { inventory[id] = 0; });
-    return inventory;
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
   }
 
   function emptyDaily() {
@@ -50,9 +49,13 @@
 
   function createInitialState() {
     const now = Date.now();
-    const inventory = emptyInventory();
+    const items = [];
     Object.keys(DATA.starting.seeds).forEach(function (id) {
-      if (DATA.flowerMap[id]) inventory[id] = DATA.starting.seeds[id];
+      const count = Math.max(0, Math.floor(Number(DATA.starting.seeds[id]) || 0));
+      for (let i = 0; i < count; i += 1) {
+        const seed = Items.createSeed(id, { grower: DATA.starting.name, source: 'start', gradeBoost: 0.02 });
+        if (seed) items.push(seed);
+      }
     });
     return {
       version: DATA.version,
@@ -64,7 +67,7 @@
         fertilizer: DATA.starting.fertilizer,
         xp: 0
       },
-      inventory: inventory,
+      items: items,
       potCount: DATA.initialPots,
       garden: new Array(MAX_GARDEN).fill(null),
       collection: {},
@@ -95,6 +98,9 @@
     const progress = Math.max(0, Math.min(1, Number(raw.progress) || 0));
     let bloomedAt = Number(raw.bloomedAt) || null;
     if (progress >= 1 && !bloomedAt) bloomedAt = Date.now();
+    const legacySeed = !raw.templateId
+      ? Items.createSeed(raw.flowerId, { source: 'start', gradeBoost: 0.02 })
+      : null;
     return {
       flowerId: raw.flowerId,
       plantedAt: Number(raw.plantedAt) || Date.now(),
@@ -103,8 +109,28 @@
       bloomedAt: progress >= 1 ? bloomedAt : null,
       boostUntil: Number(raw.boostUntil) || 0,
       waterReadyAt: Number(raw.waterReadyAt) || 0,
-      growSeconds: flower.growSeconds
+      growSeconds: flower.growSeconds,
+      seedId: typeof raw.seedId === 'string' ? raw.seedId : null,
+      templateId: raw.templateId || (legacySeed ? legacySeed.templateId : null),
+      patternSeed: raw.patternSeed || (legacySeed ? legacySeed.patternSeed : null),
+      seedGrade: raw.seedGrade || (legacySeed ? legacySeed.grade : null),
+      careScore: clamp(Number(raw.careScore) || 0, 0, 100),
+      waterCount: Math.max(0, Math.floor(Number(raw.waterCount) || 0)),
+      fertilizerCount: Math.max(0, Math.floor(Number(raw.fertilizerCount) || 0))
     };
+  }
+
+  function normalizeItems(rawItems) {
+    const items = [];
+    const seen = new Set();
+    (Array.isArray(rawItems) ? rawItems : []).forEach(function (raw) {
+      const item = Items.normalizeItem(raw);
+      if (!item) return;
+      if (seen.has(item.id)) item.id = Items.makeId();
+      seen.add(item.id);
+      items.push(item);
+    });
+    return items;
   }
 
   function normalizeState(raw) {
@@ -122,7 +148,7 @@
         fertilizer: integer(raw.player?.fertilizer, fresh.player.fertilizer),
         xp: integer(raw.player?.xp, 0)
       },
-      inventory: emptyInventory(),
+      items: [],
       potCount: Math.max(1, Math.min(MAX_GARDEN, integer(raw.potCount, DATA.initialPots))),
       garden: new Array(MAX_GARDEN).fill(null),
       collection: {},
@@ -148,9 +174,10 @@
       }
     };
 
-    FLOWER_IDS.forEach(function (id) {
-      state.inventory[id] = integer(raw.inventory?.[id], 0);
-    });
+    state.items = normalizeItems(raw.items);
+    if (!state.items.length && raw.inventory && typeof raw.inventory === 'object') {
+      state.items = Items.migrateInventory(raw.inventory, state.player.name);
+    }
 
     if (Array.isArray(raw.garden)) {
       for (let i = 0; i < MAX_GARDEN; i += 1) {
@@ -220,6 +247,53 @@
 
   function getState() {
     return state;
+  }
+
+  function addItem(item) {
+    if (item) state.items.push(item);
+    return item;
+  }
+
+  function addSeedReward(seeds, source, gradeBoost) {
+    const created = [];
+    if (!seeds) return created;
+    Object.keys(seeds).forEach(function (id) {
+      if (!DATA.flowerMap[id]) return;
+      const count = Math.max(0, Math.floor(Number(seeds[id]) || 0));
+      for (let i = 0; i < count; i += 1) {
+        const seed = Items.createSeed(id, {
+          grower: state.player.name,
+          source: source || 'checkin',
+          gradeBoost: gradeBoost || 0
+        });
+        if (seed) created.push(addItem(seed));
+      }
+    });
+    return created;
+  }
+
+  function getItems(kind) {
+    return state.items.filter(function (item) { return !kind || item.kind === kind; });
+  }
+
+  function getSeedItems(flowerId) {
+    return state.items.filter(function (item) {
+      return item.kind === 'seed' && (!flowerId || item.flowerId === flowerId);
+    });
+  }
+
+  function getBouquetItems(flowerId) {
+    return state.items.filter(function (item) {
+      return item.kind === 'bouquet' && (!flowerId || item.flowerId === flowerId);
+    });
+  }
+
+  function getItem(itemId) {
+    return state.items.find(function (item) { return item.id === itemId; }) || null;
+  }
+
+  function seedCount(flowerId) {
+    return getSeedItems(flowerId).length;
   }
 
   function stageFor(progress) {
@@ -409,6 +483,11 @@
       canFertilize: stage !== 'bloom' && state.player.fertilizer > 0,
       fresh: fresh,
       harvestCoins: fresh ? Math.max(1, Math.round(flower.sellPrice * fresh.multiplier)) : 0,
+      seedMeta: {
+        templateId: plant.templateId || null,
+        patternSeed: plant.patternSeed || null,
+        grade: plant.seedGrade || null
+      },
       isBloom: stage === 'bloom'
     };
   }
@@ -461,20 +540,20 @@
   }
 
   function applyReward(reward) {
-    if (!reward) return;
+    const created = [];
+    if (!reward) return created;
     if (reward.coins) state.player.coins += reward.coins;
     if (reward.fertilizer) state.player.fertilizer += reward.fertilizer;
     if (reward.seeds) {
-      Object.keys(reward.seeds).forEach(function (id) {
-        if (DATA.flowerMap[id]) state.inventory[id] = (state.inventory[id] || 0) + reward.seeds[id];
-      });
+      created.push.apply(created, addSeedReward(reward.seeds, 'checkin', 0.03));
     }
+    return created;
   }
 
   function claimCheckin() {
     const view = checkinView();
     if (!view.available) return { ok: false, reason: 'already_claimed' };
-    applyReward(view.reward);
+    const items = applyReward(view.reward);
     state.checkin.lastDate = dateKey();
     state.checkin.streak = view.nextStreak;
     state.checkin.total += 1;
@@ -482,6 +561,7 @@
     return {
       ok: true,
       reward: view.reward,
+      items: items,
       dayNumber: view.dayNumber,
       streak: view.nextStreak
     };
@@ -509,31 +589,41 @@
     if (state.daily.claimed.includes(id)) return { ok: false, reason: 'already_claimed' };
     if ((state.daily[quest.metric] || 0) < quest.target) return { ok: false, reason: 'not_done' };
     state.daily.claimed.push(id);
-    applyReward(quest.reward);
+    const items = applyReward(quest.reward);
     persist();
-    return { ok: true, reward: quest.reward, title: quest.title };
+    return { ok: true, reward: quest.reward, items: items, title: quest.title };
   }
 
-  function plantSeed(slot, flowerId) {
+  function plantSeed(slot, seedRef) {
     if (!Number.isInteger(slot) || slot < 0 || slot >= state.potCount) return { ok: false, reason: 'bad_slot' };
     if (state.garden[slot]) return { ok: false, reason: 'occupied' };
-    const flower = DATA.flowerMap[flowerId];
+    const seed = state.items.find(function (item) {
+      return item.kind === 'seed' && (item.id === seedRef || item.flowerId === seedRef);
+    });
+    if (!seed) return { ok: false, reason: 'no_seed' };
+    const flower = DATA.flowerMap[seed.flowerId];
     if (!flower) return { ok: false, reason: 'unknown_flower' };
-    if (!state.inventory[flowerId]) return { ok: false, reason: 'no_seed' };
+    state.items = state.items.filter(function (item) { return item.id !== seed.id; });
     const now = Date.now();
-    state.inventory[flowerId] -= 1;
     state.garden[slot] = {
-      flowerId: flowerId,
+      flowerId: flower.id,
       plantedAt: now,
       updatedAt: now,
       progress: 0,
       bloomedAt: null,
       boostUntil: 0,
       waterReadyAt: 0,
-      growSeconds: flower.growSeconds
+      growSeconds: flower.growSeconds,
+      seedId: seed.id,
+      templateId: seed.templateId,
+      patternSeed: seed.patternSeed,
+      seedGrade: seed.grade,
+      careScore: 0,
+      waterCount: 0,
+      fertilizerCount: 0
     };
     persist();
-    return { ok: true, slot: slot, flower: flower };
+    return { ok: true, slot: slot, flower: flower, seed: seed };
   }
 
   function careResult(slot, plant, type, bloomed) {
@@ -561,6 +651,8 @@
     plant.boostUntil = Math.max(now, plant.boostUntil || 0) + DATA.care.water.boostSeconds * 1000;
     plant.progress = Math.min(1, plant.progress + DATA.care.water.instantProgress);
     plant.updatedAt = now;
+    plant.waterCount = (plant.waterCount || 0) + 1;
+    plant.careScore = Math.min(100, (plant.careScore || 0) + 12);
     let bloomed = false;
     if (plant.progress >= 1) {
       plant.progress = 1;
@@ -582,6 +674,8 @@
     state.player.fertilizer -= 1;
     plant.progress = Math.min(1, plant.progress + DATA.care.fertilizer.progressBoost);
     plant.updatedAt = now;
+    plant.fertilizerCount = (plant.fertilizerCount || 0) + 1;
+    plant.careScore = Math.min(100, (plant.careScore || 0) + 16);
     let bloomed = false;
     if (plant.progress >= 1) {
       plant.progress = 1;
@@ -609,10 +703,23 @@
     collection.count += 1;
     collection.firstAt = collection.firstAt || Date.now();
     state.collection[flower.id] = collection;
+    const seedMeta = {
+      id: plant.seedId,
+      grade: plant.seedGrade || 'common',
+      templateId: plant.templateId,
+      patternSeed: plant.patternSeed
+    };
+    const item = addItem(Items.createBouquet(flower, plant, fresh, {
+      grower: state.player.name,
+      seed: seedMeta
+    }));
     let bonusSeed = null;
     if (Math.random() < flower.bonusSeedChance) {
-      bonusSeed = flower.id;
-      state.inventory[flower.id] = (state.inventory[flower.id] || 0) + 1;
+      bonusSeed = addItem(Items.createSeed(flower.id, {
+        grower: state.player.name,
+        source: 'bonus',
+        gradeBoost: 0.04
+      }));
     }
     state.garden[slot] = null;
     persist();
@@ -621,6 +728,7 @@
       flower: flower,
       coins: coins,
       xp: flower.xp,
+      item: item,
       bonusSeed: bonusSeed,
       fresh: fresh,
       levelUp: xpResult.levelsGained > 0 ? xpResult.after : null
@@ -632,9 +740,13 @@
     if (!flower) return { ok: false, reason: 'unknown_flower' };
     if (state.player.coins < flower.seedPrice) return { ok: false, reason: 'coins' };
     state.player.coins -= flower.seedPrice;
-    state.inventory[flowerId] = (state.inventory[flowerId] || 0) + 1;
+    const item = addItem(Items.createSeed(flowerId, {
+      grower: state.player.name,
+      source: 'shop',
+      gradeBoost: 0.015
+    }));
     persist();
-    return { ok: true, flower: flower, inventory: state.inventory[flowerId] };
+    return { ok: true, flower: flower, item: item, inventory: seedCount(flowerId) };
   }
 
   function buyFertilizer(bundle) {
@@ -701,6 +813,9 @@
       streak: checkin.streak,
       days: days,
       totalCare: state.meta.totalCare,
+      seeds: getSeedItems().length,
+      bouquets: getBouquetItems().length,
+      items: state.items.length,
       level: levelInfo(state.player.xp)
     };
   }
@@ -742,6 +857,11 @@
     stageFor: stageFor,
     freshness: freshness,
     dateKey: dateKey,
+    getItems: getItems,
+    getSeedItems: getSeedItems,
+    getBouquetItems: getBouquetItems,
+    getItem: getItem,
+    seedCount: seedCount,
     getCheckinShortcut: getCheckinShortcut,
     isBooted: function () { return booted; }
   };

@@ -7,6 +7,7 @@ const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..');
 const dataSource = fs.readFileSync(path.join(ROOT, 'www/js/data.js'), 'utf8');
+const itemsSource = fs.readFileSync(path.join(ROOT, 'www/js/items.js'), 'utf8');
 const gameSource = fs.readFileSync(path.join(ROOT, 'www/js/game.js'), 'utf8');
 
 function makeHarness(startTime, savedRaw) {
@@ -42,10 +43,12 @@ function makeHarness(startTime, savedRaw) {
     Math
   });
   vm.runInContext(dataSource, context, { filename: 'data.js' });
+  vm.runInContext(itemsSource, context, { filename: 'items.js' });
   vm.runInContext(gameSource, context, { filename: 'game.js' });
   return {
     Game: window.Game,
     Data: window.GameData,
+    Items: window.GardenItems,
     window,
     store,
     get now() {
@@ -67,8 +70,9 @@ test('初始花园：有种子、有花盆，第一次打开还未签到', () =>
   const state = Game.getState();
   assert.equal(state.player.coins, Data.starting.coins);
   assert.equal(state.player.fertilizer, Data.starting.fertilizer);
-  assert.equal(state.inventory.daisy, 2);
-  assert.equal(state.inventory.tulip, 1);
+  assert.equal(Game.getSeedItems('daisy').length, 2);
+  assert.equal(Game.getSeedItems('tulip').length, 1);
+  assert.equal(state.items.length, 3);
   assert.equal(state.potCount, 4);
   assert.equal(state.garden.filter(Boolean).length, 0);
   assert.equal(state.settings.seenIntro, false);
@@ -80,11 +84,12 @@ test('每日签到：领取花种、同一天不能重复领、连续签到会�
   const h = makeHarness();
   h.Game.boot();
   const before = h.Game.getState();
-  const daisyBefore = before.inventory.daisy;
+  const daisyBefore = h.Game.getSeedItems('daisy').length;
   const coinsBefore = before.player.coins;
   const first = h.Game.claimCheckin();
   assert.equal(first.ok, true);
-  assert.equal(h.Game.getState().inventory.daisy, daisyBefore + 1);
+  assert.equal(h.Game.getSeedItems('daisy').length, daisyBefore + 1);
+  assert.equal(first.items.length, 1);
   assert.equal(h.Game.getState().player.coins, coinsBefore + 20);
   assert.equal(h.Game.getState().checkin.streak, 1);
   assert.equal(h.Game.checkinView().available, false);
@@ -98,7 +103,7 @@ test('每日签到：领取花种、同一天不能重复领、连续签到会�
   const second = h.Game.claimCheckin();
   assert.equal(second.ok, true);
   assert.equal(h.Game.getState().checkin.streak, 2);
-  assert.equal(h.Game.getState().inventory.tulip, 2);
+  assert.equal(h.Game.getSeedItems('tulip').length, 2);
 });
 
 test('漏签会重新开始连续签到，并回到第 1 天奖励', () => {
@@ -125,7 +130,7 @@ test('种植、浇水、施肥、开花和采摘构成完整循环', () => {
 
   const planted = Game.plantSeed(0, 'daisy');
   assert.equal(planted.ok, true);
-  assert.equal(Game.getState().inventory.daisy, 1);
+  assert.equal(Game.getSeedItems('daisy').length, 1);
   assert.equal(Game.getPlantView(0).stage, 'seed');
 
   const water = Game.waterPlant(0);
@@ -158,6 +163,12 @@ test('种植、浇水、施肥、开花和采摘构成完整循环', () => {
   assert.equal(Game.getPlantView(0).empty, true);
   assert.equal(Game.getState().collection.daisy.count, 1);
   assert.equal(Game.getState().daily.harvest, 1);
+  assert.equal(result.item.kind, 'bouquet');
+  assert.ok(result.item.id.startsWith('itm_'));
+  assert.ok(Data.itemGrades.some(function (grade) { return grade.id === result.item.grade; }));
+  assert.ok(Data.itemTemplates.some(function (template) { return template.id === result.item.templateId; }));
+  assert.ok(result.item.wear >= 0 && result.item.wear <= 1);
+  assert.equal(Game.getBouquetItems('daisy').length, 1);
 });
 
 test('花开久了新鲜度会下降，但依然可以采摘', () => {
@@ -203,7 +214,8 @@ test('商店购买种子、肥料和花盆会正确扣款', () => {
   Game.getState().player.coins = 700;
   const seed = Game.buySeed('rose');
   assert.equal(seed.ok, true);
-  assert.equal(Game.getState().inventory.rose, 1);
+  assert.equal(Game.getSeedItems('rose').length, 1);
+  assert.equal(seed.item.kind, 'seed');
   assert.equal(Game.getState().player.coins, 600);
 
   const fertilizer = Game.buyFertilizer(true);
@@ -226,7 +238,7 @@ test('金币不足时购买失败，不会改变库存', () => {
   const result = Game.buySeed('rose');
   assert.equal(result.ok, false);
   assert.equal(result.reason, 'coins');
-  assert.equal(Game.getState().inventory.rose, 0);
+  assert.equal(Game.getSeedItems('rose').length, 0);
   assert.equal(Game.getState().player.coins, 10);
 });
 
@@ -273,6 +285,7 @@ test('存档能写入并在新的游戏实例里恢复', () => {
   assert.equal(parsed.checkin.streak, 1);
   assert.equal(parsed.settings.seenIntro, false);
   assert.ok(parsed.garden.length >= 4);
+  assert.equal(parsed.items.length, 4);
 
   // 用同一份存档初始化另一个实例，验证恢复与「今日已签」状态
   const h2 = makeHarness(h.now, raw);
@@ -290,7 +303,65 @@ test('重置会回到全新的花园', () => {
   Game.reset();
   const state = Game.getState();
   assert.equal(state.player.coins, 120);
-  assert.equal(state.inventory.daisy, 2);
+  assert.equal(Game.getSeedItems('daisy').length, 2);
+  assert.equal(state.items.length, 3);
   assert.equal(state.garden.filter(Boolean).length, 0);
   assert.equal(state.settings.seenIntro, false);
+});
+
+test('每一颗种子和成品花束都是唯一物品，品级/模板/品相可复现', () => {
+  const h = makeHarness();
+  const { Game, Data, Items } = h;
+  Game.boot();
+  const seeds = Game.getSeedItems();
+  assert.equal(new Set(seeds.map((seed) => seed.id)).size, seeds.length);
+  seeds.forEach((seed) => {
+    assert.ok(seed.id.startsWith('itm_'));
+    assert.ok(Data.itemGrades.some((grade) => grade.id === seed.grade));
+    assert.ok(Data.itemTemplates.some((template) => template.id === seed.templateId));
+    assert.ok(seed.wear >= 0 && seed.wear <= 1);
+    const first = Items.variantColors(Data.flowerMap[seed.flowerId], seed);
+    const second = Items.variantColors(Data.flowerMap[seed.flowerId], seed);
+    assert.deepEqual(first.colors, second.colors);
+    assert.equal(first.template.id, seed.templateId);
+  });
+});
+
+test('种子模板会继承到同一件成品花束', () => {
+  const h = makeHarness();
+  const { Game, Data } = h;
+  Game.boot();
+  const seed = Game.getSeedItems('daisy')[0];
+  assert.ok(seed);
+  const planted = Game.plantSeed(0, seed.id);
+  assert.equal(planted.ok, true);
+  assert.equal(Game.getSeedItems('daisy').length, 1);
+  h.advance(Data.flowerMap.daisy.growSeconds * 1000);
+  Game.tick();
+  const harvested = Game.harvest(0);
+  assert.equal(harvested.ok, true);
+  assert.equal(harvested.item.templateId, seed.templateId);
+  assert.equal(harvested.item.patternSeed, seed.patternSeed);
+  assert.equal(harvested.item.provenance.seedId, seed.id);
+});
+
+test('旧版数量库存会自动迁移成独立种子', () => {
+  const oldSave = JSON.stringify({
+    version: 1,
+    player: { name: '旧园丁', coins: 88, fertilizer: 1, xp: 0 },
+    inventory: { daisy: 2, tulip: 1 },
+    potCount: 4,
+    garden: [null, null, null, null],
+    collection: {},
+    checkin: { lastDate: null, streak: 0, total: 0 },
+    settings: { sound: true, reduceMotion: false, speed: 1, seenIntro: true },
+    meta: { hasOpened: true, lastSeen: 1, totalHarvested: 0, totalCare: 0 }
+  });
+  const h = makeHarness(null, oldSave);
+  h.Game.boot();
+  const state = h.Game.getState();
+  assert.equal(state.items.length, 3);
+  assert.equal(h.Game.getSeedItems('daisy').length, 2);
+  assert.equal(h.Game.getSeedItems('tulip').length, 1);
+  assert.equal(state.inventory, undefined);
 });

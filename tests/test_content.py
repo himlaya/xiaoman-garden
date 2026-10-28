@@ -69,6 +69,27 @@ class GardenContentTests(unittest.TestCase):
             self.assertIn(quest["metric"], valid_metrics)
             self.assertGreater(quest["target"], 0)
 
+    def test_item_grades_templates_and_wear_bands(self) -> None:
+        data = build_data()
+        grades = data["itemGrades"]
+        templates = data["itemTemplates"]
+        self.assertGreaterEqual(len(grades), 5)
+        self.assertGreaterEqual(len(templates), 6)
+        self.assertEqual(sum(grade["weight"] for grade in grades), 100)
+        self.assertEqual(sum(template["weight"] for template in templates), 100)
+        self.assertEqual(len({grade["id"] for grade in grades}), len(grades))
+        self.assertEqual(len({template["id"] for template in templates}), len(templates))
+        for grade in grades:
+            self.assertGreater(grade["multiplier"], 0)
+            self.assertRegex(grade["color"], HEX_COLOR)
+        for template in templates:
+            self.assertRegex(template["tint"], HEX_COLOR)
+            self.assertGreater(template["weight"], 0)
+        bands = data["wearBands"]
+        self.assertGreaterEqual(len(bands), 4)
+        self.assertEqual([band["max"] for band in bands], sorted(band["max"] for band in bands))
+        self.assertGreaterEqual(bands[-1]["max"], 1)
+
     def test_generated_data_file_is_in_sync(self) -> None:
         expected = render_js(build_data())
         actual = OUTPUT.read_text(encoding="utf-8")

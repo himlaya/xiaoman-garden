@@ -1,12 +1,13 @@
 /* 小满花园 · 离线缓存
  * 采用先网络后缓存：开发时能及时看到更新，断网时也能打开花园。
  */
-const CACHE_NAME = 'xiaoman-garden-v0.4.1-5';
+const CACHE_NAME = 'xiaoman-garden-v0.5.0-6';
 const APP_SHELL = [
   './',
   './index.html',
   './css/style.css',
   './js/data.js',
+  './js/items.js',
   './js/art.js',
   './js/game.js',
   './js/app.js',

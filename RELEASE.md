@@ -26,13 +26,13 @@
 **之后每次发布，只要运行项目根目录的：**
 
 ```text
-publish.cmd 0.4.1 5
+publish.cmd 0.5.0 6
 ```
 
 或者直接用 Python：
 
 ```bash
-python tools/publish.py 0.4.1 5
+python tools/publish.py 0.5.0 6
 ```
 
 它会先根据 `content/garden.py` 生成 `www/js/data.js`，再跑内容测试和 JS 测试、更新版本、同步三端资源、提交并推送。手动执行时等价于：
@@ -40,7 +40,7 @@ python tools/publish.py 0.4.1 5
 ```bash
 python tools/build_content.py
 npm test
-npm run version:set -- 0.4.1 5
+npm run version:set -- 0.5.0 6
 npm run sync:native
 git add .
 git commit -m "release: v0.3.1 build 4"
@@ -86,7 +86,7 @@ npm test
 npm run check:ui
 ```
 
-现在 `npm test` 会跑 **4 个 Python 内容测试 + 4 个 Flask/SQLite 账号测试 + 14 个 JS 规则测试**。想连自动更新流程一起测：
+现在 `npm test` 会跑 **5 个 Python 内容测试 + 8 个 Flask/SQLite 账号/市场测试 + 17 个 JS 规则测试**。想连自动更新流程一起测：
 
 ```powershell
 $env:CHECK_UPDATE='1'; npm run check:ui
@@ -95,13 +95,13 @@ $env:CHECK_UPDATE='1'; npm run check:ui
 3. 发版。推荐直接运行：
 
 ```bash
-python tools/publish.py 0.4.1 5
+python tools/publish.py 0.5.0 6
 ```
 
 它会在内部更新版本号并同步资源；如果你要手动控制：
 
 ```bash
-npm run version:set -- 0.4.1 5
+npm run version:set -- 0.5.0 6
 npm run sync:native
 ```
 
@@ -149,7 +149,7 @@ js / css / icons    Cache-Control: public, max-age=3600, must-revalidate
 
 本项目没有文件名 hash 的构建流程，因此更新后最好主动刷新一次 CDN 上以上文件，或者把所有静态文件都设置成短缓存。
 
-`version:set` 会自动把 `www/sw.js` 的 `CACHE_NAME` 改掉（例如 `xiaoman-garden-v0.4.1-5`），这样旧缓存会在新 Service Worker 激活时被清理。
+`version:set` 会自动把 `www/sw.js` 的 `CACHE_NAME` 改掉（例如 `xiaoman-garden-v0.5.0-6`），这样旧缓存会在新 Service Worker 激活时被清理。
 
 ### 如果你想让“发布”也自动化
 
@@ -176,6 +176,9 @@ server/data/garden.sqlite3
 ```
 
 - SQLite 是 Python 自带的，不需要安装 MySQL/PostgreSQL
+- 种子和成品花束是唯一物品，品级/模板/品相保存在各自的 `items` 存档里
+- 「市场」标签只在账号版出现：挂单后物品进入托管，购买时用 SQLite 事务同时完成买家扣币、卖家收币和物品归属变更
+- 当前市场是一口价，只在本机多个账号之间生效；公网交易还需要服务端权威物品发行、HTTPS 和风控
 - 账号版会关闭 Service Worker，避免离线缓存串账号
 - 要备份就停止 Flask 后复制 `server/data/`
 - 若要公开给其他设备使用，需要把 Flask 部署到有 HTTPS 的服务器，并设置反向代理、限流和 `GARDEN_COOKIE_SECURE=1`；不能直接把当前本地服务暴露到公网
@@ -192,9 +195,9 @@ server/data/garden.sqlite3
 
 ### Android
 
-1. 执行 `python tools/publish.py 0.4.1 5`（或 `npm run version:set -- 0.4.1 5`）并同步资源。
+1. 执行 `python tools/publish.py 0.5.0 6`（或 `npm run version:set -- 0.5.0 6`）并同步资源。
 2. 用 Android Studio 打开 `android/`。
-3. 在 `build.gradle` 中版本已更新为 `versionCode 5` / `versionName "0.4.1"`。
+3. 在 `build.gradle` 中版本已更新为 `versionCode 6` / `versionName "0.5.0"`。
 4. 生成签名版 **AAB**（Google Play）或 **APK**（国内应用商店 / 直接安装）。
 5. 上传到目标商店：
 

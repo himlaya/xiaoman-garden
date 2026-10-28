@@ -6,6 +6,7 @@
   'use strict';
 
   const DATA = window.GameData;
+  const Items = window.GardenItems;
   const STAGES = ['seed', 'sprout', 'bud', 'bloom'];
   const STAGE_LABELS = { seed: '种子', sprout: '发芽', bud: '结蕾', bloom: '盛开' };
   const CLOSE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
@@ -36,24 +37,40 @@
     if (!window.Game) return;
     const view = Game.getPlantView(Number(slot));
     if (!view || !view.planted) return;
+    const rawPlant = Game.getState().garden[Number(slot)];
+    const item = rawPlant && rawPlant.templateId ? {
+      kind: 'bouquet',
+      flowerId: rawPlant.flowerId,
+      grade: rawPlant.seedGrade || 'common',
+      templateId: rawPlant.templateId,
+      patternSeed: rawPlant.patternSeed || 1,
+      wear: 0.03
+    } : null;
     openViewer({
       kind: 'plant',
       flower: view.flower,
       stage: view.stage,
       progress: view.progressPercent,
-      slot: Number(slot)
+      slot: Number(slot),
+      item: item
     });
   }
 
-  function openFlower(flowerId) {
+  function openFlower(flowerId, item) {
     const flower = DATA.flowerMap[flowerId];
     if (!flower) return;
-    openViewer({ kind: 'album', flower: flower, stage: 'bloom', progress: 100, slot: null });
+    openViewer({ kind: item ? 'item' : 'album', flower: flower, stage: 'bloom', progress: 100, slot: null, item: item || null });
+  }
+
+  function openItem(item) {
+    if (!item) return;
+    openFlower(item.flowerId, item);
   }
 
   function openViewer(options) {
     closeViewer();
     const flower = options.flower;
+    const item = options.item || null;
     const stage = STAGES.includes(options.stage) ? options.stage : 'bloom';
     const trigger = document.activeElement;
     const rarity = rarityInfo(flower);
@@ -70,6 +87,7 @@
             '<p class="flower3d-eyebrow">FLOWER IN 3D</p>' +
             '<div class="flower3d-name-row"><h2 class="flower3d-name"></h2><span class="flower3d-rarity ' + rarity.className + '"></span></div>' +
             '<p class="flower3d-language"></p>' +
+            '<div class="flower3d-itemmeta"></div>' +
           '</div>' +
           '<button class="flower3d-close" type="button" aria-label="关闭 3D 花房">' + CLOSE_ICON + '</button>' +
         '</header>' +
@@ -87,26 +105,42 @@
     rarityEl.textContent = rarity.label;
     rarityEl.classList.add(rarity.className);
     overlay.querySelector('.flower3d-language').textContent = '「' + flower.language + '」';
-    overlay.querySelector('.flower3d-stage-label').textContent = options.kind === 'album'
-      ? '花房图鉴 · 盛开'
-      : (stage === 'bloom' ? '盛开 · 花期内' : STAGE_LABELS[stage] + ' · ' + Math.max(0, Math.min(100, options.progress || 0)) + '%');
-    overlay.querySelector('.flower3d-progress').textContent = options.kind === 'album'
-      ? '已收集'
-      : (stage === 'bloom' ? '花开好了' : '慢慢来');
+    const metaEl = overlay.querySelector('.flower3d-itemmeta');
+    if (item && Items) {
+      const grade = Items.gradeById(item.grade);
+      const template = Items.templateById(item.templateId);
+      const wear = Items.wearBand(item.wear, item.kind);
+      metaEl.innerHTML = '<span class="item-grade grade-' + esc(grade.id) + '">' + esc(grade.label) + '</span>' +
+        '<span class="flower3d-meta-chip">' + esc(template.label) + '模板</span>' +
+        '<span class="flower3d-meta-chip">' + esc(wear.label) + ' · ' + Number(item.wear).toFixed(3) + '</span>';
+    }
+    const isItemView = !!item;
+    overlay.querySelector('.flower3d-stage-label').textContent = isItemView
+      ? (item.kind === 'seed' ? '基因预览 · 种子也独一无二' : '成品花束 · 品相已定格')
+      : (options.kind === 'album'
+        ? '花房图鉴 · 盛开'
+        : (stage === 'bloom' ? '盛开 · 花期内' : STAGE_LABELS[stage] + ' · ' + Math.max(0, Math.min(100, options.progress || 0)) + '%'));
+    overlay.querySelector('.flower3d-progress').textContent = isItemView
+      ? (item.kind === 'seed' ? '种下后会开出这个模板' : '不会继续枯萎')
+      : (options.kind === 'album' ? '已收集' : (stage === 'bloom' ? '花开好了' : '慢慢来'));
 
     const stageIndex = STAGES.indexOf(stage);
     const stageEl = overlay.querySelector('.flower3d-stages');
-    STAGES.forEach(function (item, index) {
-      const step = document.createElement('span');
-      step.className = 'flower3d-stage' + (index <= stageIndex ? ' is-active' : '') + (index === stageIndex ? ' is-current' : '');
-      const dot = document.createElement('i');
-      dot.setAttribute('aria-hidden', 'true');
-      const label = document.createElement('em');
-      label.textContent = STAGE_LABELS[item];
-      step.appendChild(dot);
-      step.appendChild(label);
-      stageEl.appendChild(step);
-    });
+    if (isItemView) {
+      stageEl.style.display = 'none';
+    } else {
+      STAGES.forEach(function (item, index) {
+        const step = document.createElement('span');
+        step.className = 'flower3d-stage' + (index <= stageIndex ? ' is-active' : '') + (index === stageIndex ? ' is-current' : '');
+        const dot = document.createElement('i');
+        dot.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('em');
+        label.textContent = STAGE_LABELS[item];
+        step.appendChild(dot);
+        step.appendChild(label);
+        stageEl.appendChild(step);
+      });
+    }
 
     document.body.appendChild(overlay);
     document.body.classList.add('flower3d-open');
@@ -118,6 +152,7 @@
       trigger: trigger,
       closeButton: closeButton,
       flower: flower,
+      item: item,
       stage: stage,
       kind: options.kind,
       raf: 0,
@@ -199,7 +234,9 @@
     const canvas = state.overlay.querySelector('.flower3d-canvas');
     const shell = state.overlay.querySelector('.flower3d-shell');
     const loading = state.overlay.querySelector('.flower3d-loading');
-    const flower = state.flower;
+    const variant = state.item && Items ? Items.variantColors(state.flower, state.item) : null;
+    const flower = variant ? Object.assign({}, state.flower, { colors: variant.colors }) : state.flower;
+    const wear = variant ? variant.wear : 0;
     const stage = state.stage;
     const reduced = prefersReducedMotion();
 
@@ -377,6 +414,26 @@
     const root = new THREE.Group();
     scene.add(root);
     addPot(root);
+    if (variant) {
+      const gradeRing = new THREE.Mesh(geo(new THREE.TorusGeometry(0.835, 0.018, 8, 64)), basic({
+        color: variant.gradeColor,
+        transparent: true,
+        opacity: 0.92
+      }));
+      gradeRing.rotation.x = Math.PI / 2;
+      gradeRing.position.y = -0.89;
+      root.add(gradeRing);
+      const soilGlow = new THREE.Mesh(geo(new THREE.RingGeometry(0.6, 0.715, 48)), basic({
+        color: variant.gradeColor,
+        transparent: true,
+        opacity: 0.18,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      }));
+      soilGlow.rotation.x = -Math.PI / 2;
+      soilGlow.position.y = -0.816;
+      root.add(soilGlow);
+    }
     if (stage === 'seed') {
       addSeed(root);
     }
@@ -487,10 +544,10 @@
           const pivot = new THREE.Group();
           pivot.rotation.y = (i / count) * TAU + (options.offset || 0);
           const petal = new THREE.Mesh(petals.geometry, petals.material);
-          petal.rotation.x = options.tilt + Math.sin(i * 2.7) * 0.035;
+          petal.rotation.x = options.tilt + Math.sin(i * 2.7) * 0.035 + wear * 0.34;
           petal.rotation.z = Math.sin(i * 1.9 + (options.offset || 0)) * 0.035;
           const variation = 0.94 + ((i * 7) % 5) * 0.015;
-          petal.scale.set(options.scale * variation, options.scale, options.scale);
+          petal.scale.set(options.scale * variation * (1 - wear * 0.06), options.scale, options.scale);
           petal.position.y = options.y || 0;
           pivot.add(petal);
           parent.add(pivot);
@@ -573,6 +630,7 @@
         for (let i = 0; i < 4; i += 1) {
           const petal = new THREE.Mesh(fGeo, i % 2 ? fMatAlt : fMat);
           petal.rotation.z = (i / 4) * TAU;
+          petal.rotation.x = wear * 0.38;
           petal.scale.set(1, 1, 1);
           group.add(petal);
         }
@@ -857,6 +915,7 @@
   window.Flower3D = {
     openPlant: openPlant,
     openFlower: openFlower,
+    openItem: openItem,
     close: closeViewer
   };
 })();

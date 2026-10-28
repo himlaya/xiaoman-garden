@@ -5,6 +5,7 @@
   const DATA = window.GameData;
   const Game = window.Game;
   const Art = window.Art;
+  const Items = window.GardenItems;
   const ACCOUNT = window.__ACCOUNT__ || null;
 
   const TABS = [
@@ -13,6 +14,7 @@
     { id: 'shop', label: '花市', icon: 'shop' },
     { id: 'profile', label: '我的', icon: 'user' }
   ];
+  if (ACCOUNT) TABS.splice(3, 0, { id: 'market', label: '市场', icon: 'tag' });
 
   const ICONS = {
     coin: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#f1c767"/><circle cx="12" cy="12" r="7.1" fill="none" stroke="#d9a943" stroke-width="1"></circle><path d="M12 7.5v9M12 11c-2.2 0-3.4-1.2-3.7-2.8 2 0 3.3 1 3.7 2.8ZM12 14.1c2.3 0 3.5-1.2 3.8-2.9-2.1 0-3.4 1-3.8 2.9Z" fill="none" stroke="#8d6529" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
@@ -23,6 +25,7 @@
     book: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.1 5.5c2.7-.7 5.3-.3 7.9 1.4v13c-2.6-1.7-5.2-2.1-7.9-1.4v-13Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path><path d="M19.9 5.5c-2.7-.7-5.3-.3-7.9 1.4v13c2.6-1.7 5.2-2.1 7.9-1.4v-13Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path><path d="M7.2 9.1c1-.1 1.9 0 2.8.4M7.2 12c1-.1 1.9 0 2.8.4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".7"></path></svg>',
     shop: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.1h16L18.5 20h-13L4 9.1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path><path d="M3.2 9.1 5.5 4.2h13l2.3 4.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path><path d="M8.1 9.1c0 2.1 1.7 3.8 3.9 3.8s3.9-1.7 3.9-3.8" fill="none" stroke="currentColor" stroke-width="1.5"></path><path d="M9.4 16.4h5.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>',
     user: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.3" r="4" fill="none" stroke="currentColor" stroke-width="1.7"></circle><path d="M4.7 20.2c.6-3.9 3.5-6.2 7.3-6.2s6.7 2.3 7.3 6.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>',
+    tag: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.2 5.3h7.1l8.5 8.5-5.4 5.4-8.5-8.5V5.3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path><circle cx="8.1" cy="9.2" r="1.4" fill="currentColor"></circle><path d="m14.2 10.1 3.1 3.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>',
     close: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6.2 6.2 11.6 11.6M17.8 6.2 6.2 17.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>',
     plus: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.2v13.6M5.2 12h13.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>',
     arrow: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.3 12h13.2M13.2 6.5 18.7 12l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
@@ -52,6 +55,12 @@
   };
 
   let activeTab = 'garden';
+  try {
+    const storedTab = window.sessionStorage.getItem('xiaoman-active-tab');
+    if (storedTab && TABS.some(function (tab) { return tab.id === storedTab; })) activeTab = storedTab;
+  } catch (error) {
+    /* 隐私模式下忽略 */
+  }
   let modalState = null;
   let lastFocused = null;
   let highlightPot = false;
@@ -159,6 +168,47 @@
 
   function rarityLabel(rarity) {
     return (DATA.rarity[rarity] || DATA.rarity['普通']).label;
+  }
+
+  function itemGrade(item) {
+    return Items.gradeById(item.grade);
+  }
+
+  function itemTemplate(item) {
+    return Items.templateById(item.templateId);
+  }
+
+  function itemWear(item) {
+    return Items.wearBand(item.wear, item.kind);
+  }
+
+  function itemGradeBadge(item) {
+    const grade = itemGrade(item);
+    return '<span class="item-grade grade-' + esc(grade.id) + '">' + esc(grade.label) + '</span>';
+  }
+
+  function itemKindLabel(item) {
+    return item.kind === 'bouquet' ? '成品花束' : '种子';
+  }
+
+  function itemMetaLine(item) {
+    const template = itemTemplate(item);
+    const wear = itemWear(item);
+    return '<span class="item-template">' + esc(template.label) + '</span><span class="item-wear">' + esc(wear.label) + ' ' + Number(item.wear).toFixed(3) + '</span>';
+  }
+
+  function itemPortrait(item, extraClass) {
+    const flower = DATA.flowerMap[item.flowerId];
+    const grade = itemGrade(item);
+    if (!flower) return '';
+    return '<span class="item-portrait grade-' + esc(grade.id) + ' ' + (extraClass || '') + '">' +
+      Art.flower(item.flowerId, 'bloom') +
+      '<span class="item-kind">' + itemKindLabel(item) + '</span>' +
+    '</span>';
+  }
+
+  function itemPriceLabel(item) {
+    return Items.suggestedPrice(item);
   }
 
   function seedIdFromReward(reward) {
@@ -478,9 +528,230 @@
         '<div><strong>' + stats.days + '</strong><span>花园时光</span></div>' +
         '<div><strong>' + stats.totalCare + '</strong><span>照料次数</span></div>' +
       '</div>' +
+      '<button class="collection-shelf" type="button" data-action="open-inventory">' +
+        '<span class="collection-shelf-icon">' + ICONS.sparkle + '</span>' +
+        '<span class="collection-shelf-copy"><strong>我的收藏品 · ' + stats.items + ' 件</strong><small>' + stats.seeds + ' 颗种子 · ' + stats.bouquets + ' 束成品花，每一件都有独立模板和品相</small></span>' +
+        ICONS.arrow +
+      '</button>' +
       '<div class="album-grid">' + cards + '</div>' +
       '<p class="album-note">' + ICONS.leaf + ' 采摘过的花会留在手记里，再次种下也不会消失。</p>' +
     '</section>';
+  }
+
+  /* ---------------- 收藏品 / 玩家市场 ---------------- */
+
+  let marketState = { listings: [], loading: false, error: null };
+
+  function sortedItems(items) {
+    const gradeOrder = Items.grades.map(function (grade) { return grade.id; });
+    return items.slice().sort(function (a, b) {
+      const gradeDiff = gradeOrder.indexOf(b.grade) - gradeOrder.indexOf(a.grade);
+      if (gradeDiff) return gradeDiff;
+      return Number(b.createdAt) - Number(a.createdAt);
+    });
+  }
+
+  function renderOwnedItem(item, allowList, externalListingId) {
+    const flower = DATA.flowerMap[item.flowerId];
+    if (!flower) return '';
+    const summary = Items.itemSummary(item);
+    const button = externalListingId
+      ? '<button class="item-3d-button" type="button" data-action="market-open-3d" data-listing="' + esc(externalListingId) + '">3D</button>'
+      : '<button class="item-3d-button" type="button" data-action="open-item-3d" data-item="' + esc(item.id) + '">3D</button>';
+    return '<article class="owned-item">' +
+      itemPortrait(item) +
+      '<div class="owned-item-copy">' +
+        '<div class="owned-item-title"><strong>' + esc(flower.name) + '</strong>' + itemGradeBadge(item) + '</div>' +
+        '<div class="owned-item-meta">' + esc(summary.kindLabel) + ' · ' + esc(summary.template.label) + '模板 · ' + esc(summary.wear.label) + ' ' + summary.wearValue + '</div>' +
+        '<div class="owned-item-foot"><span>参考价 ' + ICONS.coin + summary.suggestedPrice + '</span><span>·</span><span>' + (item.kind === 'seed' ? '种下后继承模板' : '品相已定格') + '</span></div>' +
+      '</div>' +
+      '<div class="owned-item-actions">' +
+        button +
+        (allowList ? '<button class="item-list-button" type="button" data-action="market-list" data-item="' + esc(item.id) + '">上架</button>' : '') +
+      '</div>' +
+    '</article>';
+  }
+
+  function inventoryModal() {
+    const items = sortedItems(Game.getItems());
+    const body = items.length
+      ? '<div class="owned-list">' + items.map(function (item) { return renderOwnedItem(item, false); }).join('') + '</div>'
+      : '<div class="empty-pouch"><span class="big-icon">' + ICONS.sparkle + '</span><h3>还没有收藏品</h3><p>种下一颗种子，等它开成独一无二的花束。</p></div>';
+    return sheetHeader('COLLECTION', '我的收藏品') +
+      '<p class="sheet-sub">每颗种子和每束花都是独立物品：品级、模板和品相会一直保留，也可以通过 3D 查看。</p>' +
+      body;
+  }
+
+  function renderMarketScreen() {
+    const state = Game.getState();
+    const items = sortedItems(Game.getItems());
+    const inventory = items.length
+      ? items.map(function (item) { return renderOwnedItem(item, true); }).join('')
+      : '<div class="market-empty">还没有可上架的物品。先去种一束花吧。</div>';
+    return '<section class="screen market-screen">' +
+      '<div class="page-heading"><p class="eyebrow">GARDEN EXCHANGE</p><h1>玩家市场</h1><p>每一颗种子和每一束花，都有自己的模板与品相。</p></div>' +
+      '<div class="market-wallet"><span><small>我的金币</small><strong>' + ICONS.coin + numberLabel(state.player.coins) + '</strong></span><span class="market-wallet-note">本地账号市场 · 交易会直接更新双方存档</span><button class="text-action simple" data-action="market-refresh">刷新 ' + ICONS.arrow + '</button></div>' +
+      '<div class="section-heading"><div><h2>在售物品</h2><p>从其他园丁手里收一件</p></div><span class="market-live">' + (marketState.loading ? '读取中' : 'LIVE') + '</span></div>' +
+      '<div class="market-listings" data-market-listings><div class="market-loading">正在打开市场…</div></div>' +
+      '<div class="section-heading"><div><h2>我的物品</h2><p>' + items.length + ' 件可上架 · 种子和花束都行</p></div></div>' +
+      '<div class="owned-list market-owned-list">' + inventory + '</div>' +
+    '</section>';
+  }
+
+  function marketListingsHtml() {
+    if (marketState.error) {
+      return '<div class="market-empty is-error">' + esc(marketState.error) + '<button class="text-action simple" data-action="market-refresh">重试</button></div>';
+    }
+    if (marketState.loading) return '<div class="market-loading">正在打开市场…</div>';
+    if (!marketState.listings.length) return '<div class="market-empty">还没有人上架。你可以先把自己的收藏品挂上去。</div>';
+    return marketState.listings.map(function (listing) {
+      const item = listing.item;
+      if (!item) return '';
+      const flower = DATA.flowerMap[item.flowerId];
+      if (!flower) return '';
+      const summary = Items.itemSummary(item);
+      return '<article class="market-listing' + (listing.mine ? ' is-mine' : '') + '">' +
+        itemPortrait(item) +
+        '<div class="market-listing-copy">' +
+          '<div class="owned-item-title"><strong>' + esc(flower.name) + '</strong>' + itemGradeBadge(item) + '</div>' +
+          '<div class="owned-item-meta">' + esc(summary.kindLabel) + ' · ' + esc(summary.template.label) + '模板 · ' + esc(summary.wear.label) + ' ' + summary.wearValue + '</div>' +
+          '<div class="market-seller">' + (listing.mine ? '我的摊位' : '来自 ' + esc(listing.seller)) + '</div>' +
+        '</div>' +
+        '<div class="market-listing-actions">' +
+          '<strong class="market-price">' + ICONS.coin + listing.price + '</strong>' +
+          '<button class="item-3d-button" type="button" data-action="market-open-3d" data-listing="' + listing.id + '">3D</button>' +
+          (listing.mine
+            ? '<button class="market-cancel-button" type="button" data-action="market-cancel" data-listing="' + listing.id + '">下架</button>'
+            : '<button class="market-buy-button" type="button" data-action="market-buy" data-listing="' + listing.id + '">买下</button>') +
+        '</div>' +
+      '</article>';
+    }).join('');
+  }
+
+  function paintMarketListings() {
+    if (activeTab !== 'market') return;
+    const root = document.querySelector('[data-market-listings]');
+    if (root) root.innerHTML = marketListingsHtml();
+    const live = document.querySelector('.market-live');
+    if (live) live.textContent = marketState.loading ? '读取中' : 'LIVE';
+  }
+
+  function loadMarket() {
+    if (!ACCOUNT || activeTab !== 'market' || marketState.loading) return;
+    marketState.loading = true;
+    marketState.error = null;
+    paintMarketListings();
+    fetch('/api/market', { credentials: 'same-origin' }).then(function (response) {
+      if (!response.ok) throw new Error('market-' + response.status);
+      return response.json();
+    }).then(function (data) {
+      if (!data || !data.ok) throw new Error('market-failed');
+      marketState.listings = Array.isArray(data.listings) ? data.listings : [];
+    }).catch(function () {
+      marketState.error = '市场暂时没有回应，稍后再试。';
+      marketState.listings = [];
+    }).finally(function () {
+      marketState.loading = false;
+      paintMarketListings();
+    });
+  }
+
+  function marketItemForListing(listingId) {
+    const listing = marketState.listings.find(function (entry) { return Number(entry.id) === Number(listingId); });
+    return listing && listing.item ? listing.item : null;
+  }
+
+  function marketListModal(payload) {
+    const item = Game.getItem(payload.itemId);
+    if (!item) return '';
+    const flower = DATA.flowerMap[item.flowerId];
+    return sheetHeader('LIST AN ITEM', '把这件收藏交给市场') +
+      '<div class="owned-list">' + renderOwnedItem(item, false) + '</div>' +
+      '<label class="market-price-field"><span>你的定价</span><input type="number" data-market-price min="' + Items.market.minPrice + '" max="' + Items.market.maxPrice + '" value="' + itemPriceLabel(item) + '"><small>参考价按品级、模板和品相计算；成交后金币会进入你的存档。</small></label>' +
+      '<button class="primary-button" data-action="confirm-market-list" data-item="' + esc(item.id) + '">确认上架</button>' +
+      '<p class="sheet-foot">上架后物品会从你的物品库移到市场托管，直到成交或下架。</p>';
+  }
+
+  function marketBuyModal(payload) {
+    const listing = marketState.listings.find(function (entry) { return Number(entry.id) === Number(payload.listingId); });
+    if (!listing || !listing.item) return '';
+    const flower = DATA.flowerMap[listing.item.flowerId];
+    return sheetHeader('BUY AN ITEM', '确认收下这束花') +
+      '<div class="owned-list">' + renderOwnedItem(listing.item, false, listing.id) + '</div>' +
+      '<div class="market-confirm-line"><span>卖家</span><strong>' + esc(listing.seller) + '</strong></div>' +
+      '<div class="market-confirm-line"><span>成交价</span><strong>' + ICONS.coin + listing.price + '</strong></div>' +
+      '<button class="primary-button" data-action="confirm-market-buy" data-listing="' + listing.id + '">确认购买</button>' +
+      '<p class="sheet-foot">购买后会从你的金币中扣除 ' + listing.price + ' 金币，物品会立即进入你的收藏品。</p>';
+  }
+
+  function marketCancelModal(payload) {
+    const listing = marketState.listings.find(function (entry) { return Number(entry.id) === Number(payload.listingId); });
+    if (!listing) return '';
+    return sheetHeader('REMOVE LISTING', '把收藏收回物品库？') +
+      '<p class="confirm-copy">下架后这件物品会回到你的收藏品，不会被其他园丁买走。</p>' +
+      '<div class="confirm-actions"><button class="ghost-button" data-action="close-modal" data-autofocus>再想想</button><button class="primary-button" data-action="confirm-market-cancel" data-listing="' + listing.id + '">确认下架</button></div>';
+  }
+
+  async function prepareMarketMutation() {
+    if (!ACCOUNT || !window.XiaomanAccount) throw new Error('account-required');
+    await window.XiaomanAccount.sync({ force: true, strict: true });
+    window.XiaomanAccount.suspend();
+  }
+
+  async function marketMutation(path, body) {
+    try {
+      await prepareMarketMutation();
+      const response = await fetch(path, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': ACCOUNT.csrfToken
+        },
+        body: JSON.stringify(body)
+      });
+      const data = await response.json().catch(function () { return {}; });
+      if (!response.ok || !data.ok) throw new Error(data.error || 'market-' + response.status);
+      if (!data.save) throw new Error('save-missing');
+      try {
+        window.localStorage.setItem(DATA.saveKey, JSON.stringify(data.save));
+        window.sessionStorage.setItem('xiaoman-active-tab', 'market');
+      } catch (error) {}
+      window.location.reload();
+    } catch (error) {
+      if (window.XiaomanAccount) window.XiaomanAccount.resume();
+      showToast(marketErrorMessage(error), { tone: 'error', duration: 3600 });
+    }
+  }
+
+  function marketErrorMessage(error) {
+    const code = String(error && error.message || '');
+    if (code === 'coins') return '金币不够，先去花市卖一点花吧。';
+    if (code === 'item_missing') return '这件物品不在当前存档里，刷新后再试。';
+    if (code === 'listing_missing') return '这件商品已经被买走或下架了。';
+    if (code === 'own_listing') return '这是你自己的摊位，不能买自己的东西。';
+    if (code === 'price') return '价格需要在 1 到 99999 金币之间。';
+    if (code === 'save_missing') return '账号存档还没准备好，先回花园保存一次。';
+    if (code === 'account-required') return '玩家市场需要登录本地账号。';
+    return '市场暂时没有完成这笔交易，请稍后再试。';
+  }
+
+  function handleMarketList(itemId) {
+    const input = document.querySelector('[data-market-price]');
+    const price = input ? Number(input.value) : NaN;
+    if (!Number.isInteger(price) || price < Items.market.minPrice || price > Items.market.maxPrice) {
+      showToast('价格需要在 1 到 99999 金币之间。', { tone: 'error' });
+      return;
+    }
+    marketMutation('/api/market/list', { itemId: itemId, price: price });
+  }
+
+  function handleMarketBuy(listingId) {
+    marketMutation('/api/market/buy', { listingId: Number(listingId) });
+  }
+
+  function handleMarketCancel(listingId) {
+    marketMutation('/api/market/cancel', { listingId: Number(listingId) });
   }
 
   /* ---------------- 花市 ---------------- */
@@ -488,7 +759,7 @@
   function renderShopScreen() {
     const state = Game.getState();
     const seedCards = DATA.flowers.map(function (flower) {
-      const owned = state.inventory[flower.id] || 0;
+      const owned = Game.seedCount(flower.id);
       const poor = state.player.coins < flower.seedPrice;
       return '<article class="seed-card">' +
         '<div class="seed-art ' + rarityClass(flower.rarity) + '">' +
@@ -601,6 +872,9 @@
       els.screen.innerHTML = renderAlbumScreen();
     } else if (activeTab === 'shop') {
       els.screen.innerHTML = renderShopScreen();
+    } else if (activeTab === 'market') {
+      els.screen.innerHTML = renderMarketScreen();
+      window.setTimeout(loadMarket, 0);
     } else if (activeTab === 'profile') {
       els.screen.innerHTML = renderProfileScreen();
     } else {
@@ -626,6 +900,7 @@
     if (!TABS.some(function (item) { return item.id === tab; })) return;
     const changed = activeTab !== tab;
     activeTab = tab;
+    try { window.sessionStorage.setItem('xiaoman-active-tab', tab); } catch (error) { /* ignore */ }
     closeModal();
     renderAll({ resetScroll: true });
     if (changed) {
@@ -697,6 +972,10 @@
     if (current.type === 'seeds') return seedPickerModal(current.payload);
     if (current.type === 'plant') return plantModal(current.payload);
     if (current.type === 'harvest') return harvestModal(current.payload);
+    if (current.type === 'inventory') return inventoryModal();
+    if (current.type === 'market-list') return marketListModal(current.payload);
+    if (current.type === 'market-buy') return marketBuyModal(current.payload);
+    if (current.type === 'market-cancel') return marketCancelModal(current.payload);
     if (current.type === 'reset') return resetModal();
     if (current.type === 'intro') return introModal();
     return '';
@@ -741,25 +1020,26 @@
   }
 
   function seedPickerModal(payload) {
-    const state = Game.getState();
     const slot = payload.slot;
-    const owned = DATA.flowers.filter(function (flower) {
-      return (state.inventory[flower.id] || 0) > 0;
+    const seeds = Game.getSeedItems().slice().sort(function (a, b) {
+      const order = Items.grades.map(function (grade) { return grade.id; });
+      return order.indexOf(b.grade) - order.indexOf(a.grade);
     });
-    const body = owned.length
-      ? '<div class="seed-picker-list">' + owned.map(function (flower) {
-          return '<button class="pick-seed" data-action="plant-seed" data-slot="' + slot + '" data-flower="' + flower.id + '" data-autofocus>' +
+    const body = seeds.length
+      ? '<div class="seed-picker-list">' + seeds.map(function (seed) {
+          const flower = DATA.flowerMap[seed.flowerId];
+          return '<button class="pick-seed" data-action="plant-seed" data-slot="' + slot + '" data-item="' + esc(seed.id) + '" data-flower="' + flower.id + '" data-autofocus>' +
             '<span class="pick-seed-art">' + Art.flower(flower.id, 'bloom') + '</span>' +
-            '<span class="pick-seed-copy"><strong>' + esc(flower.name) + '</strong><small>种子 ×' + state.inventory[flower.id] + ' · 花期 ' + formatSpan(flower.bloomSeconds) + '</small></span>' +
+            '<span class="pick-seed-copy"><strong>' + esc(flower.name) + ' ' + itemGradeBadge(seed) + '</strong><small>' + itemTemplate(seed).label + '模板 · ' + itemWear(seed).label + ' · 花期 ' + formatSpan(flower.bloomSeconds) + '</small></span>' +
             '<span class="pick-seed-action">种下 ' + ICONS.arrow + '</span>' +
           '</button>';
         }).join('') + '</div>'
       : '<div class="empty-pouch">' + Art.seedPacket('daisy') + '<h3>种子盒空了</h3><p>去花市买一颗，或者明天来签到。</p><button class="primary-button small" data-action="go-shop" data-autofocus>逛逛花市 ' + ICONS.arrow + '</button></div>';
 
     return sheetHeader('SEED BOX', '选一颗种子') +
-      '<p class="sheet-sub">要种在 <strong>' + String(slot + 1).padStart(2, '0') + ' 号花盆</strong> 里。种下后它会自己慢慢长大。</p>' +
+      '<p class="sheet-sub">要种在 <strong>' + String(slot + 1).padStart(2, '0') + ' 号花盆</strong> 里。每一颗种子都有独立的品级与模板，种下后会一直带到花束上。</p>' +
       body +
-      (owned.length ? '<button class="ghost-button" data-action="go-shop">种子不够？去花市逛逛 ' + ICONS.arrow + '</button>' : '');
+      (seeds.length ? '<button class="ghost-button" data-action="go-shop">种子不够？去花市逛逛 ' + ICONS.arrow + '</button>' : '');
   }
 
   function plantModal(payload) {
@@ -821,11 +1101,22 @@
     const result = payload.result;
     if (!result) return '';
     const flower = result.flower;
+    const item = result.item;
+    const itemBlock = item
+      ? '<div class="harvest-item-card">' +
+          itemPortrait(item) +
+          '<div class="harvest-item-copy"><span class="harvest-item-kicker">' + itemKindLabel(item) + ' · ' + esc(Items.templateById(item.templateId).label) + '模板</span>' +
+            '<strong>' + esc(flower.name) + ' ' + itemGradeBadge(item) + '</strong>' +
+            '<span class="harvest-item-meta">品相 ' + esc(itemWear(item).label) + ' ' + Number(item.wear).toFixed(3) + ' · 已放入花房</span>' +
+          '</div>' +
+          '<button class="item-3d-button" type="button" data-action="open-item-3d" data-item="' + esc(item.id) + '">3D</button>' +
+        '</div>'
+      : '';
     const levelNote = result.levelUp
       ? '<div class="level-up-note">' + ICONS.sparkle + '<span>花艺升级到 Lv.' + result.levelUp.level + ' · ' + result.levelUp.title + '，肥料 +1</span></div>'
       : '';
     const bonus = result.bonusSeed
-      ? '<span class="reward-chip seed-chip">' + ICONS.seed + '<span>额外掉落「' + esc(flower.name) + '」种子 ×1</span></span>'
+      ? '<span class="reward-chip seed-chip">' + ICONS.seed + '<span>额外种子：' + esc(flower.name) + ' · ' + esc(itemGrade(result.bonusSeed).label) + ' · ' + esc(itemTemplate(result.bonusSeed).label) + '</span></span>'
       : '';
     return '<div class="harvest-hero">' +
         '<span class="harvest-glow" aria-hidden="true"></span>' +
@@ -835,6 +1126,7 @@
         '<p class="eyebrow">FRESHLY PICKED</p>' +
         '<h2 id="modal-title">采下一束<br><em>' + esc(flower.name) + '</em></h2>' +
         '<p class="harvest-fresh">' + result.fresh.label + ' · 新鲜度 ×' + result.fresh.multiplier.toFixed(2) + '</p>' +
+        itemBlock +
         '<div class="reward-chips harvest-rewards">' +
           '<span class="reward-chip coin-chip">' + ICONS.coin + '<span>+' + result.coins + ' 金币</span></span>' +
           '<span class="reward-chip xp-chip">' + ICONS.sparkle + '<span>+' + result.xp + ' 花艺值</span></span>' +
@@ -992,8 +1284,9 @@
 
   function handlePlantSeed(element) {
     const slot = Number(element.dataset.slot);
+    const itemId = element.dataset.item;
     const flowerId = element.dataset.flower;
-    const result = Game.plantSeed(slot, flowerId);
+    const result = Game.plantSeed(slot, itemId || flowerId);
     if (!result.ok) {
       showToast(errorMessage(result.reason), { tone: 'error' });
       return;
@@ -1004,7 +1297,7 @@
     highlightPot = false;
     playSound('plant');
     haptic();
-    showToast('种下了' + flower.name + '，记得给它浇水。', { tone: 'success' });
+    showToast('种下了' + flower.name + '，这颗种子的模板会跟着它一起长大。', { tone: 'success' });
   }
 
   function handleCare(type, slot) {
@@ -1055,7 +1348,9 @@
     }
     renderAll({ resetScroll: false });
     playSound('plant');
-    showToast('买到了' + result.flower.name + '种子，仓库里现在有 ' + result.inventory + ' 颗。', { tone: 'success' });
+    const grade = itemGrade(result.item).label;
+    const template = itemTemplate(result.item).label;
+    showToast('买到了' + result.flower.name + '种子 · ' + grade + ' · ' + template + '模板。', { tone: 'success' });
   }
 
   function handleBuyFertilizer(element) {
@@ -1175,6 +1470,39 @@
     'buy-fertilizer': handleBuyFertilizer,
     'buy-pot': handleBuyPot,
     'open-pot-shop': function () { closeModal(); switchTab('shop'); },
+    'open-inventory': function () { openModal('inventory'); },
+    'open-item-3d': function (element) {
+      const item = Game.getItem(element.dataset.item);
+      if (item && window.Flower3D) Flower3D.openItem(item);
+    },
+    'market-refresh': function () {
+      marketState.error = null;
+      loadMarket();
+    },
+    'market-open-3d': function (element) {
+      const item = marketItemForListing(element.dataset.listing);
+      if (item && window.Flower3D) Flower3D.openItem(item);
+    },
+    'market-list': function (element) {
+      const item = Game.getItem(element.dataset.item);
+      if (!item) return;
+      openModal('market-list', { itemId: item.id });
+    },
+    'confirm-market-list': function (element) {
+      handleMarketList(element.dataset.item);
+    },
+    'market-buy': function (element) {
+      openModal('market-buy', { listingId: Number(element.dataset.listing) });
+    },
+    'confirm-market-buy': function (element) {
+      handleMarketBuy(element.dataset.listing);
+    },
+    'market-cancel': function (element) {
+      openModal('market-cancel', { listingId: Number(element.dataset.listing) });
+    },
+    'confirm-market-cancel': function (element) {
+      handleMarketCancel(element.dataset.listing);
+    },
     'claim-quest': handleClaimQuest,
     'save-name': handleSaveName,
     'toggle-sound': function () {

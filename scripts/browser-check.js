@@ -299,7 +299,7 @@ async function main() {
   }
 
   const testErrors = await evaluate('window.__testErrors || []');
-  const state = await evaluate(`(() => { const s = Game.getState(); return { coins: s.player.coins, seeds: s.inventory, streak: s.checkin.streak, seenIntro: s.settings.seenIntro, planted: s.garden.filter(Boolean).length, speed: s.settings.speed }; })()`);
+  const state = await evaluate(`(() => { const s = Game.getState(); return { coins: s.player.coins, items: s.items.length, seeds: Game.getSeedItems().length, bouquets: Game.getBouquetItems().length, streak: s.checkin.streak, seenIntro: s.settings.seenIntro, planted: s.garden.filter(Boolean).length, speed: s.settings.speed }; })()`);
   console.log('STATE', JSON.stringify(state));
   console.log('PAGE_ERRORS', JSON.stringify(testErrors));
   console.log('CDP_ERRORS', JSON.stringify(cdp.errors));
