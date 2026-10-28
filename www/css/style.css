@@ -4,30 +4,32 @@
    ========================================================= */
 
 :root {
-  --bg: #f6f0e3;
-  --bg-deep: #ece2d2;
-  --paper: #fffdf8;
-  --paper-soft: #f7f0e3;
-  --paper-warm: #fbf5e9;
-  --ink: #304536;
-  --ink-soft: #64725f;
-  --ink-faint: #97a08f;
-  --line: rgba(74, 88, 66, 0.13);
-  --line-strong: rgba(74, 88, 66, 0.22);
-  --sage: #87a076;
-  --sage-deep: #526d55;
-  --sage-soft: #e5ecdd;
-  --terra: #d68163;
-  --terra-deep: #b96349;
-  --terra-soft: #f4dfd4;
-  --gold: #e4b85b;
-  --gold-soft: #f8eccb;
-  --blue: #85b7c3;
-  --blue-soft: #e1eff0;
-  --rose: #dda1a1;
-  --danger: #b76555;
-  --shadow-soft: 0 10px 26px rgba(77, 63, 42, 0.07);
-  --shadow-card: 0 16px 38px rgba(77, 63, 42, 0.1);
+  --bg: #f2e9d9;
+  --bg-deep: #e4d8c2;
+  --paper: #fffbf3;
+  --paper-soft: #f6edde;
+  --paper-warm: #fcf3e2;
+  --ink: #293f30;
+  --ink-soft: #566a52;
+  --ink-faint: #7f8d78;
+  --line: rgba(60, 84, 60, 0.16);
+  --line-strong: rgba(60, 84, 60, 0.27);
+  --sage: #78966a;
+  --sage-deep: #3d6147;
+  --sage-soft: #dce8d1;
+  --sage-tint: #eef3e7;
+  --terra: #d18261;
+  --terra-deep: #a6533e;
+  --terra-soft: #f1d7c9;
+  --peach: #e9b28b;
+  --gold: #d8a94f;
+  --gold-soft: #f7e7c2;
+  --blue: #6fa8b5;
+  --blue-soft: #dcecee;
+  --rose: #d38b94;
+  --danger: #a45040;
+  --shadow-soft: 0 11px 26px rgba(57, 65, 43, 0.08);
+  --shadow-card: 0 18px 38px rgba(57, 65, 43, 0.12);
   --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "Songti SC", "STSong", "Noto Serif SC", "SimSun", serif;
   --font-body: "Avenir Next", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -1886,7 +1888,7 @@ svg {
   overflow: hidden;
   background:
     radial-gradient(circle at 76% 17%, rgba(255, 250, 229, 0.9), transparent 19%),
-    linear-gradient(150deg, var(--rarity-soft), #f6f0e3);
+    linear-gradient(150deg, var(--rarity-soft), #f2e9d9);
 }
 
 .album-art::after {
@@ -4167,7 +4169,7 @@ body.modal-open .toast-root {
   display: grid;
   place-items: center;
   color: #3b513e;
-  background: #f6f0e3;
+  background: var(--bg);
   font-size: 14px;
 }
 
@@ -5249,4 +5251,261 @@ body.flower3d-open {
 
 .account-logout:disabled {
   opacity: 0.5;
+}
+
+/* =========================================================
+   色盘刷新：深森林绿、陶土与蜂蜜金
+   让纸张更暖、主色更稳、导航与卡片层次更清楚。
+   ========================================================= */
+
+body::before {
+  background:
+    radial-gradient(circle at 12% 14%, rgba(255, 247, 226, 0.95), transparent 30%),
+    radial-gradient(circle at 88% 78%, rgba(192, 213, 172, 0.62), transparent 38%),
+    linear-gradient(135deg, #ece1cf 0%, #f3ebde 48%, #e4e9d5 100%);
+}
+
+.app-shell {
+  background:
+    radial-gradient(circle at 100% 4%, rgba(244, 214, 154, 0.4), transparent 25%),
+    linear-gradient(180deg, #f9f2e5 0%, #f2e9d9 42%, #e9e9d7 100%);
+}
+
+.app-shell::after {
+  opacity: 0.24;
+}
+
+.brand-copy strong {
+  color: #293f30;
+}
+
+.brand-copy small {
+  color: #89957f;
+}
+
+.resource-pill,
+.calendar-button {
+  border-color: rgba(78, 104, 75, 0.13);
+  background: rgba(255, 251, 243, 0.88);
+  box-shadow: 0 5px 14px rgba(58, 67, 43, 0.07);
+}
+
+.tabbar {
+  border-color: rgba(77, 104, 76, 0.14);
+  background: rgba(255, 251, 243, 0.93);
+  box-shadow: 0 14px 34px rgba(47, 60, 38, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.tab-button {
+  color: #7d8975;
+}
+
+.tab-button.active {
+  color: var(--sage-deep);
+}
+
+.tab-button.active .tab-icon {
+  color: #f9efd9;
+  background: linear-gradient(145deg, #5a7b5c, #395940);
+  box-shadow: 0 5px 12px rgba(47, 72, 49, 0.22);
+}
+
+.tab-button.active .tab-dot {
+  background: var(--gold);
+}
+
+.garden-hero {
+  border-color: rgba(255, 255, 255, 0.8);
+  background:
+    radial-gradient(circle at 81% 20%, rgba(255, 244, 197, 0.96), transparent 19%),
+    linear-gradient(140deg, #d9e7d5 0%, #e6efd8 48%, #f2dfc8 100%);
+  box-shadow: 0 16px 34px rgba(64, 80, 50, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.garden-hero h1 {
+  color: #2a4433;
+}
+
+.hero-date {
+  color: #66795f;
+}
+
+.hero-weather {
+  color: #60745b;
+  background: rgba(255, 252, 243, 0.62);
+}
+
+.garden-hero .hero-copy > p {
+  color: #596d56;
+}
+
+.hero-stats span {
+  border-color: rgba(255, 255, 255, 0.6);
+  color: #5e7259;
+  background: rgba(255, 252, 243, 0.54);
+}
+
+.hero-sun {
+  background: radial-gradient(circle at 35% 32%, #fff7d1, #e8bf55 66%, #d9a63e);
+  box-shadow: 0 0 0 9px rgba(255, 238, 174, 0.22), 0 0 36px rgba(224, 178, 70, 0.4);
+}
+
+.checkin-strip,
+.profile-card,
+.album-summary,
+.market-banner {
+  background:
+    radial-gradient(circle at 92% 0%, rgba(232, 185, 96, 0.3), transparent 31%),
+    linear-gradient(125deg, #304d38, #4d6a4b);
+}
+
+.checkin-strip {
+  border-color: rgba(255, 248, 229, 0.14);
+  box-shadow: 0 13px 26px rgba(45, 68, 47, 0.22);
+}
+
+.strip-copy small {
+  color: rgba(249, 244, 232, 0.74);
+}
+
+.strip-action {
+  color: #34513b;
+  background: #f7e7c8;
+}
+
+.page-heading h1 {
+  color: #2b4433;
+}
+
+.page-heading > p:last-child {
+  color: #6e7d67;
+}
+
+.section-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #2d4635;
+}
+
+.section-heading h2::before {
+  content: "";
+  width: 4px;
+  height: 15px;
+  flex: 0 0 4px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, var(--gold), var(--terra));
+  box-shadow: 0 2px 4px rgba(160, 112, 65, 0.14);
+}
+
+.section-heading p {
+  color: #7b8874;
+}
+
+.section-link {
+  color: var(--sage-deep);
+}
+
+.plot {
+  border-color: rgba(255, 255, 255, 0.9);
+  background:
+    radial-gradient(circle at 82% 12%, rgba(242, 214, 161, 0.35), transparent 27%),
+    linear-gradient(165deg, #fffdf6 0%, #f5ecdc 100%);
+  box-shadow: 0 10px 24px rgba(57, 65, 43, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.plot-empty {
+  border-color: rgba(83, 111, 80, 0.24);
+  background:
+    radial-gradient(circle at 78% 14%, rgba(244, 228, 195, 0.52), transparent 25%),
+    linear-gradient(165deg, #fbfdf6 0%, #e8eedf 100%);
+}
+
+.plot-number {
+  color: #7f8e76;
+}
+
+.seed-card {
+  border-color: rgba(255, 255, 255, 0.92);
+  background:
+    radial-gradient(circle at 0% 45%, var(--rarity-soft), transparent 33%),
+    linear-gradient(100deg, rgba(233, 240, 224, 0.52), rgba(255, 251, 243, 0.95) 44%);
+  box-shadow: 0 8px 20px rgba(57, 65, 43, 0.06);
+}
+
+.seed-art {
+  background:
+    radial-gradient(circle at 70% 20%, rgba(255, 250, 229, 0.9), transparent 20%),
+    linear-gradient(145deg, var(--rarity-soft), #efe4d2);
+}
+
+.seed-title-row h3 {
+  color: #2e4535;
+}
+
+.seed-blurb {
+  color: #74816d;
+}
+
+.album-card {
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 24px rgba(57, 65, 43, 0.08);
+}
+
+.album-art {
+  background:
+    radial-gradient(circle at 76% 17%, rgba(255, 250, 229, 0.92), transparent 19%),
+    linear-gradient(150deg, var(--rarity-soft), #eee5d5 62%, #f6e7d3);
+}
+
+.album-stats,
+.level-card,
+.quest-card,
+.settings-card {
+  border-color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 251, 243, 0.88);
+  box-shadow: 0 10px 26px rgba(57, 65, 43, 0.075);
+}
+
+.account-card {
+  border-color: rgba(74, 104, 76, 0.16);
+  background:
+    linear-gradient(110deg, rgba(224, 235, 211, 0.72), rgba(255, 250, 241, 0.92));
+  box-shadow: 0 7px 18px rgba(57, 65, 43, 0.06);
+}
+
+.primary-button {
+  border: 1px solid rgba(255, 248, 230, 0.12);
+  background: linear-gradient(120deg, #4d7257, #31543b);
+  box-shadow: 0 10px 22px rgba(39, 65, 45, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.primary-button:hover {
+  filter: brightness(1.07);
+}
+
+.primary-button.is-claimed,
+.primary-button:disabled {
+  border-color: transparent;
+  color: #879181;
+  background: #e9e4d7;
+}
+
+.flower3d-overlay {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 253, 246, 0.97), rgba(241, 239, 224, 0.94) 56%, rgba(231, 235, 214, 0.98));
+}
+
+.flower3d-shell {
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255, 253, 246, 0.96), rgba(245, 243, 226, 0.78) 34%, transparent 58%),
+    linear-gradient(148deg, #f2e8d5 0%, #e8ecdb 48%, #dce7ce 100%);
+}
+
+.flower3d-shell::before {
+  background: radial-gradient(circle, rgba(231, 204, 151, 0.33), transparent 67%);
+}
+
+.flower3d-shell::after {
+  background: radial-gradient(circle, rgba(154, 185, 137, 0.3), transparent 68%);
 }

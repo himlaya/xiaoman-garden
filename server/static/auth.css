@@ -1,12 +1,13 @@
 :root {
-  --cream: #f6f0e3;
-  --paper: #fffaf0;
-  --ink: #334a38;
-  --muted: #8e9787;
-  --sage: #667b5e;
-  --sage-deep: #405a41;
-  --gold: #d5a85e;
-  --line: rgba(90, 107, 81, 0.16);
+  --cream: #f2e9d9;
+  --paper: #fffbf3;
+  --ink: #293f30;
+  --muted: #7f8d78;
+  --sage: #78966a;
+  --sage-deep: #3d6147;
+  --gold: #d8a94f;
+  --terra: #a6533e;
+  --line: rgba(60, 84, 60, 0.16);
   --font-display: "STKaiti", "KaiTi", "Noto Serif SC", Georgia, serif;
   --font-body: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
 }
@@ -21,9 +22,9 @@ body {
   margin: 0;
   color: var(--ink);
   background:
-    radial-gradient(circle at 12% 12%, rgba(227, 207, 167, 0.52), transparent 32%),
-    radial-gradient(circle at 88% 84%, rgba(164, 194, 143, 0.4), transparent 36%),
-    linear-gradient(145deg, #f8f0df, #e9edda);
+    radial-gradient(circle at 12% 12%, rgba(255, 247, 226, 0.62), transparent 32%),
+    radial-gradient(circle at 88% 84%, rgba(180, 204, 158, 0.44), transparent 36%),
+    linear-gradient(145deg, #f6ebd8, #e4ead4);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
@@ -71,8 +72,8 @@ a:hover { text-decoration: underline; }
   padding: 28px 25px 22px;
   border: 1px solid rgba(255, 255, 255, 0.82);
   border-radius: 27px;
-  background: rgba(255, 251, 242, 0.8);
-  box-shadow: 0 28px 70px rgba(74, 67, 45, 0.14);
+  background: rgba(255, 251, 243, 0.84);
+  box-shadow: 0 28px 70px rgba(57, 65, 43, 0.16);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
@@ -94,7 +95,7 @@ a:hover { text-decoration: underline; }
   place-items: center;
   border-radius: 12px;
   color: #fff8e7;
-  background: linear-gradient(145deg, #7f9770, #486049);
+  background: linear-gradient(145deg, #6f8d63, #395940);
   font-family: var(--font-display);
   font-size: 21px;
   box-shadow: 0 6px 12px rgba(62, 82, 59, 0.16);
@@ -186,8 +187,8 @@ a:hover { text-decoration: underline; }
   border: 0;
   border-radius: 11px;
   color: #fff8e8;
-  background: linear-gradient(135deg, #5f7b5f, #3f5a43);
-  box-shadow: 0 9px 18px rgba(54, 78, 55, 0.18);
+  background: linear-gradient(135deg, #4d7257, #31543b);
+  box-shadow: 0 9px 18px rgba(39, 65, 45, 0.22);
   font: inherit;
   font-size: 11px;
   font-weight: 600;

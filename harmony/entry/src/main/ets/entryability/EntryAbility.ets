@@ -20,10 +20,10 @@ export default class EntryAbility extends UIAbility {
       try {
         const mainWindow = windowStage.getMainWindowSync();
         mainWindow.setWindowSystemBarProperties({
-          statusBarColor: '#F6F0E3',
-          statusBarContentColor: '#304536',
-          navigationBarColor: '#F6F0E3',
-          navigationBarContentColor: '#304536'
+          statusBarColor: '#F2E9D9',
+          statusBarContentColor: '#293F30',
+          navigationBarColor: '#F2E9D9',
+          navigationBarContentColor: '#293F30'
         }).catch((systemBarError: BusinessError) => {
           hilog.warn(DOMAIN, TAG, 'System bar styling skipped: %{public}s', JSON.stringify(systemBarError));
         });

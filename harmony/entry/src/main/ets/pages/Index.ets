@@ -5,9 +5,9 @@ import { webview } from '@kit.ArkWeb';
 const SAVE_KEY: string = 'xiaoman-garden-save-v1';
 const PREF_NAME: string = 'xiaoman_garden';
 const PREF_KEY: string = 'save_json';
-const BACKGROUND: string = '#F6F0E3';
-const INK: string = '#304536';
-const INK_SOFT: string = '#7C8878';
+const BACKGROUND: string = '#F2E9D9';
+const INK: string = '#293F30';
+const INK_SOFT: string = '#7F8D78';
 
 @Entry
 @Component
