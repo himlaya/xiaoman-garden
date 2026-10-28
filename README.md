@@ -88,8 +88,20 @@ SQLite 是 Python 自带的嵌入式数据库，**不需要另外安装 MySQL/Po
 - 换账号：在「我的」页面点「退出」，再登录另一个账号。
 - 备份：停止服务后复制 `server/data/`。
 - 账号版会在「花市」旁边多出「市场」标签，可挂单和购买其他本地账号的物品。
+- 如果要让同一 Wi-Fi 下的手机或另一台电脑测试，双击 `start-lan.cmd`；手机打不开时，右键以管理员身份运行 `allow-lan-firewall.cmd` 放行 TCP 8000。
 - GitHub Pages 线上地址仍然是**访客本地存档版**；真实市场在独立部署的账号版，Pages 只放「在线账号市场」入口。
 - 账号版会关闭 Service Worker，需要联网访问本地 Flask 服务。
+
+### 局域网测试
+
+```text
+start-lan.cmd
+```
+
+- 电脑和手机连同一个 Wi-Fi。
+- 脚本会显示本机 IP，例如 `http://192.168.163.172:8000`。
+- 如果手机打不开，右键管理员运行 `allow-lan-firewall.cmd`，只放行专用网络的 TCP 8000。
+- 测市场时用两个浏览器/无痕窗口分别登录两个账号，一个上架、另一个购买。
 
 详细说明和 API 见 [server/README.md](server/README.md)。
 
