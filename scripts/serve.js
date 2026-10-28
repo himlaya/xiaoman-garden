@@ -61,7 +61,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(port, host, () => {
   const shownHost = host === '0.0.0.0' ? '127.0.0.1' : host;
-  console.log(`小满花园已开园： http://${shownHost}:${port}`);
+  console.log(`小小花园已开园： http://${shownHost}:${port}`);
   console.log('按 Ctrl+C 收园');
 });
 

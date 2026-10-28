@@ -1,4 +1,4 @@
-# 小满花园 · 原型 v0.5
+# 小小花园 · 原型 v0.5
 
 [![Deploy web game](https://github.com/himlaya/xiaoman-garden/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/himlaya/xiaoman-garden/actions/workflows/deploy-pages.yml)
 
@@ -222,7 +222,7 @@ npm run ios:copy         # 只同步 iOS
 npm run android:open
 ```
 
-项目位于 `android/`，包名 `com.xiaoman.garden`。首次在 Android Studio 打开时等 Gradle Sync 完成，然后选模拟器或真机运行。已经换上了小满花园的桌面图标与启动图。
+项目位于 `android/`，包名 `com.xiaoman.garden`。首次在 Android Studio 打开时等 Gradle Sync 完成，然后选模拟器或真机运行。已经换上了小小花园的桌面图标与启动图。
 
 ### iOS
 
@@ -233,7 +233,7 @@ npx cap sync ios        # 在 Mac 上首次打开前执行，安装 Pods 并同�
 npm run ios:open
 ```
 
-项目位于 `ios/App/`，包名 `com.xiaoman.garden`。在 Xcode 里选择 Team 和真机 / 模拟器后运行。AppIcon 和 LaunchScreen 已换成小满花园视觉。
+项目位于 `ios/App/`，包名 `com.xiaoman.garden`。在 Xcode 里选择 Team 和真机 / 模拟器后运行。AppIcon 和 LaunchScreen 已换成小小花园视觉。
 
 ### HarmonyOS NEXT
 

@@ -13,7 +13,7 @@ if errorlevel 1 (
   )
 )
 
-echo 正在启动小满花园账号版...
+echo 正在启动小小花园账号版...
 echo 浏览器打开：http://127.0.0.1:8000
 echo 数据库：server\data\garden.sqlite3
 python -m server.app

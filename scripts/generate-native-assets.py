@@ -73,14 +73,14 @@ def make_splash(size):
 
     title_font = load_font(FONT_CN_BOLD, max(20, int(short * 0.044)))
     subtitle_font = load_font(FONT_CN, max(10, int(short * 0.0175)))
-    title = '小满花园'
+    title = '小小花园'
     subtitle = '慢慢养，日日开'
     title_y = int(h * 0.575)
     draw.text((w / 2, title_y), title, font=title_font, fill=INK, anchor='ma')
     draw.text((w / 2, title_y + int(short * 0.073)), subtitle, font=subtitle_font, fill=INK_SOFT, anchor='ma')
     # 底部很轻的落款
     tiny = load_font(FONT_CN, max(8, int(short * 0.009)))
-    draw.text((w / 2, h * 0.91), 'XIAOMAN GARDEN', font=tiny, fill=(153, 157, 140, 190), anchor='ma')
+    draw.text((w / 2, h * 0.91), 'XIAOXIAO GARDEN', font=tiny, fill=(153, 157, 140, 190), anchor='ma')
     return bg.convert('RGB')
 
 

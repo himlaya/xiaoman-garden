@@ -2,15 +2,15 @@
   "string": [
     {
       "name": "module_desc",
-      "value": "小满花园主模块"
+      "value": "小小花园主模块"
     },
     {
       "name": "EntryAbility_desc",
-      "value": "小满花园"
+      "value": "小小花园"
     },
     {
       "name": "EntryAbility_label",
-      "value": "小满花园"
+      "value": "小小花园"
     }
   ]
 }

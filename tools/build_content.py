@@ -1,4 +1,4 @@
-"""把小满花园的 Python 内容源生成为前端使用的 www/js/data.js。
+"""把小小花园的 Python 内容源生成为前端使用的 www/js/data.js。
 
 用法：
     python tools/build_content.py           # 生成
@@ -21,7 +21,7 @@ from content import garden  # noqa: E402
 
 OUTPUT = ROOT / "www" / "js" / "data.js"
 
-HEADER = """/* 小满花园 · 数据
+HEADER = """/* 小小花园 · 数据
  *
  * 这个文件由 content/garden.py 自动生成，请不要直接编辑。
  * 修改内容后运行：
@@ -77,7 +77,7 @@ def render_js(data: dict) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="生成小满花园前端数据")
+    parser = argparse.ArgumentParser(description="生成小小花园前端数据")
     parser.add_argument("--check", action="store_true", help="只检查 www/js/data.js 是否和内容源一致")
     args = parser.parse_args()
 

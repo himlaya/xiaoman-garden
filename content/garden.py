@@ -1,4 +1,4 @@
-"""小满花园 · Python 内容源。
+"""小小花园 · Python 内容源。
 
 这里维护花的数值、奖励、任务和文案。
 修改后运行：python tools/build_content.py

@@ -1,4 +1,4 @@
-/* 小满花园 · 界面与交互 */
+/* 小小花园 · 界面与交互 */
 (function () {
   'use strict';
 
@@ -296,7 +296,7 @@
     els.topbar.innerHTML =
       '<button class="brand" data-action="go-home" aria-label="回到花园">' +
         '<span class="brand-mark">' + Art.logo() + '</span>' +
-        '<span class="brand-copy"><strong>小满花园</strong><small>XIAOMAN GARDEN</small></span>' +
+        '<span class="brand-copy"><strong>小小花园</strong><small>XIAOXIAO GARDEN</small></span>' +
       '</button>' +
       '<div class="top-actions">' +
         '<button class="resource-pill coin-pill" data-action="go-shop" aria-label="金币 ' + numberLabel(state.player.coins) + '，去花市">' + ICONS.coin + '<b>' + numberLabel(state.player.coins) + '</b></button>' +
@@ -861,7 +861,7 @@
         '</div>' +
       '</details>' +
       '<div class="danger-zone"><button class="reset-link" data-action="open-reset">重新打理这座花园</button><p>会清空当前存档，重新开始。</p></div>' +
-      '<footer class="version-line">小满花园 · 原型 <button class="version-check" type="button" data-check-update title="检查网页版本更新">v' + esc(localVersion) + ' · 检查更新</button> <span>构建 ' + esc(localBuild) + '</span></footer>' +
+      '<footer class="version-line">小小花园 · 原型 <button class="version-check" type="button" data-check-update title="检查网页版本更新">v' + esc(localVersion) + ' · 检查更新</button> <span>构建 ' + esc(localBuild) + '</span></footer>' +
     '</section>';
   }
 
@@ -1156,7 +1156,7 @@
       '</div>' +
       '<div class="intro-copy">' +
         '<p class="eyebrow">WELCOME, GARDENER</p>' +
-        '<h2 id="modal-title">小满花园</h2>' +
+        '<h2 id="modal-title">小小花园</h2>' +
         '<p class="intro-lead">在这里，不赶时间。<br>收下一颗种子，等它慢慢开花。</p>' +
         '<div class="intro-steps">' +
           '<div><span>01</span><p><strong>每日签到</strong>领取不同的花种</p></div>' +

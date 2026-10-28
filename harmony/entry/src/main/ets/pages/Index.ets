@@ -134,7 +134,7 @@ struct Index {
           })
       } else {
         Column({ space: 10 }) {
-          Text('小满花园')
+          Text('小小花园')
             .fontSize(30)
             .fontWeight(FontWeight.Medium)
             .fontColor(INK)

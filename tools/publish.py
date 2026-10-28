@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""小满花园 · Python 一键发版。
+"""小小花园 · Python 一键发版。
 
 用法：
     python tools/publish.py 0.3.0 3
@@ -77,7 +77,7 @@ def _read_current_version() -> tuple[str, int]:
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="发布小满花园新版本")
+    parser = argparse.ArgumentParser(description="发布小小花园新版本")
     parser.add_argument("version", nargs="?", help="新版本号，例如 0.3.0")
     parser.add_argument("build", nargs="?", type=int, help="新的构建号，必须大于当前构建号")
     parser.add_argument("--dry-run", action="store_true", help="只构建和测试，不改版本、不提交")
@@ -124,7 +124,7 @@ def main() -> int:
     if not git:
         _fail("找不到 git；可以把便携版放在 .tools/minigit/cmd，或安装 Git")
 
-    print("小满花园 · Python 发版")
+    print("小小花园 · Python 发版")
     print(f"当前：{current_version} build {current_build}")
     print(f"目标：{version} build {build}")
     if args.dry_run:

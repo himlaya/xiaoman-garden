@@ -1,4 +1,4 @@
-/* 小满花园 · 手绘感 SVG 花朵 */
+/* 小小花园 · 手绘感 SVG 花朵 */
 (function () {
   'use strict';
 

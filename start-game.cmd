@@ -8,7 +8,7 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-start "小满花园 · 调试服务器" /min cmd /c "node scripts\serve.js --port 4173"
+start "小小花园 · 调试服务器" /min cmd /c "node scripts\serve.js --port 4173"
 timeout /t 1 /nobreak >nul
 start "" "http://127.0.0.1:4173"
 endlocal

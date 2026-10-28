@@ -154,7 +154,7 @@ class MarketServerTests(unittest.TestCase):
         self.seller = self.app.test_client()
         self.buyer = self.app.test_client()
         self._register(self.seller, "卖家阿青")
-        self._register(self.buyer, "买家小满")
+        self._register(self.buyer, "买家小小")
 
     def tearDown(self) -> None:
         self.temp.cleanup()

@@ -1,4 +1,4 @@
-"""小满花园本地账号服务：Flask + SQLite。
+"""小小花园本地账号服务：Flask + SQLite。
 
 运行：
     python -m server.app
@@ -509,6 +509,6 @@ if __name__ == "__main__":
     host = os.environ.get("GARDEN_HOST", "127.0.0.1")
     port = int(os.environ.get("GARDEN_PORT", "8000"))
     application = create_app()
-    print(f"小满花园账号版：http://{host}:{port}")
+    print(f"小小花园账号版：http://{host}:{port}")
     print(f"SQLite 数据库：{application.config['DATABASE']}")
     application.run(host=host, port=port, debug=False, threaded=True)

@@ -1,6 +1,6 @@
-# 小满花园 · HarmonyOS NEXT 壳
+# 小小花园 · HarmonyOS NEXT 壳
 
-这是小满花园的 HarmonyOS NEXT 原生容器：**ArkTS / ArkUI + ArkWeb**。游戏本体仍然复用 `www/` 里的同一套 HTML/CSS/JS，避免三端各写一遍玩法。
+这是小小花园的 HarmonyOS NEXT 原生容器：**ArkTS / ArkUI + ArkWeb**。游戏本体仍然复用 `www/` 里的同一套 HTML/CSS/JS，避免三端各写一遍玩法。
 
 - Bundle ID：`com.xiaoman.garden`
 - 目标：HarmonyOS NEXT，API 12+（`5.0.0(12)`）
@@ -55,7 +55,7 @@ xiaoman-garden-save-v1
 - 浅色状态栏和导航栏，启动窗口背景为奶油色 `#F6F0E3`
 - 禁用缩放手势和横屏，保持花园的竖屏构图
 - 加载失败时显示重试界面
-- 图标和启动图已使用小满花园的品牌资源
+- 图标和启动图已使用小小花园的品牌资源
 - 不申请 INTERNET 权限：当前全部资源都在 rawfile 里离线加载
 
 ## 目录

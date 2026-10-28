@@ -1,4 +1,4 @@
-/* 小满花园 · 本地账号同步
+/* 小小花园 · 本地账号同步
  * 只在 Flask 账号版里生效；静态 GitHub Pages 没有 __ACCOUNT__，自动跳过。
  */
 (function () {

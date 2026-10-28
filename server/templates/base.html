@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f2e9d9">
-  <title>{% block title %}小满花园{% endblock %}</title>
+  <title>{% block title %}小小花园{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
 </head>
 <body>
@@ -14,7 +14,7 @@
     <section class="auth-card">
       <a class="auth-brand" href="{{ url_for('login') }}">
         <span class="auth-logo" aria-hidden="true">✿</span>
-        <span><strong>小满花园</strong><small>XIAOMAN GARDEN</small></span>
+        <span><strong>小小花园</strong><small>XIAOXIAO GARDEN</small></span>
       </a>
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
