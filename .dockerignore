@@ -1,0 +1,16 @@
+.git
+.gitignore
+.github
+.tools
+.venv
+node_modules
+screenshots
+android
+ios
+harmony
+tests
+content
+*.log
+server/data
+**/__pycache__
+**/*.pyc

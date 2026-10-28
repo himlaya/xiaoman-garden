@@ -7,6 +7,7 @@
   const Art = window.Art;
   const Items = window.GardenItems;
   const ACCOUNT = window.__ACCOUNT__ || null;
+  const ONLINE_ACCOUNT_URL = String(window.XIAOMAN_ONLINE_ACCOUNT_URL || '').trim();
 
   const TABS = [
     { id: 'garden', label: '花园', icon: 'leaf' },
@@ -822,9 +823,17 @@
           '<button class="account-logout" type="button" data-account-logout>退出</button>' +
         '</div>'
       : '';
+    const onlineAccountCard = (!ACCOUNT && ONLINE_ACCOUNT_URL)
+      ? '<a class="online-account-card" href="' + esc(ONLINE_ACCOUNT_URL) + '" target="_blank" rel="noopener noreferrer">' +
+          '<span class="online-account-icon">' + ICONS.tag + '</span>' +
+          '<span class="online-account-copy"><strong>在线账号市场</strong><small>打开公网账号版 · 挂单、购买和 3D 收藏</small></span>' +
+          ICONS.arrow +
+        '</a>'
+      : '';
     return '<section class="screen profile-screen">' +
       '<div class="page-heading"><p class="eyebrow">THE GARDENER</p><h1>园丁手帐</h1><p>把日子过成一座花园。</p></div>' +
       accountCard +
+      onlineAccountCard +
       '<div class="profile-card">' +
         '<div class="avatar">' + Art.flower('rose', 'bloom') + '<span class="avatar-badge">Lv.' + level.level + '</span></div>' +
         '<div class="profile-copy"><span class="profile-kicker">' + level.title + '</span><h2>' + esc(state.player.name) + '</h2><p>花园第 ' + stats.days + ' 天 · 已照料 ' + stats.totalCare + ' 次</p></div>' +

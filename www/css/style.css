@@ -5724,3 +5724,29 @@ body::before {
   .market-wallet { flex-wrap: wrap; }
   .market-wallet-note { order: 3; flex-basis: 100%; }
 }
+
+/* ---------------- 公网账号市场入口 ---------------- */
+
+.online-account-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 13px;
+  padding: 11px 12px;
+  border: 1px solid rgba(74, 104, 76, 0.17);
+  border-radius: 16px;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 6% 10%, rgba(232, 188, 105, 0.22), transparent 36%),
+    linear-gradient(110deg, rgba(223, 235, 211, 0.82), rgba(255, 250, 241, 0.94));
+  box-shadow: 0 7px 18px rgba(57, 65, 43, 0.06);
+  text-decoration: none;
+}
+
+.online-account-card:hover { text-decoration: none; filter: brightness(1.02); }
+.online-account-icon { display: grid; place-items: center; width: 35px; height: 35px; flex: 0 0 35px; border-radius: 11px; color: #f8eed8; background: linear-gradient(145deg, #5b7b5c, #395940); }
+.online-account-icon .icon { width: 18px; height: 18px; }
+.online-account-copy { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; }
+.online-account-copy strong { color: #304b38; font-family: var(--font-display); font-size: 13px; font-weight: 600; }
+.online-account-copy small { overflow: hidden; color: #7e8b76; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.online-account-card > .icon { width: 13px; height: 13px; color: var(--sage-deep); }

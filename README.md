@@ -88,10 +88,30 @@ SQLite 是 Python 自带的嵌入式数据库，**不需要另外安装 MySQL/Po
 - 换账号：在「我的」页面点「退出」，再登录另一个账号。
 - 备份：停止服务后复制 `server/data/`。
 - 账号版会在「花市」旁边多出「市场」标签，可挂单和购买其他本地账号的物品。
-- GitHub Pages 线上地址仍然是**访客本地存档版**，没有登录后端，因此也没有玩家市场。
+- GitHub Pages 线上地址仍然是**访客本地存档版**；真实市场在独立部署的账号版，Pages 只放「在线账号市场」入口。
 - 账号版会关闭 Service Worker，需要联网访问本地 Flask 服务。
 
 详细说明和 API 见 [server/README.md](server/README.md)。
+
+## 公网账号版（Render）
+
+GitHub Pages 不能运行 Flask/SQLite，所以真实市场不能直接跑在 Pages 上。项目已经带了 Render 部署文件：
+
+- `Dockerfile`
+- `requirements-deploy.txt`
+- `render.yaml`
+
+在 Render 打开：
+
+```text
+https://render.com/deploy?repo=https://github.com/himlaya/xiaoman-garden
+```
+
+连接仓库后选择 Starter 实例和 1GB 持久化磁盘（免费实例没有持久磁盘，重启会丢数据）。部署完成后会得到一个公网地址，例如 `https://xiaoxiao-garden.onrender.com`，打开就是完整账号版，登录后底部有「市场」。
+
+把公网地址填进 `www/js/runtime-config.js`，再发版，GitHub Pages 的「我的」页面就会出现「在线账号市场」入口。完整步骤见 [DEPLOY.md](DEPLOY.md)。
+
+> 部署后的数据和 SQLite 在 Render 的持久化磁盘上，不在 GitHub Pages 上。GitHub Pages 只是静态入口。
 
 ## 唯一物品与玩家市场
 

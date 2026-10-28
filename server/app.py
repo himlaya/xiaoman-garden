@@ -28,6 +28,7 @@ from flask import (
     session,
     url_for,
 )
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from server.db import connect_db, init_db, utc_now
@@ -81,6 +82,8 @@ def create_app(test_config: dict | None = None) -> Flask:
     )
     if test_config.get("TESTING"):
         app.config.update(TESTING=True)
+    # Render / Nginx 等反向代理后面运行时，让 redirect 和 secure cookie 识别 https。
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
     init_db(app.config["DATABASE"])
 
     @app.teardown_appcontext

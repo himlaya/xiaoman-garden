@@ -47,6 +47,12 @@ SQLite 是 Python 自带的嵌入式数据库，不需要安装 MySQL / PostgreS
 - 目前没有找回密码、修改密码、邮箱验证、管理员后台。
 - 不要把当前 Flask 服务直接暴露到公网。以后上线需要 HTTPS、反向代理、限流和更完整的安全检查。
 
+## 部署到公网
+
+要把市场开放给其他设备，请把整个 Flask 应用部署到 Render 或其他 Python 主机。GitHub Pages 只能托管静态页面，不能运行本服务。
+
+项目已经包含 Docker/Render 配置，见 [../DEPLOY.md](../DEPLOY.md)。
+
 ## 简单测试
 
 ```powershell
