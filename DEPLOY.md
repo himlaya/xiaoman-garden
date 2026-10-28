@@ -65,7 +65,7 @@ window.XIAOMAN_ONLINE_ACCOUNT_URL = 'https://你的服务.onrender.com';
 重新发版：
 
 ```powershell
-python tools/publish.py 0.5.3 9
+python tools/publish.py 0.5.4 10
 ```
 
 GitHub Pages 的「我的」页面就会出现「在线账号市场」入口。

@@ -26,13 +26,13 @@
 **之后每次发布，只要运行项目根目录的：**
 
 ```text
-publish.cmd 0.5.2 8
+publish.cmd 0.5.3 9
 ```
 
 或者直接用 Python：
 
 ```bash
-python tools/publish.py 0.5.2 8
+python tools/publish.py 0.5.3 9
 ```
 
 它会先根据 `content/garden.py` 生成 `www/js/data.js`，再跑内容测试和 JS 测试、更新版本、同步三端资源、提交并推送。手动执行时等价于：
@@ -40,7 +40,7 @@ python tools/publish.py 0.5.2 8
 ```bash
 python tools/build_content.py
 npm test
-npm run version:set -- 0.5.2 8
+npm run version:set -- 0.5.3 9
 npm run sync:native
 git add .
 git commit -m "release: v0.3.1 build 4"
@@ -95,13 +95,13 @@ $env:CHECK_UPDATE='1'; npm run check:ui
 3. 发版。推荐直接运行：
 
 ```bash
-python tools/publish.py 0.5.2 8
+python tools/publish.py 0.5.3 9
 ```
 
 它会在内部更新版本号并同步资源；如果你要手动控制：
 
 ```bash
-npm run version:set -- 0.5.2 8
+npm run version:set -- 0.5.3 9
 npm run sync:native
 ```
 
@@ -149,7 +149,7 @@ js / css / icons    Cache-Control: public, max-age=3600, must-revalidate
 
 本项目没有文件名 hash 的构建流程，因此更新后最好主动刷新一次 CDN 上以上文件，或者把所有静态文件都设置成短缓存。
 
-`version:set` 会自动把 `www/sw.js` 的 `CACHE_NAME` 改掉（例如 `xiaoman-garden-v0.5.2-8`），这样旧缓存会在新 Service Worker 激活时被清理。
+`version:set` 会自动把 `www/sw.js` 的 `CACHE_NAME` 改掉（例如 `xiaoman-garden-v0.5.3-9`），这样旧缓存会在新 Service Worker 激活时被清理。
 
 ### 如果你想让“发布”也自动化
 
@@ -195,9 +195,9 @@ server/data/garden.sqlite3
 
 ### Android
 
-1. 执行 `python tools/publish.py 0.5.2 8`（或 `npm run version:set -- 0.5.2 8`）并同步资源。
+1. 执行 `python tools/publish.py 0.5.3 9`（或 `npm run version:set -- 0.5.3 9`）并同步资源。
 2. 用 Android Studio 打开 `android/`。
-3. 在 `build.gradle` 中版本已更新为 `versionCode 8` / `versionName "0.5.2"`。
+3. 在 `build.gradle` 中版本已更新为 `versionCode 9` / `versionName "0.5.3"`。
 4. 生成签名版 **AAB**（Google Play）或 **APK**（国内应用商店 / 直接安装）。
 5. 上传到目标商店：
 

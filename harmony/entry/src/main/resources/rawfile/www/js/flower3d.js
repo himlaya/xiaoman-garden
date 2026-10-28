@@ -112,7 +112,7 @@
       const wear = Items.wearBand(item.wear, item.kind);
       metaEl.innerHTML = '<span class="item-grade grade-' + esc(grade.id) + '">' + esc(grade.label) + '</span>' +
         '<span class="flower3d-meta-chip">' + esc(template.label) + '模板</span>' +
-        '<span class="flower3d-meta-chip">' + esc(wear.label) + ' · ' + Number(item.wear).toFixed(3) + '</span>';
+        '<span class="wear-badge ' + esc(wear.className) + '">' + esc(wear.label) + ' ' + Number(item.wear).toFixed(3) + '</span>';
     }
     const isItemView = !!item;
     overlay.querySelector('.flower3d-stage-label').textContent = isItemView

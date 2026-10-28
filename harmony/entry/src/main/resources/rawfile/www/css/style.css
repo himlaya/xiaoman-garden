@@ -5750,3 +5750,332 @@ body::before {
 .online-account-copy strong { color: #304b38; font-family: var(--font-display); font-size: 13px; font-weight: 600; }
 .online-account-copy small { overflow: hidden; color: #7e8b76; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
 .online-account-card > .icon { width: 13px; height: 13px; color: var(--sage-deep); }
+
+/* =========================================================
+   CS2 风格稀有度 / 品级 / 品相色带
+   ========================================================= */
+
+/* 物种稀有度：常见 / 少见 / 稀有 / 珍稀 */
+.rarity-common,
+.flower3d-rarity.common {
+  --rarity: #8495a1;
+  --rarity-soft: #e2eaee;
+  --rarity-a: #f1f6f8;
+  --rarity-b: #d5e0e6;
+  --rarity-ink: #4f606b;
+  --rarity-border: rgba(105, 126, 138, 0.3);
+  --rarity-glow: rgba(105, 126, 138, 0.16);
+}
+
+.rarity-uncommon,
+.flower3d-rarity.uncommon {
+  --rarity: #4c8fd1;
+  --rarity-soft: #d9ebff;
+  --rarity-a: #78b6ea;
+  --rarity-b: #3d79bd;
+  --rarity-ink: #ffffff;
+  --rarity-border: rgba(62, 125, 184, 0.42);
+  --rarity-glow: rgba(65, 132, 200, 0.25);
+}
+
+.rarity-rare,
+.flower3d-rarity.rare {
+  --rarity: #8952d3;
+  --rarity-soft: #e9dcff;
+  --rarity-a: #b47cf0;
+  --rarity-b: #7d3fc9;
+  --rarity-ink: #ffffff;
+  --rarity-border: rgba(120, 65, 183, 0.4);
+  --rarity-glow: rgba(126, 68, 196, 0.25);
+}
+
+.rarity-legend,
+.flower3d-rarity.legend {
+  --rarity: #c3454e;
+  --rarity-soft: #ffe0de;
+  --rarity-a: #ef7977;
+  --rarity-b: #c43c4c;
+  --rarity-ink: #ffffff;
+  --rarity-border: rgba(172, 51, 63, 0.4);
+  --rarity-glow: rgba(196, 63, 76, 0.28);
+}
+
+.rarity-text {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 1px 7px;
+  border: 1px solid var(--rarity-border);
+  border-radius: 99px;
+  color: var(--rarity-ink);
+  background: linear-gradient(135deg, var(--rarity-a), var(--rarity-b));
+  box-shadow: 0 2px 7px var(--rarity-glow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  font-size: 8px;
+  font-weight: 700;
+  text-shadow: 0 1px 1px rgba(34, 43, 38, 0.08);
+}
+
+.rarity-chip,
+.album-rarity {
+  border: 1px solid var(--rarity-border);
+  color: var(--rarity-ink);
+  background: linear-gradient(135deg, var(--rarity-a), var(--rarity-b));
+  box-shadow: 0 2px 7px var(--rarity-glow), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  text-shadow: 0 1px 1px rgba(34, 43, 38, 0.08);
+}
+
+.rarity-chip {
+  min-height: 17px;
+  padding: 0 7px;
+  font-size: 6.8px;
+}
+
+.album-rarity {
+  min-height: 17px;
+  padding: 0 7px;
+  font-size: 6.8px;
+  backdrop-filter: blur(8px);
+}
+
+.album-locked .album-rarity {
+  color: #8b9485;
+  background: rgba(255, 253, 247, 0.8);
+  border-color: rgba(130, 143, 123, 0.18);
+  box-shadow: none;
+  text-shadow: none;
+}
+
+.seed-art {
+  border: 1px solid var(--rarity-border);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.36), 0 4px 12px var(--rarity-glow);
+}
+
+.album-art {
+  box-shadow: inset 0 0 0 1px var(--rarity-border);
+}
+
+.album-locked .album-art {
+  box-shadow: inset 0 0 0 1px rgba(130, 143, 123, 0.12);
+}
+
+.flower3d-rarity.common,
+.flower3d-rarity.uncommon,
+.flower3d-rarity.rare,
+.flower3d-rarity.legend {
+  border-color: var(--rarity-border);
+  color: var(--rarity-ink);
+  background: linear-gradient(135deg, var(--rarity-a), var(--rarity-b));
+  box-shadow: 0 2px 8px var(--rarity-glow);
+  text-shadow: 0 1px 1px rgba(34, 43, 38, 0.08);
+}
+
+/* 物品品级：普通 / 优良 / 精良 / 珍藏 / 传说 */
+.grade-common {
+  --grade: #7d9084;
+  --grade-a: #eef3ee;
+  --grade-b: #cedbd2;
+  --grade-ink: #4c6053;
+  --grade-soft: rgba(209, 222, 212, 0.55);
+  --grade-border: rgba(107, 131, 113, 0.24);
+  --grade-glow: rgba(107, 131, 113, 0.12);
+}
+
+.grade-fine {
+  --grade: #4c8fc8;
+  --grade-a: #78b9ec;
+  --grade-b: #3e7fbf;
+  --grade-ink: #ffffff;
+  --grade-soft: rgba(195, 220, 243, 0.48);
+  --grade-border: rgba(63, 126, 183, 0.38);
+  --grade-glow: rgba(69, 135, 197, 0.2);
+}
+
+.grade-rare {
+  --grade: #8550cf;
+  --grade-a: #b276ea;
+  --grade-b: #7740c3;
+  --grade-ink: #ffffff;
+  --grade-soft: rgba(218, 197, 243, 0.48);
+  --grade-border: rgba(122, 69, 180, 0.38);
+  --grade-glow: rgba(127, 67, 193, 0.22);
+}
+
+.grade-epic {
+  --grade: #bd4ca9;
+  --grade-a: #e58cd5;
+  --grade-b: #b23d9e;
+  --grade-ink: #ffffff;
+  --grade-soft: rgba(239, 197, 231, 0.5);
+  --grade-border: rgba(171, 57, 153, 0.36);
+  --grade-glow: rgba(178, 61, 158, 0.22);
+}
+
+.grade-legendary {
+  --grade: #bf8b2f;
+  --grade-a: #efd27c;
+  --grade-b: #c79635;
+  --grade-ink: #5d4210;
+  --grade-soft: rgba(242, 220, 159, 0.52);
+  --grade-border: rgba(183, 133, 43, 0.38);
+  --grade-glow: rgba(191, 139, 47, 0.24);
+}
+
+.item-grade,
+.item-grade.grade-common,
+.item-grade.grade-fine,
+.item-grade.grade-rare,
+.item-grade.grade-epic,
+.item-grade.grade-legendary {
+  border: 1px solid var(--grade-border);
+  color: var(--grade-ink);
+  background: linear-gradient(135deg, var(--grade-a), var(--grade-b));
+  box-shadow: 0 2px 8px var(--grade-glow), inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  text-shadow: 0 1px 1px rgba(34, 43, 38, 0.08);
+}
+
+.item-portrait {
+  border: 1px solid var(--grade-border, rgba(255, 255, 255, 0.8));
+  background:
+    radial-gradient(circle at 70% 20%, rgba(255, 250, 229, 0.9), transparent 20%),
+    linear-gradient(145deg, var(--grade-soft, #e4eddb), var(--wear-soft, #f2e7d4));
+  box-shadow: 0 4px 12px var(--grade-glow, rgba(57, 65, 43, 0.06));
+}
+
+.owned-item,
+.market-listing,
+.harvest-item-card {
+  border-left: 3px solid var(--grade, transparent);
+  background:
+    linear-gradient(100deg, var(--grade-soft, rgba(255, 251, 243, 0.9)), rgba(255, 251, 243, 0.96) 58%);
+}
+
+.owned-item.grade-common,
+.market-listing.grade-common,
+.harvest-item-card.grade-common {
+  background:
+    linear-gradient(100deg, var(--grade-soft), rgba(255, 251, 243, 0.96) 58%);
+}
+
+.owned-item-wearline {
+  display: flex;
+  align-items: center;
+  min-height: 17px;
+}
+
+/* 品相磨损：封签完好/初绽 → 枯荣 */
+.wear-pristine {
+  --wear-soft: #dcefdf;
+  --wear-a: #e6f5e7;
+  --wear-b: #bfe0c2;
+  --wear-ink: #386548;
+  --wear-border: rgba(71, 124, 84, 0.28);
+  --wear-glow: rgba(78, 137, 94, 0.14);
+}
+
+.wear-vivid {
+  --wear-soft: #e6eed8;
+  --wear-a: #f0f6e4;
+  --wear-b: #d0e0b5;
+  --wear-ink: #4e682e;
+  --wear-border: rgba(109, 139, 66, 0.28);
+  --wear-glow: rgba(111, 143, 68, 0.14);
+}
+
+.wear-worn {
+  --wear-soft: #f5e8ce;
+  --wear-a: #fbf2df;
+  --wear-b: #ead2a5;
+  --wear-ink: #775a25;
+  --wear-border: rgba(163, 126, 57, 0.3);
+  --wear-glow: rgba(170, 132, 61, 0.15);
+}
+
+.wear-weathered {
+  --wear-soft: #f4dfd0;
+  --wear-a: #fbeade;
+  --wear-b: #e9c4aa;
+  --wear-ink: #80492f;
+  --wear-border: rgba(166, 101, 73, 0.3);
+  --wear-glow: rgba(166, 101, 73, 0.16);
+}
+
+.wear-faded {
+  --wear-soft: #e9e0d8;
+  --wear-a: #f3ece6;
+  --wear-b: #d7c6b8;
+  --wear-ink: #624c3d;
+  --wear-border: rgba(129, 102, 83, 0.28);
+  --wear-glow: rgba(129, 102, 83, 0.14);
+}
+
+.wear-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 16px;
+  padding: 0 6px;
+  border: 1px solid var(--wear-border, rgba(106, 125, 95, 0.18));
+  border-radius: 99px;
+  color: var(--wear-ink, #58704f);
+  background: linear-gradient(135deg, var(--wear-a, #eef4e8), var(--wear-b, #d8e5ce));
+  box-shadow: 0 1px 5px var(--wear-glow, rgba(70, 91, 58, 0.08));
+  font-size: 7px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.owned-item-meta .wear-badge,
+.harvest-item-meta .wear-badge,
+.pick-seed-copy .wear-badge {
+  vertical-align: 1px;
+}
+
+.flower3d-itemmeta .wear-badge {
+  min-height: 18px;
+  padding: 0 7px;
+  font-size: 7px;
+}
+
+.seed-picker-list .pick-seed-copy small .wear-badge {
+  margin: 0 2px;
+}
+
+@media (max-width: 380px) {
+  .owned-item,
+  .market-listing {
+    border-left-width: 2px;
+  }
+}
+
+/* 让整张种子卡和花房卡片也带一点物种稀有度底色 */
+.seed-card {
+  border-top: 2px solid var(--rarity, var(--sage));
+  border-left: 3px solid var(--rarity, var(--sage));
+  background:
+    linear-gradient(100deg, var(--rarity-soft, rgba(255, 251, 243, 0.9)), rgba(255, 251, 243, 0.95) 64%);
+  box-shadow: 0 7px 20px var(--rarity-glow, rgba(57, 65, 43, 0.06));
+}
+
+.seed-card .seed-art {
+  border-left: 0;
+}
+
+.album-card {
+  background:
+    linear-gradient(180deg, var(--paper) 0%, var(--paper) 52%, var(--rarity-soft, #f2e9d9) 100%);
+}
+
+.album-card.album-owned {
+  border-top: 2px solid var(--rarity);
+  box-shadow: 0 9px 22px var(--rarity-glow, rgba(57, 65, 43, 0.08));
+}
+
+.album-card.album-locked {
+  background: var(--paper);
+}
+
+@media (max-width: 380px) {
+  .seed-card {
+    border-left-width: 2px;
+  }
+}

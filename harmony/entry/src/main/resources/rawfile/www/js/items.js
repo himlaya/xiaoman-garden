@@ -93,6 +93,7 @@
     return {
       label: kind === 'seed' ? (found.seedLabel || found.label || '完好') : (found.label || '盛放'),
       color: found.color || '#70905f',
+      className: found.className || 'wear-vivid',
       max: found.max || 1
     };
   }

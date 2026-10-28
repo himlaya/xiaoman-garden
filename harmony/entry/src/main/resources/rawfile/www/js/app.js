@@ -183,6 +183,11 @@
     return Items.wearBand(item.wear, item.kind);
   }
 
+  function wearBadge(item) {
+    const wear = itemWear(item);
+    return '<span class="wear-badge ' + esc(wear.className) + '">' + esc(wear.label) + ' ' + Number(item.wear).toFixed(3) + '</span>';
+  }
+
   function itemGradeBadge(item) {
     const grade = itemGrade(item);
     return '<span class="item-grade grade-' + esc(grade.id) + '">' + esc(grade.label) + '</span>';
@@ -194,15 +199,15 @@
 
   function itemMetaLine(item) {
     const template = itemTemplate(item);
-    const wear = itemWear(item);
-    return '<span class="item-template">' + esc(template.label) + '</span><span class="item-wear">' + esc(wear.label) + ' ' + Number(item.wear).toFixed(3) + '</span>';
+    return '<span class="item-template">' + esc(template.label) + '模板</span>' + wearBadge(item);
   }
 
   function itemPortrait(item, extraClass) {
     const flower = DATA.flowerMap[item.flowerId];
     const grade = itemGrade(item);
+    const wear = itemWear(item);
     if (!flower) return '';
-    return '<span class="item-portrait grade-' + esc(grade.id) + ' ' + (extraClass || '') + '">' +
+    return '<span class="item-portrait grade-' + esc(grade.id) + ' ' + esc(wear.className) + ' ' + (extraClass || '') + '">' +
       Art.flower(item.flowerId, 'bloom') +
       '<span class="item-kind">' + itemKindLabel(item) + '</span>' +
     '</span>';
@@ -559,11 +564,12 @@
     const button = externalListingId
       ? '<button class="item-3d-button" type="button" data-action="market-open-3d" data-listing="' + esc(externalListingId) + '">3D</button>'
       : '<button class="item-3d-button" type="button" data-action="open-item-3d" data-item="' + esc(item.id) + '">3D</button>';
-    return '<article class="owned-item">' +
+    return '<article class="owned-item grade-' + esc(item.grade) + ' ' + esc(summary.wear.className) + '">' +
       itemPortrait(item) +
       '<div class="owned-item-copy">' +
         '<div class="owned-item-title"><strong>' + esc(flower.name) + '</strong>' + itemGradeBadge(item) + '</div>' +
-        '<div class="owned-item-meta">' + esc(summary.kindLabel) + ' · ' + esc(summary.template.label) + '模板 · ' + esc(summary.wear.label) + ' ' + summary.wearValue + '</div>' +
+        '<div class="owned-item-meta">' + esc(summary.kindLabel) + ' · ' + esc(summary.template.label) + '模板</div>' +
+        '<div class="owned-item-wearline">' + wearBadge(item) + '</div>' +
         '<div class="owned-item-foot"><span>参考价 ' + ICONS.coin + summary.suggestedPrice + '</span><span>·</span><span>' + (item.kind === 'seed' ? '种下后继承模板' : '品相已定格') + '</span></div>' +
       '</div>' +
       '<div class="owned-item-actions">' +
@@ -611,11 +617,12 @@
       const flower = DATA.flowerMap[item.flowerId];
       if (!flower) return '';
       const summary = Items.itemSummary(item);
-      return '<article class="market-listing' + (listing.mine ? ' is-mine' : '') + '">' +
+      return '<article class="market-listing grade-' + esc(item.grade) + ' ' + esc(summary.wear.className) + (listing.mine ? ' is-mine' : '') + '">' +
         itemPortrait(item) +
         '<div class="market-listing-copy">' +
           '<div class="owned-item-title"><strong>' + esc(flower.name) + '</strong>' + itemGradeBadge(item) + '</div>' +
-          '<div class="owned-item-meta">' + esc(summary.kindLabel) + ' · ' + esc(summary.template.label) + '模板 · ' + esc(summary.wear.label) + ' ' + summary.wearValue + '</div>' +
+          '<div class="owned-item-meta">' + esc(summary.kindLabel) + ' · ' + esc(summary.template.label) + '模板</div>' +
+          '<div class="owned-item-wearline">' + wearBadge(item) + '</div>' +
           '<div class="market-seller">' + (listing.mine ? '我的摊位' : '来自 ' + esc(listing.seller)) + '</div>' +
         '</div>' +
         '<div class="market-listing-actions">' +
@@ -762,7 +769,7 @@
     const seedCards = DATA.flowers.map(function (flower) {
       const owned = Game.seedCount(flower.id);
       const poor = state.player.coins < flower.seedPrice;
-      return '<article class="seed-card">' +
+      return '<article class="seed-card ' + rarityClass(flower.rarity) + '">' +
         '<div class="seed-art ' + rarityClass(flower.rarity) + '">' +
           Art.flower(flower.id, 'bloom') +
           '<span class="rarity-chip ' + rarityClass(flower.rarity) + '">' + rarityLabel(flower.rarity) + '</span>' +
@@ -1039,7 +1046,7 @@
           const flower = DATA.flowerMap[seed.flowerId];
           return '<button class="pick-seed" data-action="plant-seed" data-slot="' + slot + '" data-item="' + esc(seed.id) + '" data-flower="' + flower.id + '" data-autofocus>' +
             '<span class="pick-seed-art">' + Art.flower(flower.id, 'bloom') + '</span>' +
-            '<span class="pick-seed-copy"><strong>' + esc(flower.name) + ' ' + itemGradeBadge(seed) + '</strong><small>' + itemTemplate(seed).label + '模板 · ' + itemWear(seed).label + ' · 花期 ' + formatSpan(flower.bloomSeconds) + '</small></span>' +
+            '<span class="pick-seed-copy"><strong>' + esc(flower.name) + ' ' + itemGradeBadge(seed) + '</strong><small>' + itemTemplate(seed).label + '模板 · ' + wearBadge(seed) + ' · 花期 ' + formatSpan(flower.bloomSeconds) + '</small></span>' +
             '<span class="pick-seed-action">种下 ' + ICONS.arrow + '</span>' +
           '</button>';
         }).join('') + '</div>'
@@ -1112,11 +1119,11 @@
     const flower = result.flower;
     const item = result.item;
     const itemBlock = item
-      ? '<div class="harvest-item-card">' +
+      ? '<div class="harvest-item-card grade-' + esc(item.grade) + ' ' + esc(itemWear(item).className) + '">' +
           itemPortrait(item) +
           '<div class="harvest-item-copy"><span class="harvest-item-kicker">' + itemKindLabel(item) + ' · ' + esc(Items.templateById(item.templateId).label) + '模板</span>' +
             '<strong>' + esc(flower.name) + ' ' + itemGradeBadge(item) + '</strong>' +
-            '<span class="harvest-item-meta">品相 ' + esc(itemWear(item).label) + ' ' + Number(item.wear).toFixed(3) + ' · 已放入花房</span>' +
+            '<span class="harvest-item-meta">' + wearBadge(item) + ' · 已放入花房</span>' +
           '</div>' +
           '<button class="item-3d-button" type="button" data-action="open-item-3d" data-item="' + esc(item.id) + '">3D</button>' +
         '</div>'

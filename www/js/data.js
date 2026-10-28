@@ -522,31 +522,36 @@ window.GameData = {
       "max": 0.08,
       "label": "初绽",
       "seedLabel": "封签完好",
-      "color": "#5c8662"
+      "color": "#5c8662",
+      "className": "wear-pristine"
     },
     {
       "max": 0.18,
       "label": "盛放",
       "seedLabel": "完好",
-      "color": "#70905f"
+      "color": "#70905f",
+      "className": "wear-vivid"
     },
     {
       "max": 0.38,
       "label": "微倦",
       "seedLabel": "略有折痕",
-      "color": "#ab8550"
+      "color": "#ab8550",
+      "className": "wear-worn"
     },
     {
       "max": 0.6,
       "label": "风霜",
       "seedLabel": "受潮",
-      "color": "#a66a53"
+      "color": "#a66a53",
+      "className": "wear-weathered"
     },
     {
       "max": 1.01,
       "label": "枯荣",
       "seedLabel": "陈旧",
-      "color": "#856152"
+      "color": "#856152",
+      "className": "wear-faded"
     }
   ],
   "market": {
