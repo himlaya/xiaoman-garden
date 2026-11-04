@@ -2,18 +2,18 @@ services:
   - type: web
     name: xiaoxiao-garden
     runtime: docker
-    plan: starter
+    plan: free
     region: singapore
     branch: main
     autoDeploy: true
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     envVars:
-      - key: GARDEN_DATA_DIR
-        value: /var/data
+      - key: DATABASE_URL
+        sync: false
+      - key: GARDEN_SECRET_KEY
+        generateValue: true
+      - key: GARDEN_REQUIRE_CLOUD_DB
+        value: "1"
       - key: GARDEN_COOKIE_SECURE
         value: "1"
-    disk:
-      name: garden-data
-      mountPath: /var/data
-      sizeGB: 1

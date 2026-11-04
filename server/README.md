@@ -1,6 +1,6 @@
 # 小小花园 · 本地账号版
 
-这是一个运行在电脑上的 Flask + SQLite 账号服务。它直接复用现有的 `www/` 前端，只额外负责：
+这是一个 Flask 账号服务：本机默认 SQLite，云端通过 `DATABASE_URL` 使用 PostgreSQL。它直接复用现有的 `www/` 前端，只额外负责：
 
 - 注册 / 登录 / 退出
 - Cookie 登录会话
@@ -50,7 +50,7 @@ SQLite 是 Python 自带的嵌入式数据库，不需要安装 MySQL / PostgreS
 ## 当前边界
 
 - 默认只监听 `127.0.0.1`；用 `start-lan.cmd` 才会监听局域网。
-- 数据跟着账号走，但要在同一台电脑、同一个数据库服务上访问；换电脑需要迁移 `server/data/`。
+- 数据跟着账号走；本机模式需连接原电脑，云端模式在同一游戏网址登录即可继续。
 - GitHub Pages 上仍然是原来的访客本地存档版，没有登录接口。
 - 账号模式会关闭 Service Worker，避免离线时拿到错误账号的缓存；需要联网访问本地服务。
 - 目前没有找回密码、修改密码、邮箱验证、管理员后台。
@@ -58,7 +58,7 @@ SQLite 是 Python 自带的嵌入式数据库，不需要安装 MySQL / PostgreS
 
 ## 部署到公网
 
-要把市场开放给其他设备，请把整个 Flask 应用部署到 Render 或其他 Python 主机。GitHub Pages 只能托管静态页面，不能运行本服务。
+免费方案是 Render Free 运行 Flask、Neon Free 保存 PostgreSQL 数据。GitHub Pages 只能托管静态页面，不能运行本服务。免费实例会休眠，但独立数据库中的账号、存档和挂单不依赖本机电脑。
 
 项目已经包含 Docker/Render 配置，见 [../DEPLOY.md](../DEPLOY.md)。
 
@@ -70,7 +70,7 @@ python -m unittest discover -s tests -p test_server.py -v
 
 如果要在自己的代码里调用 API：
 
-- `POST /api/save`：需要登录 Cookie 和 `X-CSRF-Token` 请求头
+- `POST /api/save`：需要登录 Cookie、`X-CSRF-Token` 和 `X-Save-Revision` 请求头。版本来自首页 `account.saveRevision`，保存成功后更新为响应的 `revision`。409 `save_conflict` 表示须刷新，不能把旧存档强行重发。
 - `GET /api/save`：读取当前账号存档
 - `GET /api/market`：查看在售物品
 - `POST /api/market/list`：`{itemId, price}`，把物品移入市场托管

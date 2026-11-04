@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import tempfile
 import unittest
+import uuid
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,13 +17,36 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from server.app import create_app  # noqa: E402
+from server.db import connect_db  # noqa: E402
 
 
-class AccountServerTests(unittest.TestCase):
+class DatabaseTestCase(unittest.TestCase):
+    postgres_url = None
+
+    def make_app(self, config):
+        if self.postgres_url:
+            import psycopg
+            schema = "garden_test_" + uuid.uuid4().hex
+            with psycopg.connect(self.postgres_url, autocommit=True) as connection:
+                connection.execute(f'CREATE SCHEMA "{schema}"')
+
+            def cleanup_schema():
+                with psycopg.connect(self.postgres_url, autocommit=True) as connection:
+                    connection.execute(f'DROP SCHEMA "{schema}" CASCADE')
+
+            self.addCleanup(cleanup_schema)
+            parts = urlsplit(self.postgres_url)
+            query = dict(parse_qsl(parts.query))
+            query["options"] = f"-c search_path={schema}"
+            config["DATABASE"] = urlunsplit(parts._replace(query=urlencode(query)))
+        return create_app(config)
+
+
+class AccountServerTests(DatabaseTestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         data_dir = Path(self.temp.name)
-        self.app = create_app({
+        self.app = self.make_app({
             "TESTING": True,
             "SECRET_KEY": "test-secret",
             "DATA_DIR": str(data_dir),
@@ -91,7 +117,7 @@ class AccountServerTests(unittest.TestCase):
         saved = self.client.post(
             "/api/save",
             json=save,
-            headers={"X-CSRF-Token": payload["account"]["csrfToken"]},
+            headers={"X-CSRF-Token": payload["account"]["csrfToken"], "X-Save-Revision": "0"},
         )
         self.assertEqual(saved.status_code, 200)
         self.assertTrue(saved.get_json()["ok"])
@@ -127,13 +153,12 @@ class AccountServerTests(unittest.TestCase):
 
     def test_password_is_not_plaintext_in_database(self):
         self._register("密码测试", "very-secret")
-        import sqlite3
         from contextlib import closing
 
-        with closing(sqlite3.connect(self.app.config["DATABASE"])) as connection:
+        with closing(connect_db(self.app.config["DATABASE"])) as connection:
             stored = connection.execute(
                 "SELECT password_hash FROM users WHERE username = ?", ("密码测试",)
-            ).fetchone()[0]
+            ).fetchone()["password_hash"]
         self.assertNotEqual(stored, "very-secret")
         self.assertTrue(stored.startswith(("scrypt:", "pbkdf2:")))
 
@@ -141,11 +166,11 @@ class AccountServerTests(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
-class MarketServerTests(unittest.TestCase):
+class MarketServerTests(DatabaseTestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         data_dir = Path(self.temp.name)
-        self.app = create_app({
+        self.app = self.make_app({
             "TESTING": True,
             "SECRET_KEY": "market-test-secret",
             "DATA_DIR": str(data_dir),
@@ -220,7 +245,8 @@ class MarketServerTests(unittest.TestCase):
         response = client.post(
             "/api/save",
             json=payload,
-            headers={"X-CSRF-Token": account["account"]["csrfToken"]},
+            headers={"X-CSRF-Token": account["account"]["csrfToken"],
+                     "X-Save-Revision": str(account["account"]["saveRevision"])},
         )
         self.assertEqual(response.status_code, 200)
         return account
@@ -299,3 +325,141 @@ class MarketServerTests(unittest.TestCase):
         for price in (0, -1, 100000, "50", True):
             response = self._market_action(self.seller, "list", {"itemId": item["id"], "price": price})
             self.assertEqual(response.status_code, 400, price)
+
+    def test_stale_save_cannot_undo_sale(self):
+        item = self._item()
+        self._put_save(self.seller, self._save(10, [item]))
+        self._put_save(self.buyer, self._save(200, []))
+        listed = self._market_action(self.seller, "list", {"itemId": item["id"], "price": 50}).get_json()
+        old_seller = self._payload(self.seller)
+        self.assertEqual(self._market_action(self.buyer, "buy", {"listingId": listed["listing"]["id"]}).status_code, 200)
+        response = self.seller.post("/api/save", json=old_seller["save"], headers={
+            "X-CSRF-Token": old_seller["account"]["csrfToken"],
+            "X-Save-Revision": str(old_seller["account"]["saveRevision"]),
+        })
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.get_json()["error"], "save_conflict")
+        self.assertEqual(self._payload(self.seller)["save"]["player"]["coins"], 60)
+
+    def test_failed_purchase_does_not_change_either_save(self):
+        item = self._item()
+        self._put_save(self.seller, self._save(10, [item]))
+        self._put_save(self.buyer, self._save(1, []))
+        listed = self._market_action(self.seller, "list", {"itemId": item["id"], "price": 50}).get_json()
+        response = self._market_action(self.buyer, "buy", {"listingId": listed["listing"]["id"]})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self._payload(self.seller)["save"]["player"]["coins"], 10)
+        self.assertEqual(self._payload(self.buyer)["save"]["player"]["coins"], 1)
+        self.assertEqual(len(self.buyer.get("/api/market").get_json()["listings"]), 1)
+
+    def test_account_survives_application_restart(self):
+        self._put_save(self.seller, self._save(42, []))
+        restarted = create_app({
+            "TESTING": True, "SECRET_KEY": self.app.config["SECRET_KEY"],
+            "DATA_DIR": self.app.config["DATA_DIR"], "DATABASE": self.app.config["DATABASE"],
+        }).test_client()
+        page = restarted.get("/login")
+        response = restarted.post("/login", data={
+            "csrf_token": self._csrf(page.get_data(as_text=True)),
+            "username": "卖家阿青", "password": "secret123",
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self._payload(restarted)["save"]["player"]["coins"], 42)
+
+    def test_two_buyers_only_one_can_buy_same_listing(self):
+        from concurrent.futures import ThreadPoolExecutor
+
+        other = self.app.test_client()
+        self._register(other, "另一位买家")
+        item = self._item()
+        self._put_save(self.seller, self._save(10, [item]))
+        self._put_save(self.buyer, self._save(200, []))
+        self._put_save(other, self._save(200, []))
+        listed = self._market_action(self.seller, "list", {"itemId": item["id"], "price": 50}).get_json()
+        listing_id = listed["listing"]["id"]
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            responses = list(pool.map(
+                lambda client: self._market_action(client, "buy", {"listingId": listing_id}),
+                [self.buyer, other],
+            ))
+        self.assertEqual(sorted(response.status_code for response in responses), [200, 404])
+        buyer_saves = [self._payload(client)["save"] for client in (self.buyer, other)]
+        self.assertEqual(sum(save["player"]["coins"] for save in buyer_saves), 350)
+        self.assertEqual(sum(len(save["items"]) for save in buyer_saves), 1)
+        self.assertEqual(self._payload(self.seller)["save"]["player"]["coins"], 60)
+
+
+@unittest.skipUnless(os.environ.get("GARDEN_TEST_DATABASE_URL"), "需要独立的 PostgreSQL 测试库")
+class PostgresAccountTests(AccountServerTests):
+    postgres_url = os.environ.get("GARDEN_TEST_DATABASE_URL")
+
+
+@unittest.skipUnless(os.environ.get("GARDEN_TEST_DATABASE_URL"), "需要独立的 PostgreSQL 测试库")
+class PostgresMarketTests(MarketServerTests):
+    postgres_url = os.environ.get("GARDEN_TEST_DATABASE_URL")
+
+
+class DeploymentConfigTests(unittest.TestCase):
+    def test_free_deploy_refuses_ephemeral_sqlite(self):
+        from unittest.mock import patch
+        with patch.dict(os.environ, {"GARDEN_REQUIRE_CLOUD_DB": "1"}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "DATABASE_URL"):
+                create_app({"TESTING": True})
+
+    def test_cloud_deploy_requires_stable_session_secret(self):
+        from unittest.mock import patch
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "GARDEN_SECRET_KEY"):
+                create_app({"DATABASE": "postgresql://unused.invalid/test", "TESTING": True})
+
+    def test_old_sqlite_schema_is_upgraded_without_losing_saves(self):
+        import sqlite3
+        from server.db import SCHEMA, init_db
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "legacy.sqlite3"
+            with sqlite3.connect(database) as connection:
+                connection.executescript(SCHEMA.replace("    revision INTEGER NOT NULL DEFAULT 0,\n", ""))
+                connection.execute("INSERT INTO users VALUES (7, 'legacy', 'hash', 'today', NULL)")
+                connection.execute("INSERT INTO saves VALUES (7, '{}', 'today')")
+            init_db(database)
+            init_db(database)
+            connection = connect_db(database)
+            try:
+                row = connection.execute("SELECT * FROM saves WHERE user_id = 7").fetchone()
+                self.assertEqual(row["payload"], "{}")
+                self.assertEqual(row["revision"], 0)
+            finally:
+                connection.close()
+
+
+@unittest.skipUnless(os.environ.get("GARDEN_TEST_DATABASE_URL"), "需要独立的 PostgreSQL 测试库")
+class PostgresMigrationTests(DatabaseTestCase):
+    postgres_url = os.environ.get("GARDEN_TEST_DATABASE_URL")
+
+    def test_migrate_keeps_old_accounts_and_refuses_overwrite(self):
+        import sqlite3
+        from server.db import SCHEMA
+        from tools.migrate_to_postgres import migrate
+        with tempfile.TemporaryDirectory() as directory:
+            self.app = self.make_app({
+                "TESTING": True, "SECRET_KEY": "migration-test", "DATA_DIR": directory,
+            })
+            source = Path(directory) / "legacy.sqlite3"
+            with sqlite3.connect(source) as connection:
+                connection.executescript(SCHEMA.replace("    revision INTEGER NOT NULL DEFAULT 0,\n", ""))
+                connection.execute("INSERT INTO users VALUES (7, 'legacy', 'original-password-hash', 'today', NULL)")
+                connection.execute("INSERT INTO saves VALUES (7, ?, 'today')", (json.dumps({"player": {"coins": 42}, "garden": [], "items": []}),))
+                connection.execute("INSERT INTO market_listings (id, seller_id, item_id, item_json, price, created_at) VALUES (12, 7, 'escrow', '{}', 5, 'today')")
+            target = self.app.config["DATABASE"]
+            self.assertEqual(migrate(source, target), {"users": 1, "saves": 1, "market_listings": 1})
+            connection = connect_db(target)
+            try:
+                self.assertEqual(connection.execute("SELECT password_hash FROM users WHERE id=7").fetchone()["password_hash"], "original-password-hash")
+                self.assertEqual(connection.execute("SELECT revision FROM saves WHERE user_id=7").fetchone()["revision"], 0)
+                self.assertEqual(connection.execute("SELECT status FROM market_listings WHERE id=12").fetchone()["status"], "active")
+                row = connection.execute("INSERT INTO users (username,password_hash,created_at) VALUES ('next','hash','today') RETURNING id").fetchone()
+                self.assertEqual(row["id"], 8)
+            finally:
+                connection.close()
+            with self.assertRaisesRegex(ValueError, "已有账号"):
+                migrate(source, target)

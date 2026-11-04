@@ -597,7 +597,7 @@
       : '<div class="market-empty">还没有可上架的物品。先去种一束花吧。</div>';
     return '<section class="screen market-screen">' +
       '<div class="page-heading"><p class="eyebrow">GARDEN EXCHANGE</p><h1>玩家市场</h1><p>每一颗种子和每一束花，都有自己的模板与品相。</p></div>' +
-      '<div class="market-wallet"><span><small>我的金币</small><strong>' + ICONS.coin + numberLabel(state.player.coins) + '</strong></span><span class="market-wallet-note">本地账号市场 · 交易会直接更新双方存档</span><button class="text-action simple" data-action="market-refresh">刷新 ' + ICONS.arrow + '</button></div>' +
+      '<div class="market-wallet"><span><small>我的金币</small><strong>' + ICONS.coin + numberLabel(state.player.coins) + '</strong></span><span class="market-wallet-note">玩家市场 · 交易会直接更新双方存档</span><button class="text-action simple" data-action="market-refresh">刷新 ' + ICONS.arrow + '</button></div>' +
       '<div class="section-heading"><div><h2>在售物品</h2><p>从其他园丁手里收一件</p></div><span class="market-live">' + (marketState.loading ? '读取中' : 'LIVE') + '</span></div>' +
       '<div class="market-listings" data-market-listings><div class="market-loading">正在打开市场…</div></div>' +
       '<div class="section-heading"><div><h2>我的物品</h2><p>' + items.length + ' 件可上架 · 种子和花束都行</p></div></div>' +
@@ -740,7 +740,8 @@
     if (code === 'own_listing') return '这是你自己的摊位，不能买自己的东西。';
     if (code === 'price') return '价格需要在 1 到 99999 金币之间。';
     if (code === 'save_missing') return '账号存档还没准备好，先回花园保存一次。';
-    if (code === 'account-required') return '玩家市场需要登录本地账号。';
+    if (code === 'account-required') return '玩家市场需要登录账号。';
+    if (code === 'save_conflict') return '交易或其他页面更新了存档，请刷新后再操作。';
     return '市场暂时没有完成这笔交易，请稍后再试。';
   }
 
@@ -826,7 +827,7 @@
     const accountCard = ACCOUNT
       ? '<div class="account-card">' +
           '<span class="account-avatar">' + esc(Array.from(ACCOUNT.username || '园')[0]) + '</span>' +
-          '<div class="account-copy"><span>当前账号 · 本地 SQLite</span><strong>' + esc(ACCOUNT.username) + '</strong><small data-account-status>已连接到本地数据库</small></div>' +
+          '<div class="account-copy"><span>当前账号 · ' + esc(ACCOUNT.database || '账号数据库') + '</span><strong>' + esc(ACCOUNT.username) + '</strong><small data-account-status>已连接到账号数据库</small></div>' +
           '<button class="account-logout" type="button" data-account-logout>退出</button>' +
         '</div>'
       : '';

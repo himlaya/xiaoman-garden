@@ -105,7 +105,7 @@ start-lan.cmd
 
 详细说明和 API 见 [server/README.md](server/README.md)。
 
-## 公网账号版（Render）
+## 免费公网账号版（Render + Neon）
 
 GitHub Pages 不能运行 Flask/SQLite，所以真实市场不能直接跑在 Pages 上。项目已经带了 Render 部署文件：
 
@@ -119,11 +119,11 @@ GitHub Pages 不能运行 Flask/SQLite，所以真实市场不能直接跑在 Pa
 https://render.com/deploy?repo=https://github.com/himlaya/xiaoman-garden
 ```
 
-连接仓库后选择 Starter 实例和 1GB 持久化磁盘（免费实例没有持久磁盘，重启会丢数据）。部署完成后会得到一个公网地址，例如 `https://xiaoxiao-garden.onrender.com`，打开就是完整账号版，登录后底部有「市场」。
+连接仓库后使用 Render **Free** 实例，将 Neon **Free** 的 PostgreSQL 连接字符串填到 `DATABASE_URL`。不用持久磁盘；账号、存档和交易记录保存在独立数据库中。部署成功后用 Render 实际生成的公网地址打开完整账号版，登录后底部有「市场」。电脑关机不影响云端游戏。
 
 把公网地址填进 `www/js/runtime-config.js`，再发版，GitHub Pages 的「我的」页面就会出现「在线账号市场」入口。完整步骤见 [DEPLOY.md](DEPLOY.md)。
 
-> 部署后的数据和 SQLite 在 Render 的持久化磁盘上，不在 GitHub Pages 上。GitHub Pages 只是静态入口。
+> 免费实例闲置后会休眠，首次重新打开可能等待约一分钟；数据库内容会保留。免费额度内无需付费，达到资源额度可能暂停。GitHub Pages 只是静态入口。
 
 ## 唯一物品与玩家市场
 
@@ -138,7 +138,7 @@ https://render.com/deploy?repo=https://github.com/himlaya/xiaoman-garden
 
 3D 花房读取物品保存的模板和品相：同一件物品无论刷新、挂单还是被买走，颜色和磨损都不会变。
 
-挂单时物品会从卖家仓库移入市场托管；购买时 SQLite 事务会同时完成买家扣币、卖家收币和物品归属变更。当前市场是一口价，只在本机多个账号之间生效；公网多人交易还需要把 Flask 服务部署到有 HTTPS 的服务器。
+挂单时物品会从卖家仓库移入市场托管；购买时数据库事务同时完成买家扣币、卖家收币和物品归属变更。支持本地 SQLite 与云端 PostgreSQL。存档版本校验会阻止旧页面覆盖成交结果。当前市场是一口价；按上面的免费部署步骤上线后可进行跨设备交易。
 
 品级权重、模板名称和品相分段集中在：
 

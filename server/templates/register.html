@@ -3,7 +3,7 @@
 {% block content %}
   <p class="auth-eyebrow">A NEW GARDEN</p>
   <h1>给自己一座花园</h1>
-  <p class="auth-lead">账号只保存在这台电脑上。注册后，每个账号有独立的花园进度。</p>
+  <p class="auth-lead">注册后，每个账号有独立的花园进度，在同一游戏网址登录即可继续。</p>
   <form method="post" action="{{ url_for('register') }}" class="auth-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>

@@ -31,7 +31,7 @@ from flask import (
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from server.db import connect_db, init_db, utc_now
+from server.db import begin_write, connect_db, init_db, is_postgres, utc_now
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB_ROOT = ROOT / "www"
@@ -57,6 +57,13 @@ def _load_or_create_secret(data_dir: Path) -> str:
 
 def create_app(test_config: dict | None = None) -> Flask:
     test_config = dict(test_config or {})
+    database_url = test_config.get("DATABASE") or os.environ.get("DATABASE_URL")
+    cloud_db = is_postgres(database_url or "")
+    secret = test_config.get("SECRET_KEY") or os.environ.get("GARDEN_SECRET_KEY")
+    if os.environ.get("GARDEN_REQUIRE_CLOUD_DB") == "1" and not cloud_db:
+        raise RuntimeError("免费云部署必须设置 PostgreSQL DATABASE_URL，不能使用临时 SQLite")
+    if cloud_db and not secret:
+        raise RuntimeError("云端部署必须设置固定的 GARDEN_SECRET_KEY")
     data_dir = Path(
         test_config.get("DATA_DIR")
         or os.environ.get("GARDEN_DATA_DIR")
@@ -72,8 +79,9 @@ def create_app(test_config: dict | None = None) -> Flask:
     )
     app.json.ensure_ascii = False
     app.config.update(
-        SECRET_KEY=test_config.get("SECRET_KEY") or _load_or_create_secret(data_dir),
-        DATABASE=str(test_config.get("DATABASE") or data_dir / "garden.sqlite3"),
+        SECRET_KEY=secret or _load_or_create_secret(data_dir),
+        DATABASE=str(database_url or data_dir / "garden.sqlite3"),
+        DATABASE_LABEL="云端存档" if cloud_db else "本机存档",
         DATA_DIR=str(data_dir),
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
@@ -118,6 +126,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         return bool(expected and token and hmac.compare_digest(expected, token))
 
     app.jinja_env.globals["csrf_token"] = csrf_token
+    app.jinja_env.globals["database_label"] = app.config["DATABASE_LABEL"]
 
     def login_required(view):
         @wraps(view)
@@ -134,7 +143,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     def game():
         user = current_user()
         row = get_db().execute(
-            "SELECT payload, updated_at FROM saves WHERE user_id = ?",
+            "SELECT payload, updated_at, revision FROM saves WHERE user_id = ?",
             (user["id"],),
         ).fetchone()
         save_data = json.loads(row["payload"]) if row else None
@@ -142,7 +151,8 @@ def create_app(test_config: dict | None = None) -> Flask:
             "id": user["id"],
             "username": user["username"],
             "csrfToken": csrf_token(),
-            "database": "SQLite",
+            "database": app.config["DATABASE_LABEL"],
+            "saveRevision": row["revision"] if row else 0,
         }
         payload = {"account": account, "save": save_data}
         encoded = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
@@ -170,7 +180,7 @@ def create_app(test_config: dict | None = None) -> Flask:
                 flash("页面已过期，请重新提交。", "error")
             else:
                 user = get_db().execute(
-                    "SELECT * FROM users WHERE username = ?",
+                    "SELECT * FROM users WHERE lower(username) = lower(?)",
                     (username,),
                 ).fetchone()
                 if user and check_password_hash(user["password_hash"], password):
@@ -210,15 +220,16 @@ def create_app(test_config: dict | None = None) -> Flask:
                 database = get_db()
                 try:
                     cursor = database.execute(
-                        "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
+                        "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?) RETURNING id",
                         (username, generate_password_hash(password), utc_now()),
                     )
+                    user_id = cursor.fetchone()["id"]
                     database.commit()
                 except sqlite3.IntegrityError:
                     error = "这个用户名已经被使用了。"
                 else:
                     session.clear()
-                    session["user_id"] = cursor.lastrowid
+                    session["user_id"] = user_id
                     session["_csrf_token"] = secrets.token_urlsafe(32)
                     return redirect(url_for("game"))
             if error:
@@ -245,7 +256,20 @@ def create_app(test_config: dict | None = None) -> Flask:
         payload = request.get_json(silent=True)
         if not isinstance(payload, dict) or "player" not in payload or "garden" not in payload:
             return jsonify({"ok": False, "error": "invalid_save"}), 400
+        revision_text = request.headers.get("X-Save-Revision", "")
+        if not revision_text.isascii() or not revision_text.isdigit() or len(revision_text) > 10:
+            return jsonify({"ok": False, "error": "revision_required"}), 400
+        revision = int(revision_text)
+        encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+        if len(encoded.encode("utf-8")) > MAX_SAVE_BYTES:
+            return jsonify({"ok": False, "error": "too_large"}), 413
         database = get_db()
+        begin_write(database)
+        current = database.execute("SELECT revision FROM saves WHERE user_id = ?", (user["id"],)).fetchone()
+        current_revision = current["revision"] if current else 0
+        if revision != current_revision:
+            database.rollback()
+            return jsonify({"ok": False, "error": "save_conflict", "revision": current_revision}), 409
         # 已经挂在市场上的物品处于托管状态，旧存档不能把它重新塞回仓库。
         escrowed = database.execute(
             "SELECT item_id FROM market_listings WHERE seller_id = ? AND status = 'active'",
@@ -263,13 +287,14 @@ def create_app(test_config: dict | None = None) -> Flask:
         updated_at = utc_now()
         database.execute(
             """
-            INSERT INTO saves (user_id, payload, updated_at) VALUES (?, ?, ?)
-            ON CONFLICT(user_id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at
+            INSERT INTO saves (user_id, payload, updated_at, revision) VALUES (?, ?, ?, 1)
+            ON CONFLICT(user_id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at,
+                revision = saves.revision + 1
             """,
             (user["id"], encoded, updated_at),
         )
         database.commit()
-        return jsonify({"ok": True, "updatedAt": updated_at})
+        return jsonify({"ok": True, "updatedAt": updated_at, "revision": current_revision + 1})
 
     def _load_save(database, user_id: int):
         row = database.execute(
@@ -292,8 +317,9 @@ def create_app(test_config: dict | None = None) -> Flask:
         updated_at = utc_now()
         database.execute(
             """
-            INSERT INTO saves (user_id, payload, updated_at) VALUES (?, ?, ?)
-            ON CONFLICT(user_id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at
+            INSERT INTO saves (user_id, payload, updated_at, revision) VALUES (?, ?, ?, 1)
+            ON CONFLICT(user_id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at,
+                revision = saves.revision + 1
             """,
             (user_id, json.dumps(payload, ensure_ascii=False, separators=(",", ":")), updated_at),
         )
@@ -346,7 +372,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         if not isinstance(price, int) or isinstance(price, bool) or price < 1 or price > MAX_MARKET_PRICE:
             return jsonify({"ok": False, "error": "price"}), 400
         database = get_db()
-        database.execute("BEGIN IMMEDIATE")
+        begin_write(database)
         try:
             save = _load_save(database, user["id"])
             if save is None:
@@ -365,9 +391,10 @@ def create_app(test_config: dict | None = None) -> Flask:
                 return jsonify({"ok": False, "error": "item_invalid"}), 400
             created_at = utc_now()
             cursor = database.execute(
-                "INSERT INTO market_listings (seller_id, item_id, item_json, price, status, created_at) VALUES (?, ?, ?, ?, 'active', ?)",
+                "INSERT INTO market_listings (seller_id, item_id, item_json, price, status, created_at) VALUES (?, ?, ?, ?, 'active', ?) RETURNING id",
                 (user["id"], item_id, json.dumps(item, ensure_ascii=False), price, created_at),
             )
+            listing_id = cursor.fetchone()["id"]
             _write_save(database, user["id"], save)
             database.commit()
         except Exception:
@@ -379,7 +406,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             FROM market_listings l JOIN users u ON u.id = l.seller_id
             WHERE l.id = ?
             """,
-            (cursor.lastrowid,),
+            (listing_id,),
         ).fetchone()
         return jsonify({"ok": True, "save": save, "listing": _listing_payload(row, user["id"])})
 
@@ -395,7 +422,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         if not isinstance(listing_id, int) or isinstance(listing_id, bool):
             return jsonify({"ok": False, "error": "listing"}), 400
         database = get_db()
-        database.execute("BEGIN IMMEDIATE")
+        begin_write(database)
         try:
             listing = database.execute(
                 "SELECT * FROM market_listings WHERE id = ? AND status = 'active'",
@@ -434,7 +461,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         if not isinstance(listing_id, int) or isinstance(listing_id, bool):
             return jsonify({"ok": False, "error": "listing"}), 400
         database = get_db()
-        database.execute("BEGIN IMMEDIATE")
+        begin_write(database)
         try:
             listing = database.execute(
                 "SELECT * FROM market_listings WHERE id = ? AND status = 'active'",
@@ -480,16 +507,16 @@ def create_app(test_config: dict | None = None) -> Flask:
     def api_get_save():
         user = current_user()
         row = get_db().execute(
-            "SELECT payload, updated_at FROM saves WHERE user_id = ?",
+            "SELECT payload, updated_at, revision FROM saves WHERE user_id = ?",
             (user["id"],),
         ).fetchone()
         if not row:
-            return jsonify({"ok": True, "save": None, "updatedAt": None})
-        return jsonify({"ok": True, "save": json.loads(row["payload"]), "updatedAt": row["updated_at"]})
+            return jsonify({"ok": True, "save": None, "updatedAt": None, "revision": 0})
+        return jsonify({"ok": True, "save": json.loads(row["payload"]), "updatedAt": row["updated_at"], "revision": row["revision"]})
 
     @app.get("/health")
     def health():
-        return jsonify({"ok": True, "database": "sqlite"})
+        return jsonify({"ok": True, "database": "postgresql" if cloud_db else "sqlite"})
 
     @app.get("/<path:filename>")
     def static_files(filename: str):
@@ -513,5 +540,5 @@ if __name__ == "__main__":
     port = int(os.environ.get("GARDEN_PORT", "8000"))
     application = create_app()
     print(f"小小花园账号版：http://{host}:{port}")
-    print(f"SQLite 数据库：{application.config['DATABASE']}")
+    print(f"数据库类型：{application.config['DATABASE_LABEL']}")
     application.run(host=host, port=port, debug=False, threaded=True)
