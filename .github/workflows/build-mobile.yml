@@ -2,7 +2,6 @@ name: Build mobile apps
 on:
   push:
     branches: [mobile-build]
-    paths: [.github/workflows/build-mobile.yml]
   workflow_dispatch:
 
 # Test packages are distributed as workflow artifacts.
@@ -25,6 +24,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - run: npm ci
+      - run: node --test tests/*.test.js
       - run: npx cap sync android
       - name: Build and verify debug APK
         working-directory: android

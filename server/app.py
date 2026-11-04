@@ -12,7 +12,7 @@ import os
 import re
 import secrets
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from pathlib import Path
 
@@ -86,6 +86,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.environ.get("GARDEN_COOKIE_SECURE") == "1",
+        PERMANENT_SESSION_LIFETIME=timedelta(days=14),
+        SESSION_REFRESH_EACH_REQUEST=False,
         MAX_CONTENT_LENGTH=2 * 1024 * 1024,
     )
     if test_config.get("TESTING"):
@@ -183,10 +185,11 @@ def create_app(test_config: dict | None = None) -> Flask:
                     "SELECT * FROM users WHERE lower(username) = lower(?)",
                     (username,),
                 ).fetchone()
-                if user and check_password_hash(user["password_hash"], password):
+                if user and len(password) <= 128 and check_password_hash(user["password_hash"], password):
                     session.clear()
                     session["user_id"] = user["id"]
                     session["_csrf_token"] = secrets.token_urlsafe(32)
+                    session.permanent = request.form.get("remember") == "1"
                     get_db().execute(
                         "UPDATE users SET last_login_at = ? WHERE id = ?",
                         (utc_now(), user["id"]),
@@ -518,6 +521,16 @@ def create_app(test_config: dict | None = None) -> Flask:
     def health():
         return jsonify({"ok": True, "database": "postgresql" if cloud_db else "sqlite"})
 
+    @app.get("/ready")
+    def ready():
+        database = "postgresql" if cloud_db else "sqlite"
+        try:
+            get_db().execute("SELECT 1").fetchone()
+        except Exception:
+            app.logger.warning("Database readiness check failed (%s)", database)
+            return jsonify({"ok": False, "database": database}), 503
+        return jsonify({"ok": True, "database": database})
+
     @app.get("/<path:filename>")
     def static_files(filename: str):
         if filename in {"index.html", "login", "register"}:
@@ -528,7 +541,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     def security_headers(response):
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("Referrer-Policy", "same-origin")
-        if request.endpoint in {"game", "login", "register"}:
+        if request.endpoint in {"game", "login", "register", "health", "ready", "api_get_save"}:
             response.headers["Cache-Control"] = "no-store"
         return response
 

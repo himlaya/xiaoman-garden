@@ -12,8 +12,9 @@
     </label>
     <label>
       <span>密码</span>
-      <input name="password" type="password" autocomplete="current-password" required>
+      <input name="password" type="password" autocomplete="current-password" maxlength="128" required>
     </label>
+    <label class="auth-remember"><input name="remember" type="checkbox" value="1"> 在此设备记住登录（14 天）</label>
     <button type="submit" class="auth-submit">进入花园</button>
   </form>
   <p class="auth-switch">还没有账号？<a href="{{ url_for('register') }}">注册一个</a></p>

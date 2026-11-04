@@ -15,7 +15,7 @@
   const LOCAL = window.XIAOMAN_VERSION || { version: '0.0.0', build: 0 };
   const NATIVE = window.Capacitor?.isNativePlatform();
   const RELEASE_PAGE = 'https://github.com/himlaya/xiaoman-garden/releases/tag/';
-  const RELEASE_API = 'https://api.github.com/repos/himlaya/xiaoman-garden/releases/latest';
+  const RELEASE_API = 'https://api.github.com/repos/himlaya/xiaoman-garden/releases?per_page=30';
   const INSTALL_ASSET = { android: 'Xiaoxiao-Garden-Android.apk', ios: 'Xiaoxiao-Garden-iOS.ipa' };
   const CHECK_INTERVAL = 5 * 60 * 1000;
   const ATTEMPT_KEY = 'xiaoman-update-attempted-build';
@@ -214,7 +214,6 @@
         credentials: 'same-origin',
         signal: controller.signal
       });
-      if (NATIVE && response.status === 404) return null;
       if (!response.ok) throw new Error('version status ' + response.status);
       return await response.json();
     } finally {
@@ -222,19 +221,31 @@
     }
   }
 
-  function newerNativeRelease(release) {
-    const tag = release?.tag_name;
-    if (!/^v\d+\.\d+\.\d+$/.test(tag || '')) return null;
+  function compareVersions(left, right) {
+    const parts = left.split('.').map(Number);
+    const other = right.split('.').map(Number);
+    for (let i = 0; i < 3; i++) {
+      if (parts[i] !== other[i]) return parts[i] - other[i];
+    }
+    return 0;
+  }
+
+  function newerNativeRelease(releases) {
+    if (!Array.isArray(releases)) throw new Error('invalid release feed');
     const assetName = INSTALL_ASSET[window.Capacitor.getPlatform()];
-    if (!release.assets?.some(function (asset) {
-      return asset.name === assetName && asset.state === 'uploaded' && asset.size > 0;
-    })) return null;
-    const version = tag.slice(1);
-    const local = LOCAL.version.split('.').map(Number);
-    const parts = version.split('.').map(Number);
-    const firstDifference = parts.findIndex(function (part, index) { return part !== local[index]; });
-    if (firstDifference < 0 || parts[firstDifference] <= local[firstDifference]) return null;
-    return { version: version, url: RELEASE_PAGE + tag };
+    let best = null;
+    for (const release of releases) {
+      const tag = release?.tag_name;
+      if (release?.draft || release?.prerelease || !/^v\d+\.\d+\.\d+$/.test(tag || '')) continue;
+      if (!assetName || !release.assets?.some(function (asset) {
+        return asset.name === assetName && asset.state === 'uploaded' && asset.size > 0;
+      })) continue;
+      const version = tag.slice(1);
+      if (compareVersions(version, best?.version || LOCAL.version) > 0) {
+        best = { version: version, url: RELEASE_PAGE + tag };
+      }
+    }
+    return best;
   }
 
   async function checkNow(manual) {
@@ -246,7 +257,7 @@
       if (manual) showNotice('正在检查新版本…', 'info', 1600);
       return;
     }
-    if (pending) {
+    if (pending && !NATIVE) {
       if (manual) showBanner(pending);
       return;
     }
@@ -257,6 +268,7 @@
       const remote = await fetchRemoteVersion();
       if (NATIVE) {
         pending = newerNativeRelease(remote);
+        removeBanner();
         if (pending) showBanner(pending);
         else showNotice('暂无适用于此设备的新版安装包。', 'info', 3000);
         return;

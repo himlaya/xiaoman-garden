@@ -37,7 +37,7 @@ class DatabaseTestCase(unittest.TestCase):
             self.addCleanup(cleanup_schema)
             parts = urlsplit(self.postgres_url)
             query = dict(parse_qsl(parts.query))
-            query["options"] = f"-c search_path={schema}"
+            query["options"] = f"-csearch_path={schema}"
             config["DATABASE"] = urlunsplit(parts._replace(query=urlencode(query)))
         return create_app(config)
 
@@ -79,12 +79,12 @@ class AccountServerTests(DatabaseTestCase):
             follow_redirects=False,
         )
 
-    def _login(self, username: str, password: str):
+    def _login(self, username: str, password: str, remember: bool = False):
         page = self.client.get("/login")
         token = self._csrf(page.get_data(as_text=True))
         return self.client.post(
             "/login",
-            data={"csrf_token": token, "username": username, "password": password},
+            data={"csrf_token": token, "username": username, "password": password, "remember": "1" if remember else ""},
             follow_redirects=False,
         )
 
@@ -140,6 +140,33 @@ class AccountServerTests(DatabaseTestCase):
         self.assertIn("已经被使用", self._register("重复名字").get_data(as_text=True))
         self.assertEqual(self._login("重复名字", "wrong-password").status_code, 200)
         self.assertIn("用户名或密码不正确", self._login("重复名字", "wrong-password").get_data(as_text=True))
+
+    def test_remembered_login_persists_and_logout_clears_it(self):
+        self._register()
+        csrf = self._account_payload()["account"]["csrfToken"]
+        self.client.post("/logout", headers={"X-CSRF-Token": csrf})
+        response = self._login("园丁小明", "secret123", remember=True)
+        cookie = response.headers["Set-Cookie"]
+        self.assertIn("Expires=", cookie)
+        self.assertIn("HttpOnly", cookie)
+        csrf = self._account_payload()["account"]["csrfToken"]
+        self.client.post("/logout", headers={"X-CSRF-Token": csrf})
+        self.assertEqual(self.client.get("/").status_code, 302)
+        self.assertNotIn("Expires=", self._login("园丁小明", "secret123").headers["Set-Cookie"])
+
+    def test_readiness_queries_database_and_reports_connection_failure(self):
+        from unittest.mock import patch
+
+        response = self.client.get("/ready")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {
+            "ok": True, "database": "postgresql" if self.postgres_url else "sqlite",
+        })
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+        with patch("server.app.connect_db", side_effect=ConnectionError("test failure")):
+            response = self.client.get("/ready")
+        self.assertEqual(response.status_code, 503)
+        self.assertFalse(response.get_json()["ok"])
 
     def test_save_requires_csrf_and_login(self):
         self.assertEqual(self.client.get("/api/save").status_code, 302)
