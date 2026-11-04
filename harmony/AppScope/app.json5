@@ -2,8 +2,8 @@
   "app": {
     "bundleName": "com.xiaoman.garden",
     "vendor": "xiaoman",
-    "versionCode": 13,
-    "versionName": "0.5.7",
+    "versionCode": 14,
+    "versionName": "0.5.8",
     "icon": "$media:app_icon",
     "label": "$string:app_name"
   }

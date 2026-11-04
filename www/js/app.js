@@ -598,7 +598,7 @@
       : '<div class="market-empty">还没有可上架的物品。先去种一束花吧。</div>';
     return '<section class="screen market-screen">' +
       '<div class="page-heading"><p class="eyebrow">GARDEN EXCHANGE</p><h1>玩家市场</h1><p>每一颗种子和每一束花，都有自己的模板与品相。</p></div>' +
-      '<div class="market-wallet"><span><small>我的金币</small><strong>' + ICONS.coin + numberLabel(state.player.coins) + '</strong></span><span class="market-wallet-note">玩家市场 · 交易会直接更新双方存档</span><button class="text-action simple" data-action="market-refresh">刷新 ' + ICONS.arrow + '</button></div>' +
+      '<div class="market-wallet"><span><small>我的金币</small><strong>' + ICONS.coin + numberLabel(state.player.coins) + '</strong></span><button class="text-action simple" data-action="market-refresh">刷新 ' + ICONS.arrow + '</button></div>' +
       '<div class="section-heading"><div><h2>在售物品</h2><p>从其他园丁手里收一件</p></div><span class="market-live">' + (marketState.loading ? '读取中' : 'LIVE') + '</span></div>' +
       '<div class="market-listings" data-market-listings><div class="market-loading">正在打开市场…</div></div>' +
       '<div class="section-heading"><div><h2>我的物品</h2><p>' + items.length + ' 件可上架 · 种子和花束都行</p></div></div>' +

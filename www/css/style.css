@@ -5665,6 +5665,7 @@ body::before {
 .market-wallet {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   margin: 0 0 16px;
   padding: 11px 12px;
@@ -5677,7 +5678,6 @@ body::before {
 .market-wallet small { color: #8d9983; font-size: 7px; }
 .market-wallet strong { display: flex; align-items: center; gap: 3px; color: #3b583f; font-size: 14px; }
 .market-wallet strong .icon { width: 15px; height: 15px; }
-.market-wallet-note { flex: 1; color: #85917e; font-size: 7.5px; line-height: 1.4; }
 .market-wallet .text-action { flex: 0 0 auto; }
 .market-live { color: #7f8d76; font-family: var(--font-body); font-size: 7px; font-weight: 800; letter-spacing: 0.14em; }
 .market-listings { display: flex; flex-direction: column; gap: 9px; }
@@ -5722,7 +5722,6 @@ body::before {
   .item-portrait .flower-render { height: 69px; }
   .owned-item-actions { gap: 4px; }
   .market-wallet { flex-wrap: wrap; }
-  .market-wallet-note { order: 3; flex-basis: 100%; }
 }
 
 /* ---------------- 公网账号市场入口 ---------------- */
