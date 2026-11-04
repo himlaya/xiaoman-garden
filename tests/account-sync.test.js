@@ -69,3 +69,28 @@ test('保存失败时保留登录状态，不继续发送退出请求', async ()
   assert.equal(calls.length, 1);
   assert.equal(button.disabled, false);
 });
+
+test('重新打开时恢复该账号尚未同步的种植进度，保护较新的云存档', () => {
+  const boot = fs.readFileSync(path.join(__dirname, '../www/js/account-boot.js'), 'utf8');
+  const key = 'xiaoman-garden-save-v1';
+  const empty = { player: {}, garden: [] };
+  const planted = JSON.stringify({ player: {}, garden: [{ flowerId: 'daisy' }] });
+  const sent = JSON.stringify(empty);
+  const storage = new Map([[key + ':pending:5', JSON.stringify({ revision: 3, raw: planted, sent })]]);
+  function load(id, revision, save) {
+    const window = { localStorage: {
+      getItem: k => storage.get(k) ?? null,
+      setItem: (k, v) => storage.set(k, v),
+      removeItem: k => storage.delete(k)
+    } };
+    const document = { getElementById: () => ({
+      textContent: JSON.stringify({ account: { id, saveRevision: revision }, save })
+    }) };
+    vm.runInNewContext(boot, { window, document });
+    return storage.get(key);
+  }
+  assert.equal(load(5, 3, empty), planted);
+  assert.equal(load(5, 4, empty), planted);
+  assert.equal(load(5, 5, empty), sent);
+  assert.equal(load(6, 3, empty), sent);
+});

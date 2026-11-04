@@ -8,6 +8,9 @@
   if (!account) return;
 
   var SAVE_KEY = 'xiaoman-garden-save-v1';
+  var pendingKey = SAVE_KEY + ':pending:' + account.id;
+  var pendingRecord = null;
+  var sendingRaw = null;
   var token = account.csrfToken;
   var timer = 0;
   var inFlight = null;
@@ -18,12 +21,37 @@
   var statusText = '已连接到' + (account.database || '账号数据库');
   var statusTone = 'ok';
   var suspended = false;
+  var latestRaw = currentRaw();
 
   function currentRaw() {
     try {
       return window.localStorage.getItem(SAVE_KEY);
     } catch (error) {
       return null;
+    }
+  }
+
+  function rememberPending(raw) {
+    try {
+      pendingRecord = JSON.stringify({ revision: revision, raw: raw, sent: sendingRaw });
+      window.localStorage.setItem(pendingKey, pendingRecord);
+    } catch (error) {
+      // Cloud sync still works when local recovery storage is unavailable.
+    }
+  }
+
+  function acknowledgePending(raw) {
+    try {
+      if (!pendingRecord || window.localStorage.getItem(pendingKey) !== pendingRecord) return;
+      var pending = JSON.parse(pendingRecord);
+      if (pending.raw === raw) {
+        window.localStorage.removeItem(pendingKey);
+        pendingRecord = null;
+      } else {
+        rememberPending(pending.raw);
+      }
+    } catch (error) {
+      // A storage failure must not invalidate a successful cloud save.
     }
   }
 
@@ -60,7 +88,7 @@
 
   function syncNow(options) {
     var opts = options || {};
-    var raw = currentRaw();
+    var raw = latestRaw;
     if (conflict) return opts.strict ? Promise.reject(new Error('save_conflict')) : Promise.resolve();
     if (suspended) return Promise.resolve();
     if (!raw) return Promise.resolve();
@@ -68,6 +96,8 @@
     // 市场交易必须等正在进行的存档请求真正完成。
     if (inFlight) return inFlight.then(function () { return syncNow(opts); });
 
+    sendingRaw = raw;
+    rememberPending(raw);
     setStatus('正在同步…', 'syncing');
     inFlight = window.fetch('/api/save', {
       method: 'POST',
@@ -78,7 +108,7 @@
         'X-Save-Revision': String(revision)
       },
       body: raw,
-      keepalive: !!opts.keepalive
+      keepalive: !!opts.keepalive && raw.length <= 20000
     }).then(function (response) {
       if (response.status === 401) {
         window.location.href = '/login';
@@ -98,6 +128,8 @@
       if (!data || !data.ok) throw new Error('sync-failed');
       revision = Number(data.revision);
       lastSynced = raw;
+      sendingRaw = null;
+      acknowledgePending(raw);
       window.clearTimeout(retryTimer);
       setStatus('已同步 · ' + new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }), 'ok');
     }).catch(function (error) {
@@ -119,20 +151,23 @@
     return inFlight;
   }
 
-  window.addEventListener('xiaoman:save', function () {
+  window.addEventListener('xiaoman:save', function (event) {
+    if (conflict || suspended) return;
+    latestRaw = event.detail.serialized;
+    rememberPending(latestRaw);
     setStatus('有改动待同步', 'pending');
-    schedule(700);
+    syncNow({ keepalive: true });
   });
 
   window.addEventListener('pagehide', function () {
     if (suspended) return;
-    if (currentRaw() !== lastSynced) syncNow({ force: true, keepalive: true });
+    if (latestRaw !== lastSynced) syncNow({ keepalive: true });
   });
 
   document.addEventListener('visibilitychange', function () {
     if (suspended) return;
-    if (document.visibilityState === 'hidden' && currentRaw() !== lastSynced) {
-      syncNow({ force: true, keepalive: true });
+    if (document.visibilityState === 'hidden' && latestRaw !== lastSynced) {
+      syncNow({ keepalive: true });
     }
   });
 
