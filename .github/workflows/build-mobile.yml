@@ -1,0 +1,65 @@
+name: Build mobile apps
+on:
+  push:
+    branches: [mobile-build]
+    paths: [.github/workflows/build-mobile.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - run: npx cap sync android
+      - name: Build and verify debug APK
+        working-directory: android
+        run: |
+          bash gradlew --no-daemon assembleDebug
+          build_tools="$ANDROID_HOME/build-tools"
+          apksigner="$(find "$build_tools" -name apksigner | sort -V | tail -1)"
+          "$apksigner" verify app/build/outputs/apk/debug/app-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk ../Xiaoxiao-Garden-Android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Xiaoxiao-Garden-Android
+          path: Xiaoxiao-Garden-Android.apk
+          if-no-files-found: error
+
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx cap sync ios
+      - name: Build unsigned iPhone app
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/garden-build" \
+            CODE_SIGNING_ALLOWED=NO build
+          mkdir -p Payload
+          cp -R "$RUNNER_TEMP/garden-build/Build/Products/Release-iphoneos/App.app" Payload/
+          /usr/libexec/PlistBuddy -c 'Print CFBundleDisplayName' Payload/App.app/Info.plist
+          zip -qr Xiaoxiao-Garden-iOS-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Xiaoxiao-Garden-iOS-unsigned
+          path: Xiaoxiao-Garden-iOS-unsigned.ipa
+          if-no-files-found: error
