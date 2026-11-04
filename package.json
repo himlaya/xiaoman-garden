@@ -1,6 +1,6 @@
 {
   "name": "xiaoman-garden",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "private": true,
   "description": "小小花园：签到领花种、浇水施肥、等花开的移动端花园小游戏",
   "homepage": "https://himlaya.github.io/xiaoman-garden/",
@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",
+    "@capacitor/browser": "7.0.5",
     "@capacitor/core": "^7.4.0",
     "@capacitor/ios": "^7.4.0"
   },

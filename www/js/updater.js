@@ -6,13 +6,17 @@
  * 3. 如果用户正在输入、或打开了签到/花朵详情等弹窗，会等操作结束再刷新。
  * 4. 用 sessionStorage 记录一次尝试，避免 CDN 缓存未及时更新时出现刷新循环。
  *
- * 原生 Android / iOS 壳打包的是本地 www，不会通过这个机制更新；
+ * Android / iOS 检查公开发行版，并打开对应的安装说明；
  * HarmonyOS 壳见 window.__XIAOMAN_HARMONY__，直接跳过。
  */
 (function () {
   'use strict';
 
   const LOCAL = window.XIAOMAN_VERSION || { version: '0.0.0', build: 0 };
+  const NATIVE = window.Capacitor?.isNativePlatform();
+  const RELEASE_PAGE = 'https://github.com/himlaya/xiaoman-garden/releases/tag/';
+  const RELEASE_API = 'https://api.github.com/repos/himlaya/xiaoman-garden/releases/latest';
+  const INSTALL_ASSET = { android: 'Xiaoxiao-Garden-Android.apk', ios: 'Xiaoxiao-Garden-iOS.ipa' };
   const CHECK_INTERVAL = 5 * 60 * 1000;
   const ATTEMPT_KEY = 'xiaoman-update-attempted-build';
   const RELOAD_DELAY = 1300;
@@ -25,7 +29,7 @@
   let bannerEl = null;
 
   function supported() {
-    return !window.__XIAOMAN_HARMONY__ && /^https?:$/.test(window.location.protocol);
+    return NATIVE || (!window.__XIAOMAN_HARMONY__ && /^https?:$/.test(window.location.protocol));
   }
 
   function currentBuild() {
@@ -105,9 +109,10 @@
       '<div class="update-banner-copy"><strong></strong><small>点击更新，花种和进度都会保留。</small></div>' +
       '<button type="button" data-apply-update>立即更新</button>';
     node.querySelector('strong').textContent = '发现新版本 v' + remote.version;
-    node.querySelector('button').addEventListener('click', function () {
-      if (pending) applyUpdate(pending);
-    });
+    if (NATIVE) {
+      node.querySelector('small').textContent = '查看新版安装说明。';
+      node.querySelector('button').textContent = '查看安装';
+    }
     document.body.appendChild(node);
     bannerEl = node;
   }
@@ -141,6 +146,13 @@
 
   function applyUpdate(remote) {
     if (!remote) return;
+    if (NATIVE) {
+      saveProgress();
+      window.Capacitor.Plugins.Browser.open({ url: remote.url }).catch(function () {
+        showNotice('暂时无法打开安装页面，请稍后再试。', 'error');
+      });
+      return;
+    }
     if (pollTimer) {
       window.clearInterval(pollTimer);
       pollTimer = 0;
@@ -195,18 +207,34 @@
     const controller = new AbortController();
     const timeout = window.setTimeout(function () { controller.abort(); }, 6000);
     try {
-      const url = new URL('./version.json', window.location.href);
-      url.searchParams.set('_', String(Date.now()));
+      const url = new URL(NATIVE ? RELEASE_API : './version.json', window.location.href);
+      if (!NATIVE) url.searchParams.set('_', String(Date.now()));
       const response = await fetch(url.toString(), {
         cache: 'no-store',
         credentials: 'same-origin',
         signal: controller.signal
       });
+      if (NATIVE && response.status === 404) return null;
       if (!response.ok) throw new Error('version status ' + response.status);
       return await response.json();
     } finally {
       window.clearTimeout(timeout);
     }
+  }
+
+  function newerNativeRelease(release) {
+    const tag = release?.tag_name;
+    if (!/^v\d+\.\d+\.\d+$/.test(tag || '')) return null;
+    const assetName = INSTALL_ASSET[window.Capacitor.getPlatform()];
+    if (!release.assets?.some(function (asset) {
+      return asset.name === assetName && asset.state === 'uploaded' && asset.size > 0;
+    })) return null;
+    const version = tag.slice(1);
+    const local = LOCAL.version.split('.').map(Number);
+    const parts = version.split('.').map(Number);
+    const firstDifference = parts.findIndex(function (part, index) { return part !== local[index]; });
+    if (firstDifference < 0 || parts[firstDifference] <= local[firstDifference]) return null;
+    return { version: version, url: RELEASE_PAGE + tag };
   }
 
   async function checkNow(manual) {
@@ -227,6 +255,12 @@
     if (manual) showNotice('正在检查新版本…', 'info', 1600);
     try {
       const remote = await fetchRemoteVersion();
+      if (NATIVE) {
+        pending = newerNativeRelease(remote);
+        if (pending) showBanner(pending);
+        else showNotice('暂无适用于此设备的新版安装包。', 'info', 3000);
+        return;
+      }
       const remoteBuild = Number(remote.build) || 0;
       if (remoteBuild > currentBuild()) {
         detectUpdate({ version: String(remote.version || '新版本'), build: remoteBuild }, manual);
@@ -254,7 +288,7 @@
     }
   });
 
-  if (supported()) {
+  if (!NATIVE && supported()) {
     window.setTimeout(function () { checkNow(false); }, 5000);
     window.setInterval(function () {
       if (document.visibilityState === 'visible') checkNow(false);

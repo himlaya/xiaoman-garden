@@ -8,6 +8,7 @@
   const Items = window.GardenItems;
   const ACCOUNT = window.__ACCOUNT__ || null;
   const ONLINE_ACCOUNT_URL = String(window.XIAOMAN_ONLINE_ACCOUNT_URL || '').trim();
+  const NATIVE_ACCOUNT_URL = window.Capacitor?.isNativePlatform() && window.XIAOXIAO_NATIVE_ACCOUNT_URL;
 
   const TABS = [
     { id: 'garden', label: '花园', icon: 'leaf' },
@@ -830,7 +831,13 @@
           '<button class="account-logout" type="button" data-account-logout>退出</button>' +
         '</div>'
       : '';
-    const onlineAccountCard = (!ACCOUNT && ONLINE_ACCOUNT_URL)
+    const onlineAccountCard = (!ACCOUNT && NATIVE_ACCOUNT_URL)
+      ? '<button class="online-account-card" type="button" data-action="open-native-account">' +
+          '<span class="online-account-icon">' + ICONS.tag + '</span>' +
+          '<span class="online-account-copy"><strong>登录账号</strong><small>打开云花园 · 使用原有账号和云存档</small></span>' +
+          ICONS.arrow +
+        '</button>'
+      : (!ACCOUNT && ONLINE_ACCOUNT_URL)
       ? '<a class="online-account-card" href="' + esc(ONLINE_ACCOUNT_URL) + '" target="_blank" rel="noopener noreferrer">' +
           '<span class="online-account-icon">' + ICONS.tag + '</span>' +
           '<span class="online-account-copy"><strong>在线账号市场</strong><small>打开公网账号版 · 挂单、购买和 3D 收藏</small></span>' +
@@ -1421,6 +1428,12 @@
   }
 
   const ACTIONS = {
+    'open-native-account': function () {
+      Game.save();
+      window.Capacitor.Plugins.Browser.open({ url: NATIVE_ACCOUNT_URL }).catch(function () {
+        showToast('暂时无法打开云花园，请稍后再试。', { tone: 'error' });
+      });
+    },
     'go-home': function () {
       closeModal();
       if (activeTab === 'garden') {

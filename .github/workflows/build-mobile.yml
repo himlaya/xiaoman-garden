@@ -5,6 +5,8 @@ on:
     paths: [.github/workflows/build-mobile.yml]
   workflow_dispatch:
 
+# Test packages are distributed as workflow artifacts.
+
 permissions:
   contents: read
 
