@@ -821,7 +821,6 @@
     const stats = Game.stats();
     const level = Game.levelInfo(state.player.xp);
     const checkin = Game.checkinView();
-    const speedOptions = DATA.speeds;
     const localVersion = (window.XIAOMAN_VERSION && window.XIAOMAN_VERSION.version) || '0.1.0';
     const localBuild = (window.XIAOMAN_VERSION && window.XIAOMAN_VERSION.build) || 1;
     const accountCard = ACCOUNT
@@ -866,19 +865,8 @@
         '<div class="setting-row"><div class="setting-copy"><strong>音效</strong><p>花开和浇水的小声音</p></div><button class="switch ' + (state.settings.sound ? 'is-on' : '') + '" data-action="toggle-sound" role="switch" aria-checked="' + (state.settings.sound ? 'true' : 'false') + '" aria-label="开关音效"><span></span></button></div>' +
         '<div class="setting-row"><div class="setting-copy"><strong>减少动效</strong><p>喜欢更安静的画面</p></div><button class="switch ' + (state.settings.reduceMotion ? 'is-on' : '') + '" data-action="toggle-motion" role="switch" aria-checked="' + (state.settings.reduceMotion ? 'true' : 'false') + '" aria-label="开关减少动效"><span></span></button></div>' +
         '<div class="setting-row"><div class="setting-copy"><strong>再看一遍引导</strong><p>重新认识这座小花园</p></div><button class="text-action simple" data-action="replay-intro">看看 ' + ICONS.arrow + '</button></div>' +
+        '<div class="setting-row"><div class="setting-copy"><strong>版本</strong><p>v' + esc(localVersion) + ' · 构建 ' + esc(localBuild) + '</p></div><button class="text-action simple" type="button" data-check-update>检查更新 ' + ICONS.arrow + '</button></div>' +
       '</div>' +
-      '<details class="debug-card">' +
-        '<summary><span>原型调试 · 时光沙漏</span><small>仅用于体验测试</small></summary>' +
-        '<div class="debug-body">' +
-          '<p>加速生长时间，不改变收获价值；只影响这台设备上的当前存档。</p>' +
-          '<div class="speed-options">' + speedOptions.map(function (speed) {
-            return '<button class="' + (state.settings.speed === speed ? 'active' : '') + '" data-action="set-speed" data-speed="' + speed + '">' + (speed === 1 ? '正常速度' : speed + '×') + '</button>';
-          }).join('') + '</div>' +
-          '<p class="debug-hint">成长和花期按现实参考时间的 1/5 流动；想马上看花，可以切到 3600×。</p>' +
-        '</div>' +
-      '</details>' +
-      '<div class="danger-zone"><button class="reset-link" data-action="open-reset">重新打理这座花园</button><p>会清空当前存档，重新开始。</p></div>' +
-      '<footer class="version-line">小小花园 · 原型 <button class="version-check" type="button" data-check-update title="检查网页版本更新">v' + esc(localVersion) + ' · 检查更新</button> <span>构建 ' + esc(localBuild) + '</span></footer>' +
     '</section>';
   }
 
@@ -993,7 +981,6 @@
     if (current.type === 'market-list') return marketListModal(current.payload);
     if (current.type === 'market-buy') return marketBuyModal(current.payload);
     if (current.type === 'market-cancel') return marketCancelModal(current.payload);
-    if (current.type === 'reset') return resetModal();
     if (current.type === 'intro') return introModal();
     return '';
   }
@@ -1153,16 +1140,6 @@
       '</div>' +
       '<button class="primary-button" data-action="close-modal" data-autofocus>继续种花</button>' +
       '<button class="ghost-button" data-action="go-shop">再买一颗种子 ' + ICONS.arrow + '</button>';
-  }
-
-  function resetModal() {
-    return '<div class="confirm-icon">' + ICONS.leaf + '</div>' +
-      '<h2 id="modal-title">重新打理花园？</h2>' +
-      '<p class="confirm-copy">所有花朵、种子、金币和花房手记都会清空，这件事没办法撤销。慢慢种下的花园，真的舍得吗？</p>' +
-      '<div class="confirm-actions">' +
-        '<button class="ghost-button" data-action="close-modal" data-autofocus>再想想</button>' +
-        '<button class="danger-button" data-action="confirm-reset">清空重来</button>' +
-      '</div>';
   }
 
   function introModal() {
@@ -1428,15 +1405,6 @@
     showToast('花园落款改成了「' + result.name + '」。', { tone: 'success' });
   }
 
-  function handleReset() {
-    Game.reset();
-    closeModal();
-    activeTab = 'garden';
-    highlightPot = false;
-    renderAll({ resetScroll: true });
-    openModal('intro');
-  }
-
   function finishIntro() {
     Game.setSetting('seenIntro', true);
     closeModal();
@@ -1536,16 +1504,7 @@
       renderAll({ resetScroll: false });
       showToast(next ? '已减少画面动效。' : '动效恢复啦。', { tone: 'info' });
     },
-    'set-speed': function (element) {
-      const speed = Number(element.dataset.speed);
-      const result = Game.setSpeed(speed);
-      if (!result.ok) return;
-      renderAll({ resetScroll: false });
-      showToast(speed === 1 ? '时光沙漏调回正常速度。' : '时光沙漏 ×' + speed + '，花儿会很快长大。', { tone: 'info' });
-    },
     'replay-intro': function () { openModal('intro'); },
-    'open-reset': function () { openModal('reset'); },
-    'confirm-reset': handleReset,
     'go-profile': function () { closeModal(); switchTab('profile'); }
   };
 
