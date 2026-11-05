@@ -6,6 +6,8 @@
   const Items = window.GardenItems;
   const SAVE_KEY = DATA.saveKey;
   const DAY_MS = 24 * 60 * 60 * 1000;
+  const NAME_CHANGE_PRICE = 3000;
+  const NAME_CHANGE_COOLDOWN = 30 * DAY_MS;
   const MAX_GARDEN = DATA.maxPots;
   const FLOWER_IDS = Object.keys(DATA.flowerMap);
 
@@ -65,7 +67,9 @@
         name: DATA.starting.name,
         coins: DATA.starting.coins,
         fertilizer: DATA.starting.fertilizer,
-        xp: 0
+        xp: 0,
+        nameChanges: 0,
+        nameChangedAt: 0
       },
       items: items,
       potCount: DATA.initialPots,
@@ -146,7 +150,9 @@
           : fresh.player.name,
         coins: integer(raw.player?.coins, fresh.player.coins),
         fertilizer: integer(raw.player?.fertilizer, fresh.player.fertilizer),
-        xp: integer(raw.player?.xp, 0)
+        xp: integer(raw.player?.xp, 0),
+        nameChanges: integer(raw.player?.nameChanges, 0),
+        nameChangedAt: integer(raw.player?.nameChangedAt, 0)
       },
       items: [],
       potCount: Math.max(1, Math.min(MAX_GARDEN, integer(raw.potCount, DATA.initialPots))),
@@ -774,11 +780,26 @@
     return { ok: true, potCount: state.potCount, price: price };
   }
 
+  function nameChangeView() {
+    const first = state.player.nameChanges === 0;
+    const price = first ? 0 : NAME_CHANGE_PRICE;
+    const wait = first ? 0 : Math.max(0, state.player.nameChangedAt + NAME_CHANGE_COOLDOWN - Date.now());
+    return { first: first, price: price, wait: wait, affordable: state.player.coins >= price };
+  }
+
   function setName(value) {
-    const clean = Array.from(String(value || '').trim()).slice(0, 12).join('') || '小园丁';
+    const clean = Array.from(String(value || '').trim()).slice(0, 12).join('');
+    if (!clean) return { ok: false, reason: 'empty' };
+    if (clean === state.player.name) return { ok: false, reason: 'unchanged' };
+    const view = nameChangeView();
+    if (view.wait > 0) return { ok: false, reason: 'cooldown', wait: view.wait };
+    if (!view.affordable) return { ok: false, reason: 'coins', price: view.price };
+    state.player.coins -= view.price;
     state.player.name = clean;
+    state.player.nameChanges += 1;
+    state.player.nameChangedAt = Date.now();
     persist();
-    return { ok: true, name: clean };
+    return { ok: true, name: clean, price: view.price };
   }
 
   function setSetting(key, value) {
@@ -849,6 +870,7 @@
     buyPot: buyPot,
     nextPotPrice: nextPotPrice,
     setName: setName,
+    nameChangeView: nameChangeView,
     setSetting: setSetting,
     setSpeed: setSpeed,
     reset: reset,

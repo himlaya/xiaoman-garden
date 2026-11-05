@@ -824,6 +824,10 @@
     const checkin = Game.checkinView();
     const localVersion = (window.XIAOMAN_VERSION && window.XIAOMAN_VERSION.version) || '0.1.0';
     const localBuild = (window.XIAOMAN_VERSION && window.XIAOMAN_VERSION.build) || 1;
+    const rename = Game.nameChangeView();
+    const renameHint = rename.first ? '首次修改免费 · 修改后冷却 30 天' : rename.wait > 0
+      ? '还需等待 ' + Math.ceil(rename.wait / 86400000) + ' 天 · 下次修改 3000 金币'
+      : '每次修改 3000 金币 · 修改后冷却 30 天';
     const accountCard = ACCOUNT
       ? '<div class="account-card">' +
           '<span class="account-avatar">' + esc(Array.from(ACCOUNT.username || '园')[0]) + '</span>' +
@@ -865,8 +869,8 @@
       '</div>' +
       '<div class="settings-card">' +
         '<div class="settings-head"><h2>花园设置</h2><span>安静地种花</span></div>' +
-        '<div class="setting-row name-row"><div class="setting-copy"><strong>花园名字</strong><p>你的落款与门牌</p></div>' +
-          '<div class="name-edit"><input class="name-input" data-name-input maxlength="12" value="' + esc(state.player.name) + '" aria-label="输入花园名字"><button class="name-save" data-action="save-name">改成这个</button></div>' +
+        '<div class="setting-row name-row"><div class="setting-copy"><strong>花园名字</strong><p>' + renameHint + '</p></div>' +
+          '<div class="name-edit"><input class="name-input" data-name-input maxlength="12" value="' + esc(state.player.name) + '" aria-label="输入花园名字"><button class="name-save" data-action="save-name"' + (rename.wait > 0 ? ' disabled' : '') + '>' + (rename.wait > 0 ? '冷却中' : rename.first ? '免费修改' : '3000 金币') + '</button></div>' +
         '</div>' +
         '<div class="setting-row"><div class="setting-copy"><strong>签到小花册</strong><p>' + (checkin.available ? '今天的花种还等着你' : '今天已签到 · 第 ' + checkin.dayNumber + ' 天') + '</p></div><button class="text-action simple" data-action="open-checkin">' + (checkin.available ? '去领取' : '查看') + ' ' + ICONS.arrow + '</button></div>' +
         '<div class="setting-row"><div class="setting-copy"><strong>音效</strong><p>花开和浇水的小声音</p></div><button class="switch ' + (state.settings.sound ? 'is-on' : '') + '" data-action="toggle-sound" role="switch" aria-checked="' + (state.settings.sound ? 'true' : 'false') + '" aria-label="开关音效"><span></span></button></div>' +
@@ -989,6 +993,11 @@
     if (current.type === 'market-buy') return marketBuyModal(current.payload);
     if (current.type === 'market-cancel') return marketCancelModal(current.payload);
     if (current.type === 'intro') return introModal();
+    if (current.type === 'rename') {
+      return '<p class="eyebrow">GARDEN NAME</p><h2 id="modal-title">确认修改名字？</h2>' +
+        '<p class="confirm-copy">将花园名字改为「' + esc(current.payload.name) + '」，花费 3000 金币。修改后需等待 30 天才能再次修改。</p>' +
+        '<div class="confirm-actions"><button class="ghost-button" data-action="close-modal">再想想</button><button class="primary-button" data-action="confirm-rename">确认修改</button></div>';
+    }
     return '';
   }
 
@@ -1407,7 +1416,23 @@
   function handleSaveName() {
     const input = document.querySelector('[data-name-input]');
     const value = input ? input.value : '';
+    const view = Game.nameChangeView();
+    const clean = Array.from(value.trim()).slice(0, 12).join('');
+    if (clean && clean !== Game.getState().player.name && view.wait === 0 && view.price && view.affordable) {
+      openModal('rename', { name: clean });
+      return;
+    }
+    applyNameChange(value);
+  }
+
+  function applyNameChange(value) {
     const result = Game.setName(value);
+    if (!result.ok) {
+      const messages = { empty: '请输入花园名字。', unchanged: '名字和现在一样。', cooldown: '改名还在冷却中，请满 30 天后再来。', coins: '金币不足，修改名字需要 3000 金币。' };
+      showToast(messages[result.reason] || '暂时无法修改名字。', { tone: 'info' });
+      return;
+    }
+    closeModal();
     renderAll({ resetScroll: false });
     showToast('花园落款改成了「' + result.name + '」。', { tone: 'success' });
   }
@@ -1503,6 +1528,9 @@
     },
     'claim-quest': handleClaimQuest,
     'save-name': handleSaveName,
+    'confirm-rename': function () {
+      if (modalState && modalState.type === 'rename') applyNameChange(modalState.payload.name);
+    },
     'toggle-sound': function () {
       const next = !Game.getState().settings.sound;
       Game.setSetting('sound', next);

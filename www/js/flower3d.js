@@ -361,34 +361,36 @@
     function addPot(root) {
       const potColors = [0xa66f51, 0x819c86, 0x729da4, 0xeee4cf];
       const clay = mat({ color: potColors[rarityRank], roughness: 0.94 - rarityRank * 0.2, metalness: 0 });
-      const clayLight = mat({ color: 0xbd8561, roughness: 0.9 });
       const soilMat = mat({ color: 0x4d392a, roughness: 1 });
-      const body = new THREE.Mesh(geo(new THREE.CylinderGeometry(0.78, 0.57, 0.64, 48, 1, false)), clay);
-      body.position.y = -1.2;
-      root.add(body);
-      const rim = new THREE.Mesh(geo(new THREE.TorusGeometry(0.78, 0.043, 8, 48)), clayLight);
-      rim.rotation.x = Math.PI / 2;
-      rim.position.y = -0.89;
-      root.add(rim);
-      const band = new THREE.Mesh(geo(new THREE.TorusGeometry(0.705, 0.011 + rarityRank * 0.005, 6, 48)), mat({
-        color: rarityRank >= 2 ? 0xcba76a : 0xeadcc3, roughness: 0.8 - rarityRank * 0.17, metalness: rarityRank >= 2 ? 0.55 : 0
-      }));
-      band.rotation.x = Math.PI / 2;
-      band.position.y = -1.24;
-      root.add(band);
-      if (rarityRank >= 2) {
-        const ornamentGeo = geo(new THREE.OctahedronGeometry(0.025 + rarityRank * 0.004));
-        const ornamentMat = mat({ color: 0xd8b777, metalness: 0.55, roughness: 0.35 });
-        for (let i = 0; i < 12; i++) {
-          const angle = i / 12 * TAU;
-          const ornament = new THREE.Mesh(ornamentGeo, ornamentMat);
-          ornament.position.set(Math.cos(angle) * 0.69, -1.28, Math.sin(angle) * 0.69);
-          ornament.scale.y = 1.8;
-          root.add(ornament);
+      // Cross-sections include the inside wall and base so the rim has real thickness.
+      const profiles = [
+        [[0, -1.48], [0.55, -1.48], [0.59, -1.43], [0.75, -0.92], [0.8, -0.91], [0.81, -0.8], [0.77, -0.77], [0.72, -0.8], [0.71, -0.92], [0.52, -1.4], [0, -1.4]],
+        [[0, -1.48], [0.66, -1.48], [0.72, -1.43], [0.74, -1.3], [0.74, -0.83], [0.72, -0.77], [0.67, -0.77], [0.66, -0.84], [0.65, -1.38], [0, -1.38]],
+        [[0, -1.48], [0.57, -1.48], [0.64, -1.42], [0.74, -1.26], [0.77, -0.93], [0.76, -0.8], [0.73, -0.77], [0.69, -0.79], [0.68, -0.94], [0.64, -1.35], [0, -1.38]],
+        [[0, -1.48], [0.47, -1.48], [0.49, -1.4], [0.67, -1.34], [0.8, -1.12], [0.79, -0.97], [0.71, -0.85], [0.72, -0.78], [0.68, -0.76], [0.65, -0.8], [0.66, -0.88], [0.73, -1.01], [0.73, -1.13], [0.59, -1.3], [0, -1.38]]
+      ];
+      const profile = profiles[rarityRank].map(function (point) { return new THREE.Vector2(point[0], point[1]); });
+      const bodyGeometry = geo(new THREE.LatheGeometry(profile, 64));
+      if (rarityRank === 2) {
+        const positions = bodyGeometry.attributes.position;
+        for (let i = 0; i < positions.count; i++) {
+          const angle = Math.atan2(positions.getZ(i), positions.getX(i));
+          const flute = 1 + Math.cos(angle * 16) * 0.013;
+          positions.setX(i, positions.getX(i) * flute);
+          positions.setZ(i, positions.getZ(i) * flute);
         }
+        bodyGeometry.computeVertexNormals();
       }
-      const soil = new THREE.Mesh(geo(new THREE.CylinderGeometry(0.725, 0.665, 0.065, 48)), soilMat);
-      soil.position.y = -0.85;
+      const body = new THREE.Mesh(bodyGeometry, clay);
+      root.add(body);
+      const saucerProfile = [[0, -1.53], [0.71, -1.53], [0.85, -1.49], [0.86, -1.4], [0.82, -1.4], [0.79, -1.46], [0, -1.47]];
+      const saucer = new THREE.Mesh(geo(new THREE.LatheGeometry(saucerProfile.map(function (p) {
+        return new THREE.Vector2(p[0], p[1]);
+      }), 64)), clay);
+      root.add(saucer);
+      const soilRadius = [0.71, 0.65, 0.67, 0.64][rarityRank];
+      const soil = new THREE.Mesh(geo(new THREE.CylinderGeometry(soilRadius, soilRadius, 0.035, 48)), soilMat);
+      soil.position.y = -0.845;
       root.add(soil);
       const pebbleGeo = geo(new THREE.SphereGeometry(0.052, 8, 6));
       const pebbleMat = mat({ color: 0x6d5742, roughness: 1 });
@@ -439,13 +441,13 @@
     scene.add(root);
     addPot(root);
     if (variant) {
-      const gradeRing = new THREE.Mesh(geo(new THREE.TorusGeometry(0.835, 0.018, 8, 64)), basic({
+      const gradeRing = new THREE.Mesh(geo(new THREE.TorusGeometry([0.78, 0.7, 0.73, 0.7][rarityRank], 0.008, 8, 64)), basic({
         color: variant.gradeColor,
         transparent: true,
         opacity: 0.92
       }));
       gradeRing.rotation.x = Math.PI / 2;
-      gradeRing.position.y = -0.89;
+      gradeRing.position.y = -0.77;
       root.add(gradeRing);
       const soilGlow = new THREE.Mesh(geo(new THREE.RingGeometry(0.6, 0.715, 48)), basic({
         color: variant.gradeColor,

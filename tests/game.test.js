@@ -271,8 +271,46 @@ test('更改名字会裁剪空白并限制长度', () => {
   const { Game } = h;
   Game.boot();
   assert.equal(Game.setName('  晚风花园  ').name, '晚风花园');
-  assert.equal(Game.setName('').name, '小园丁');
-  assert.equal(Array.from(Game.setName('一二三四五六七八九十十一十二').name).length, 12);
+  assert.equal(Game.setName('').reason, 'empty');
+  const other = makeHarness();
+  other.Game.boot();
+  assert.equal(Array.from(other.Game.setName('一二三四五六七八九十十一十二').name).length, 12);
+});
+
+test('首次改名免费，满30天后支付3000，规则随存档恢复', () => {
+  const h = makeHarness();
+  h.Game.boot();
+  const coins = h.Game.getState().player.coins;
+  assert.equal(h.Game.setName('晚风花园').price, 0);
+  assert.equal(h.Game.getState().player.coins, coins);
+  assert.equal(h.Game.setName('晚风花园').reason, 'unchanged');
+  assert.equal(h.Game.getState().player.nameChanges, 1);
+  const raw = JSON.parse(h.store.get('xiaoman-garden-save-v1'));
+  const legacy = JSON.parse(JSON.stringify(raw));
+  delete legacy.player.nameChanges;
+  delete legacy.player.nameChangedAt;
+  const old = makeHarness(h.now, JSON.stringify(legacy));
+  old.Game.boot();
+  assert.equal(old.Game.getState().player.name, '晚风花园');
+  assert.equal(old.Game.nameChangeView().price, 0);
+  raw.player.coins = 7000;
+  const next = makeHarness(h.now, JSON.stringify(raw));
+  next.Game.boot();
+  assert.equal(next.Game.setName('晨露花园').reason, 'cooldown');
+  assert.equal(next.Game.getState().player.coins, 7000);
+  next.advance(30 * 86400000 - 1);
+  assert.equal(next.Game.setName('晨露花园').reason, 'cooldown');
+  next.advance(1);
+  assert.equal(next.Game.setName('晨露花园').price, 3000);
+  assert.equal(next.Game.getState().player.coins, 4000);
+  assert.equal(next.Game.setName('第三座花园').reason, 'cooldown');
+  next.advance(30 * 86400000);
+  assert.equal(next.Game.setName('第三座花园').price, 3000);
+  assert.equal(next.Game.getState().player.coins, 1000);
+  next.advance(30 * 86400000);
+  assert.equal(next.Game.setName('最后的花园').reason, 'coins');
+  assert.equal(next.Game.getState().player.name, '第三座花园');
+  assert.equal(next.Game.getState().player.coins, 1000);
 });
 
 test('存档能写入并在新的游戏实例里恢复', () => {
