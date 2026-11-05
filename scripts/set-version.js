@@ -92,6 +92,11 @@ plan('www/version.json', (text) => {
   return JSON.stringify(data, null, 2) + '\n';
 });
 
+plan('www/index.html', (text) => text.replace(
+  /(src|href)="(\.\/(?:js|vendor|css)\/[^"?]+\.(?:js|css))(?:\?[^"]*)?"/g,
+  '$1="$2?v=' + build + '"'
+));
+
 plan('www/sw.js', (text) => {
   if (!/const CACHE_NAME = '[^']*';/.test(text)) {
     throw new Error('sw.js 中没有找到 CACHE_NAME');

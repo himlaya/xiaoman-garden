@@ -163,7 +163,9 @@
     refreshServiceWorker();
     showOverlay(remote);
     window.setTimeout(function () {
-      window.location.reload();
+      const url = new URL(window.location.href);
+      url.searchParams.set('_build', String(remote.build));
+      window.location.replace(url.toString());
     }, RELOAD_DELAY);
   }
 

@@ -29,7 +29,9 @@ const APP_SHELL = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(APP_SHELL))
+      .then((cache) => cache.addAll(APP_SHELL.map((url) =>
+        /\.(js|css)$/.test(url) ? url + '?v=' + CACHE_NAME.split('-').pop() : url
+      )))
       .then(() => self.skipWaiting())
   );
 });
@@ -58,7 +60,7 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(async () => {
-        const cached = await caches.match(request);
+        const cached = await caches.match(request, { ignoreSearch: true });
         if (cached) return cached;
         if (request.mode === 'navigate') {
           return caches.match('./index.html');
