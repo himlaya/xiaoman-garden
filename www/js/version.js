@@ -1,1 +1,1 @@
-window.XIAOMAN_VERSION = Object.freeze({ version: '0.5.8', build: 14 });
+window.XIAOMAN_VERSION = Object.freeze({ version: '0.5.9', build: 15 });

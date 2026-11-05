@@ -237,6 +237,13 @@
     const variant = state.item && Items ? Items.variantColors(state.flower, state.item) : null;
     const flower = variant ? Object.assign({}, state.flower, { colors: variant.colors }) : state.flower;
     const wear = variant ? variant.wear : 0;
+    const rarityRank = { '普通': 0, '少见': 1, '稀有': 2, '珍稀': 3 }[flower.rarity] || 0;
+    const gradeRank = variant ? Math.max(0, ['common', 'fine', 'rare', 'epic', 'legendary'].indexOf(variant.grade.id)) : 0;
+    const richness = rarityRank + gradeRank * 0.22;
+    const pattern = Number(variant ? variant.patternSeed : flower.id.split('').reduce(function (seed, letter) {
+      return (seed * 31 + letter.charCodeAt(0)) >>> 0;
+    }, 17)) >>> 0;
+    const phase = (pattern % 997) / 997 * TAU;
     const stage = state.stage;
     const reduced = prefersReducedMotion();
 
@@ -285,9 +292,13 @@
       const maxY = geometry.boundingBox.max.y;
       const span = Math.max(0.0001, maxY - minY);
       const currentColor = new THREE.Color();
+      const ivory = new THREE.Color(0xfff8e9);
       for (let i = 0; i < position.count; i += 1) {
         const t = Math.max(0, Math.min(1, (position.getY(i) - minY) / span));
-        currentColor.copy(from).lerp(to, t);
+        const edge = Math.min(1, Math.abs(position.getX(i)) / Math.max(0.001, geometry.boundingBox.max.x));
+        const vein = Math.pow(Math.max(0, Math.cos(position.getX(i) * 80 + t * 8)), 12);
+        currentColor.copy(from).lerp(to, Math.min(1, t * 0.85 + edge * 0.15));
+        currentColor.lerp(ivory, vein * t * 0.035 * richness);
         colors[i * 3] = currentColor.r;
         colors[i * 3 + 1] = currentColor.g;
         colors[i * 3 + 2] = currentColor.b;
@@ -297,35 +308,29 @@
     }
 
     function petalGeometry(length, width, kind) {
-      const shape = new THREE.Shape();
-      shape.moveTo(0, 0);
-      if (kind === 'round') {
-        shape.bezierCurveTo(-width, length * 0.22, -width * 1.02, length * 0.78, 0, length);
-        shape.bezierCurveTo(width * 1.02, length * 0.78, width, length * 0.22, 0, 0);
-      } else if (kind === 'wide') {
-        shape.bezierCurveTo(-width, length * 0.16, -width * 0.9, length * 0.86, 0, length * 0.92);
-        shape.bezierCurveTo(width * 0.9, length * 0.86, width, length * 0.16, 0, 0);
-      } else {
-        shape.bezierCurveTo(-width * 0.72, length * 0.2, -width * 0.48, length * 0.78, 0, length);
-        shape.bezierCurveTo(width * 0.48, length * 0.78, width * 0.72, length * 0.2, 0, 0);
+      const rows = 20;
+      const columns = 10;
+      const positions = [];
+      const indices = [];
+      const wide = kind === 'wide';
+      for (let row = 0; row <= rows; row++) {
+        const t = row / rows;
+        const outline = Math.pow(Math.sin(Math.PI * t), wide ? 0.45 : kind === 'pointed' ? 1.1 : 0.65);
+        for (let column = 0; column <= columns; column++) {
+          const across = column / columns * 2 - 1;
+          const ruffle = Math.sin(t * 17 + phase) * Math.pow(Math.abs(across), 4) * t * 0.018 * richness;
+          const cup = across * across * Math.sin(Math.PI * t) * (wide ? 0.24 : 0.13);
+          const curl = Math.pow(t, 4) * (wide ? -0.12 : 0.1) * (1 + richness * 0.15);
+          positions.push(across * width * outline, length * t, length * (cup + curl + ruffle));
+          if (row < rows && column < columns) {
+            const a = row * (columns + 1) + column;
+            indices.push(a, a + 1, a + columns + 1, a + 1, a + columns + 2, a + columns + 1);
+          }
+        }
       }
-      const geometry = new THREE.ExtrudeGeometry(shape, {
-        depth: 0.035,
-        bevelEnabled: true,
-        bevelThickness: 0.015,
-        bevelSize: 0.014,
-        bevelSegments: 2,
-        steps: 1,
-        curveSegments: 14
-      });
-      geometry.translate(0, 0, -0.0175);
-      const position = geometry.attributes.position;
-      for (let i = 0; i < position.count; i += 1) {
-        const x = position.getX(i);
-        const y = position.getY(i);
-        const edge = Math.min(1, Math.abs(x) / Math.max(0.001, width));
-        position.setZ(i, position.getZ(i) + edge * 0.075 + Math.sin(Math.min(1, y / length) * Math.PI) * 0.018);
-      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setIndex(indices);
       geometry.computeVertexNormals();
       return geometry;
     }
@@ -354,7 +359,8 @@
     }
 
     function addPot(root) {
-      const clay = mat({ color: 0xa66f51, roughness: 0.94, metalness: 0 });
+      const potColors = [0xa66f51, 0x819c86, 0x729da4, 0xeee4cf];
+      const clay = mat({ color: potColors[rarityRank], roughness: 0.94 - rarityRank * 0.2, metalness: 0 });
       const clayLight = mat({ color: 0xbd8561, roughness: 0.9 });
       const soilMat = mat({ color: 0x4d392a, roughness: 1 });
       const body = new THREE.Mesh(geo(new THREE.CylinderGeometry(0.78, 0.57, 0.64, 48, 1, false)), clay);
@@ -364,10 +370,23 @@
       rim.rotation.x = Math.PI / 2;
       rim.position.y = -0.89;
       root.add(rim);
-      const band = new THREE.Mesh(geo(new THREE.TorusGeometry(0.705, 0.011, 6, 48)), mat({ color: 0xeadcc3, roughness: 0.8 }));
+      const band = new THREE.Mesh(geo(new THREE.TorusGeometry(0.705, 0.011 + rarityRank * 0.005, 6, 48)), mat({
+        color: rarityRank >= 2 ? 0xcba76a : 0xeadcc3, roughness: 0.8 - rarityRank * 0.17, metalness: rarityRank >= 2 ? 0.55 : 0
+      }));
       band.rotation.x = Math.PI / 2;
       band.position.y = -1.24;
       root.add(band);
+      if (rarityRank >= 2) {
+        const ornamentGeo = geo(new THREE.OctahedronGeometry(0.025 + rarityRank * 0.004));
+        const ornamentMat = mat({ color: 0xd8b777, metalness: 0.55, roughness: 0.35 });
+        for (let i = 0; i < 12; i++) {
+          const angle = i / 12 * TAU;
+          const ornament = new THREE.Mesh(ornamentGeo, ornamentMat);
+          ornament.position.set(Math.cos(angle) * 0.69, -1.28, Math.sin(angle) * 0.69);
+          ornament.scale.y = 1.8;
+          root.add(ornament);
+        }
+      }
       const soil = new THREE.Mesh(geo(new THREE.CylinderGeometry(0.725, 0.665, 0.065, 48)), soilMat);
       soil.position.y = -0.85;
       root.add(soil);
@@ -405,7 +424,12 @@
     const shape = flower.shape || 'daisy';
     const leafMat = mat({ color: 0xffffff, vertexColors: true, roughness: 0.88, side: THREE.DoubleSide });
     const veinMat = mat({ color: flower.colors.leaf, roughness: 0.9 });
-    const petalMat = mat({ color: 0xffffff, vertexColors: true, roughness: 0.66, side: THREE.DoubleSide });
+    const petalMat = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff, vertexColors: true, roughness: 0.7 - richness * 0.075,
+      metalness: 0, clearcoat: Math.min(0.55, richness * 0.13), clearcoatRoughness: 0.32,
+      side: THREE.DoubleSide
+    });
+    mats.push(petalMat);
     const greenMat = mat({ color: flower.colors.leaf, roughness: 0.9, side: THREE.DoubleSide });
     const greenDark = mat({ color: flower.colors.stem, roughness: 0.92, side: THREE.DoubleSide });
     const centerMat = mat({ color: flower.colors.center, roughness: 0.76 });
@@ -447,7 +471,7 @@
       swayTarget = plant;
 
       const heights = { daisy: 1.28, tulip: 1.5, hyacinth: 1.3, rose: 1.12, sunflower: 1.68, hydrangea: 1.18, lily: 1.32 };
-      const fullTop = heights[shape] || 1.3;
+      const fullTop = (heights[shape] || 1.3) * (1 + Math.sin(phase) * 0.035);
       const stageScale = stage === 'sprout' ? 0.34 : stage === 'bud' ? 0.8 : 1;
       const top = fullTop * stageScale;
       const bendBase = shape === 'lily' ? 0.32 : shape === 'hyacinth' ? 0.14 : 0.08;
@@ -542,11 +566,11 @@
         const count = options.count;
         for (let i = 0; i < count; i += 1) {
           const pivot = new THREE.Group();
-          pivot.rotation.y = (i / count) * TAU + (options.offset || 0);
+          pivot.rotation.y = (i / count) * TAU + (options.offset || 0) + phase * 0.08;
           const petal = new THREE.Mesh(petals.geometry, petals.material);
           petal.rotation.x = options.tilt + Math.sin(i * 2.7) * 0.035 + wear * 0.34;
           petal.rotation.z = Math.sin(i * 1.9 + (options.offset || 0)) * 0.035;
-          const variation = 0.94 + ((i * 7) % 5) * 0.015;
+          const variation = 0.95 + Math.sin(i * 2.7 + phase) * 0.045;
           petal.scale.set(options.scale * variation * (1 - wear * 0.06), options.scale, options.scale);
           petal.position.y = options.y || 0;
           pivot.add(petal);
@@ -567,8 +591,11 @@
         const innerGeo = geo(paint(petalGeometry(big ? 0.86 : 0.62, big ? 0.2 : 0.17, 'round'), flower.colors.petalAlt, flower.colors.petal));
         const outer = { geometry: outerGeo, material: petalMat };
         const inner = { geometry: innerGeo, material: petalMat };
-        addPetalRing(head, outer, { count: big ? 24 : 20, tilt: 1.34, scale: 1, offset: 0.1 });
-        addPetalRing(head, inner, { count: big ? 18 : 15, tilt: 1.16, scale: 0.78, offset: 0.28, y: 0.035 });
+        addPetalRing(head, outer, { count: big ? 24 + Math.round(richness * 2) : 15 + gradeRank, tilt: 1.34, scale: 1, offset: 0.1 });
+        addPetalRing(head, inner, { count: big ? 20 : 10, tilt: 1.16, scale: 0.78, offset: 0.28, y: 0.035 });
+        if (big && richness >= 2) {
+          addPetalRing(head, inner, { count: 16, tilt: 1.42, scale: 0.94, offset: 0.49, y: -0.015 });
+        }
         addCenter(head, big ? 0.48 : 0.29, big ? 74 : 28, 0.05);
       }
 
@@ -591,6 +618,10 @@
           };
           addPetalRing(head, petal, layer);
         });
+        const spiralPetal = { geometry: geo(paint(petalGeometry(0.3, 0.19, 'wide'), flower.colors.petalAlt, flower.colors.petal)), material: petalMat };
+        for (let i = 0; i < 3 + Math.floor(richness); i++) {
+          addPetalRing(head, spiralPetal, { count: 3, tilt: 0.24 + i * 0.06, scale: 0.55 + i * 0.08, y: 0.17 + i * 0.012, offset: i * 0.8 });
+        }
         const bud = new THREE.Mesh(geo(new THREE.SphereGeometry(0.16, 16, 12)), centerAltMat);
         bud.scale.y = 0.84;
         bud.position.y = 0.18;
@@ -611,9 +642,9 @@
           geometry: geo(paint(petalGeometry(0.8, 0.32, 'round'), flower.colors.center, flower.colors.petal)),
           material: petalMat
         };
-        addPetalRing(head, petal, { count: 3, tilt: 0.84, scale: 1, offset: 0.1 });
-        addPetalRing(head, petal, { count: 3, tilt: 0.76, scale: 1, offset: 1.15 });
-        addPetalRing(head, innerPetal, { count: 3, tilt: 0.55, scale: 0.88, offset: 0.58, y: 0.04 });
+        addPetalRing(head, petal, { count: 3, tilt: 0.32, scale: 1, offset: 0.1 });
+        addPetalRing(head, petal, { count: 3, tilt: 0.42, scale: 0.94, offset: Math.PI / 3 + 0.1 });
+        if (gradeRank >= 3) addPetalRing(head, innerPetal, { count: 3, tilt: 0.2, scale: 0.85, offset: 0.58, y: 0.04 });
         for (let i = 0; i < 6; i += 1) {
           const stamen = new THREE.Mesh(geo(new THREE.SphereGeometry(0.026, 8, 6)), mat({ color: flower.colors.accent, roughness: 0.7 }));
           const angle = (i / 6) * TAU;
@@ -622,19 +653,28 @@
         }
       }
 
+      const floretCache = new Map();
       function makeFloret(size, petalColors) {
         const group = new THREE.Group();
-        const fGeo = geo(petalGeometry(size, size * 0.46, 'round'));
-        const fMat = mat({ color: petalColors[0], roughness: 0.7, side: THREE.DoubleSide });
-        const fMatAlt = mat({ color: petalColors[1], roughness: 0.7, side: THREE.DoubleSide });
+        const key = size + petalColors.join('');
+        if (!floretCache.has(key)) {
+          floretCache.set(key, {
+            geometry: geo(petalGeometry(size, size * 0.64, 'wide')),
+            materials: petalColors.map(function (color) {
+              return mat({ color: color, roughness: 0.64 - richness * 0.055, side: THREE.DoubleSide });
+            }),
+            center: geo(new THREE.SphereGeometry(size * 0.15, 6, 4))
+          });
+        }
+        const cached = floretCache.get(key);
         for (let i = 0; i < 4; i += 1) {
-          const petal = new THREE.Mesh(fGeo, i % 2 ? fMatAlt : fMat);
+          const petal = new THREE.Mesh(cached.geometry, cached.materials[i % 2]);
           petal.rotation.z = (i / 4) * TAU;
           petal.rotation.x = wear * 0.38;
           petal.scale.set(1, 1, 1);
           group.add(petal);
         }
-        const center = new THREE.Mesh(geo(new THREE.SphereGeometry(size * 0.2, 8, 6)), basic({ color: flower.colors.center }));
+        const center = new THREE.Mesh(cached.center, centerMat);
         center.position.z = 0.02;
         group.add(center);
         return group;
@@ -644,33 +684,46 @@
         const head = new THREE.Group();
         head.position.copy(headPosition);
         plant.add(head);
-        const count = 24;
+        const batches = new Map();
+        const count = 28 + Math.round(richness * 3);
         const radius = 0.62;
         for (let i = 0; i < count; i += 1) {
           const y = 1 - (i / (count - 1)) * 2;
           const ring = Math.sqrt(Math.max(0, 1 - y * y));
           const angle = i * 2.399963;
           const point = new THREE.Vector3(Math.cos(angle) * ring * radius, y * radius * 0.86, Math.sin(angle) * ring * radius);
-          const floret = makeFloret(0.25, i % 3 === 0 ? [flower.colors.center, flower.colors.petal] : [flower.colors.petal, flower.colors.petalAlt]);
+          const floret = makeFloret(0.23, i % 3 === 0 ? [flower.colors.center, flower.colors.petal] : [flower.colors.petal, flower.colors.petalAlt]);
           floret.position.copy(point);
           floret.lookAt(point.clone().multiplyScalar(2));
-          head.add(floret);
+          floret.updateMatrix();
+          floret.children.forEach(function (mesh) {
+            mesh.updateMatrix();
+            const key = mesh.geometry.id + ':' + mesh.material.id;
+            if (!batches.has(key)) batches.set(key, { geometry: mesh.geometry, material: mesh.material, matrices: [] });
+            batches.get(key).matrices.push(new THREE.Matrix4().multiplyMatrices(floret.matrix, mesh.matrix));
+          });
         }
+        batches.forEach(function (batch) {
+          const blooms = new THREE.InstancedMesh(batch.geometry, batch.material, batch.matrices.length);
+          batch.matrices.forEach(function (matrix, index) { blooms.setMatrixAt(index, matrix); });
+          head.add(blooms);
+        });
       }
 
       function buildHyacinth() {
         const cluster = new THREE.Group();
         plant.add(cluster);
-        const count = 15;
+        const count = 21 + Math.round(richness * 3);
         for (let i = 0; i < count; i += 1) {
           const t = 0.4 + (i / (count - 1)) * 0.58;
           const center = curve.getPoint(t);
           const angle = i * 2.399963 + 0.4;
           const ring = 0.27 * (1 - t * 0.55);
           const outward = new THREE.Vector3(Math.cos(angle), 0.18, Math.sin(angle)).normalize();
-          const floret = makeFloret(0.2, i % 4 === 0 ? [flower.colors.center, flower.colors.petal] : [flower.colors.petal, flower.colors.petalAlt]);
+          const floret = makeBell(0.2);
           floret.position.copy(center).addScaledVector(outward, ring);
           floret.lookAt(floret.position.clone().add(outward));
+          floret.rotateX(-Math.PI / 2);
           cluster.add(floret);
         }
         const tip = new THREE.Mesh(geo(new THREE.ConeGeometry(0.055, 0.28, 8)), greenDark);
@@ -679,26 +732,43 @@
         cluster.add(tip);
       }
 
+      let bellGeometry = null;
       function makeBell(size) {
         const group = new THREE.Group();
-        const bellGeo = geo(paint(petalGeometry(size, size * 0.45, 'round'), flower.colors.petalAlt, flower.colors.petal));
-        for (let i = 0; i < 5; i += 1) {
-          const pivot = new THREE.Group();
-          pivot.rotation.y = (i / 5) * TAU;
-          const petal = new THREE.Mesh(bellGeo, petalMat);
-          petal.rotation.x = 2.45;
-          pivot.add(petal);
-          group.add(pivot);
+        if (!bellGeometry) {
+          const points = [];
+          for (let i = 0; i <= 16; i++) {
+            const t = i / 16;
+            points.push(new THREE.Vector2(0.09 + Math.sin(t * Math.PI * 0.68) * 0.4, -t));
+          }
+          bellGeometry = geo(new THREE.LatheGeometry(points, 24));
+          const positions = bellGeometry.attributes.position;
+          for (let i = 0; i < positions.count; i++) {
+            const t = Math.max(0, -positions.getY(i));
+            const angle = Math.atan2(positions.getZ(i), positions.getX(i));
+            const scallop = Math.cos(angle * (shape === 'lily' ? 5 : 6));
+            const flare = Math.pow(t, 8);
+            positions.setXYZ(i,
+              positions.getX(i) * (1 + flare * 0.24),
+              positions.getY(i) + flare * scallop * 0.1,
+              positions.getZ(i) * (1 + flare * 0.24));
+          }
+          bellGeometry.computeVertexNormals();
+          paint(bellGeometry, flower.colors.petal, flower.colors.petalAlt);
         }
+        const bell = new THREE.Mesh(bellGeometry, petalMat);
+        bell.scale.setScalar(size);
+        group.add(bell);
         return group;
       }
 
       function buildLily() {
-        for (let i = 0; i < 7; i += 1) {
-          const t = 0.4 + i * 0.085;
+        const count = 7 + Math.min(3, gradeRank);
+        for (let i = 0; i < count; i += 1) {
+          const t = 0.38 + i / (count - 1) * 0.53;
           const anchor = curve.getPoint(t);
           const side = i % 2 === 0 ? 1 : -1;
-          const bell = makeBell(i === 6 ? 0.24 : 0.3);
+          const bell = makeBell(i === count - 1 ? 0.24 : 0.34);
           bell.position.set(anchor.x + side * 0.2, anchor.y - 0.04, anchor.z + (i % 3 === 0 ? 0.1 : -0.06));
           bell.rotation.z = side * 0.38;
           bell.rotation.y = i * 0.7;
@@ -740,6 +810,22 @@
       } else {
         buildDisc(false);
       }
+    }
+
+    if (rarityRank === 3 && stage === 'bloom') {
+      const dewGeo = geo(new THREE.SphereGeometry(0.018, 6, 4));
+      const dewMat = mat({ color: 0xfff7d5, roughness: 0.22, metalness: 0.15 });
+      const dew = new THREE.InstancedMesh(dewGeo, dewMat, 12);
+      const transform = new THREE.Object3D();
+      for (let i = 0; i < 12; i++) {
+        const angle = i * 2.399963 + phase;
+        const radius = 0.82 + Math.sin(i * 1.7 + phase) * 0.1;
+        transform.position.set(Math.cos(angle) * radius, -0.1 + (i / 12) * 1.25, Math.sin(angle) * radius);
+        transform.scale.setScalar(0.65 + (i % 3) * 0.25);
+        transform.updateMatrix();
+        dew.setMatrixAt(i, transform.matrix);
+      }
+      root.add(dew);
     }
 
     const cameraTarget = new THREE.Vector3(0, 0.06, 0);
