@@ -466,6 +466,7 @@
 
     let plant = null;
     let swayTarget = null;
+    let insectPerch = null;
     if (stage !== 'seed') {
       plant = new THREE.Group();
       plant.position.y = -0.82;
@@ -583,6 +584,12 @@
       const headPosition = curve.getPoint(1);
       headPosition.y += 0.015;
 
+      function setInsectPerch(parent, x, y, z) {
+        insectPerch = new THREE.Object3D();
+        insectPerch.position.set(x, y, z);
+        parent.add(insectPerch);
+      }
+
       function buildDisc(big) {
         const head = new THREE.Group();
         head.position.copy(headPosition);
@@ -599,6 +606,7 @@
           addPetalRing(head, inner, { count: 16, tilt: 1.42, scale: 0.94, offset: 0.49, y: -0.015 });
         }
         addCenter(head, big ? 0.48 : 0.29, big ? 74 : 28, 0.05);
+        setInsectPerch(head, 0.08, 0.19, 0.04);
       }
 
       function buildRose() {
@@ -628,6 +636,7 @@
         bud.scale.y = 0.84;
         bud.position.y = 0.18;
         head.add(bud);
+        setInsectPerch(head, 0.05, 0.34, 0.02);
       }
 
       function buildTulip() {
@@ -653,6 +662,7 @@
           stamen.position.set(Math.cos(angle) * 0.05, 0.11, Math.sin(angle) * 0.05);
           head.add(stamen);
         }
+        setInsectPerch(head, 0.25, 0.82, 0.08);
       }
 
       const floretCache = new Map();
@@ -710,6 +720,7 @@
           batch.matrices.forEach(function (matrix, index) { blooms.setMatrixAt(index, matrix); });
           head.add(blooms);
         });
+        setInsectPerch(head, 0.05, 0.62, 0.04);
       }
 
       function buildHyacinth() {
@@ -732,6 +743,8 @@
         tip.position.copy(headPosition);
         tip.position.y += 0.1;
         cluster.add(tip);
+        const perch = curve.getPoint(0.86);
+        setInsectPerch(cluster, perch.x + 0.15, perch.y, perch.z + 0.05);
       }
 
       let bellGeometry = null;
@@ -779,6 +792,7 @@
           pedicel.position.set(anchor.x + side * 0.09, anchor.y + 0.005, anchor.z);
           pedicel.rotation.z = side * 0.9;
           plant.add(pedicel);
+          if (i === count - 2) setInsectPerch(plant, bell.position.x, bell.position.y - 0.08, bell.position.z);
         }
       }
 
@@ -812,6 +826,91 @@
       } else {
         buildDisc(false);
       }
+    }
+
+    // Roll once per preview. Only one visitor can appear, after a quiet delay.
+    let visitor = null;
+    let visitorTime = 0;
+    let visitorDelay = 0;
+    let visitorWings = [];
+    let approachPath = null;
+    let departurePath = null;
+    let visitorKind = '';
+    if (insectPerch && stage === 'bloom' && !reduced && Math.random() < 0.08) {
+      const kinds = ['honeybee', 'bumblebee', 'hoverfly', 'butterfly', 'cabbage-white', 'ladybird', 'dragonfly'];
+      visitorKind = kinds[Math.floor(Math.random() * kinds.length)];
+      visitorDelay = 4 + Math.random() * 8;
+      visitor = new THREE.Group();
+      visitor.name = 'flower-visitor';
+      visitor.userData.kind = visitorKind;
+      visitor.visible = false;
+      insectPerch.add(visitor);
+      const sphere = geo(new THREE.SphereGeometry(1, 10, 8));
+      const dark = mat({ color: 0x292921, roughness: 0.65 });
+      const golden = mat({ color: visitorKind === 'bumblebee' ? 0xcda54b : 0xe5b143, roughness: 0.85 });
+      const wingMaterial = mat({
+        color: 0xe9f4ee, transparent: true, opacity: 0.48,
+        roughness: 0.3, side: THREE.DoubleSide, depthWrite: false
+      });
+      function oval(parent, material, x, y, z, width, height, length) {
+        const mesh = new THREE.Mesh(sphere, material);
+        mesh.position.set(x, y, z);
+        mesh.scale.set(width, height, length);
+        parent.add(mesh);
+        return mesh;
+      }
+      const butterfly = visitorKind === 'butterfly' || visitorKind === 'cabbage-white';
+      const dragonfly = visitorKind === 'dragonfly';
+      const ladybird = visitorKind === 'ladybird';
+      const bodyMaterial = dragonfly ? mat({ color: 0x438f9f, metalness: 0.35, roughness: 0.32 }) : dark;
+      oval(visitor, bodyMaterial, 0, 0.08, -0.045, dragonfly ? 0.027 : 0.065, dragonfly ? 0.027 : 0.06, dragonfly ? 0.23 : 0.12);
+      oval(visitor, dark, 0, 0.085, 0.12, dragonfly ? 0.062 : 0.048, 0.045, 0.047);
+      if (!butterfly && !dragonfly && !ladybird) {
+        const stripeGeometry = geo(new THREE.TorusGeometry(0.056, visitorKind === 'bumblebee' ? 0.022 : 0.013, 6, 16));
+        for (let i = 0; i < 3; i++) {
+          const stripe = new THREE.Mesh(stripeGeometry, golden);
+          stripe.position.set(0, 0.08, -0.1 + i * 0.065);
+          visitor.add(stripe);
+        }
+        if (visitorKind === 'bumblebee') visitor.scale.setScalar(1.2);
+        if (visitorKind === 'hoverfly') visitor.scale.set(0.75, 0.8, 1.15);
+      }
+      for (let side = -1; side <= 1; side += 2) {
+        oval(visitor, dark, side * 0.025, 0.14, 0.17, 0.005, 0.005, 0.043).rotation.x = -0.55;
+        for (let leg = 0; leg < 3; leg++) {
+          oval(visitor, dark, side * 0.06, 0.035, -0.07 + leg * 0.06, 0.054, 0.006, 0.007).rotation.z = side * 0.45;
+        }
+        const wing = new THREE.Group();
+        wing.position.set(side * 0.035, 0.11, 0.01);
+        visitor.add(wing);
+        visitorWings.push({ group: wing, side: side });
+        if (butterfly) {
+          const color = mat({ color: visitorKind === 'cabbage-white' ? 0xf5f1cf : 0xd89045, roughness: 0.65, side: THREE.DoubleSide });
+          oval(wing, dark, side * 0.15, 0, 0.04, 0.18, 0.012, 0.145);
+          oval(wing, color, side * 0.15, 0.006, 0.04, 0.161, 0.011, 0.13);
+          oval(wing, color, side * 0.12, 0, -0.13, 0.12, 0.013, 0.115);
+          for (let dot = 0; dot < 3; dot++) {
+            oval(wing, dark, side * (0.19 + dot * 0.035), 0.019, 0.04, 0.012, 0.004, 0.019);
+          }
+        } else if (ladybird) {
+          const red = mat({ color: 0xb94b3f, roughness: 0.3 });
+          oval(wing, red, side * 0.024, 0, -0.03, 0.045, 0.045, 0.093);
+          for (let dot = 0; dot < 3; dot++) {
+            oval(wing, dark, side * 0.038, 0.039, -0.08 + dot * 0.05, 0.013, 0.006, 0.014);
+          }
+        } else {
+          oval(wing, wingMaterial, side * (dragonfly ? 0.19 : 0.11), 0, 0.025, dragonfly ? 0.22 : 0.135, 0.006, dragonfly ? 0.045 : 0.075);
+          if (dragonfly) oval(wing, wingMaterial, side * 0.18, 0, -0.08, 0.2, 0.006, 0.04);
+        }
+      }
+      approachPath = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-2.8, 1.2, 1.1), new THREE.Vector3(-1.1, 0.55, 0.8),
+        new THREE.Vector3(0.35, 0.28, 0.4), new THREE.Vector3(0, 0.015, 0)
+      ]);
+      departurePath = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0, 0.015, 0), new THREE.Vector3(0.25, 0.38, 0.15),
+        new THREE.Vector3(1.4, 0.7, -0.4), new THREE.Vector3(3.1, 1.4, -1.5)
+      ]);
     }
 
     if (rarityRank === 3 && stage === 'bloom') {
@@ -946,6 +1045,30 @@
       if (state.disposed) return;
       const delta = Math.min(0.05, Math.max(0.001, (now - lastFrame) / 1000));
       lastFrame = now;
+      if (visitor && document.visibilityState !== 'hidden') {
+        visitorTime += delta;
+        const elapsed = visitorTime - visitorDelay;
+        visitor.visible = elapsed >= 0 && elapsed < 13;
+        if (visitor.visible) {
+          const landing = elapsed >= 4 && elapsed < 9;
+          if (landing) {
+            visitor.position.set(0, 0.015, 0);
+            visitor.rotation.y += Math.sin((elapsed - 4) * 0.8) * delta * 0.08;
+          } else {
+            const path = elapsed < 4 ? approachPath : departurePath;
+            const progress = elapsed < 4 ? elapsed / 4 : (elapsed - 9) / 4;
+            visitor.position.copy(path.getPoint(progress));
+            const tangent = path.getTangent(progress);
+            const turn = Math.atan2(tangent.x, tangent.z) - visitor.rotation.y;
+            visitor.rotation.y += Math.atan2(Math.sin(turn), Math.cos(turn)) * Math.min(1, delta * 7);
+          }
+          visitorWings.forEach(function (wing) {
+            const slow = visitorKind === 'butterfly' || visitorKind === 'cabbage-white';
+            const flutter = Math.sin(elapsed * (slow ? 18 : 110));
+            wing.group.rotation.z = wing.side * (landing ? slow ? 0.35 + Math.sin(elapsed * 2) * 0.12 : 0.06 : 0.3 + flutter * 0.75);
+          });
+        }
+      }
       if (autoRotate) orbit.azimuth += delta * 0.16;
       if (!reduced && plant) {
         plant.rotation.z = Math.sin(now * 0.00075) * 0.009;
