@@ -540,6 +540,10 @@
         '<span class="collection-shelf-copy"><strong>我的收藏品 · ' + stats.items + ' 件</strong><small>' + stats.seeds + ' 颗种子 · ' + stats.bouquets + ' 束成品花，每一件都有独立模板和品相</small></span>' +
         ICONS.arrow +
       '</button>' +
+      '<button class="collection-shelf" type="button" data-action="open-flower-shelf">' +
+        '<span class="collection-shelf-icon">' + ICONS.leaf + '</span>' +
+        '<span class="collection-shelf-copy"><strong>我的花架 · ' + stats.bouquets + ' 束</strong><small>把采摘的花摆上架，慢慢欣赏每一束</small></span>' + ICONS.arrow +
+      '</button>' +
       '<div class="album-grid">' + cards + '</div>' +
       '<p class="album-note">' + ICONS.leaf + ' 采摘过的花会留在手记里，再次种下也不会消失。</p>' +
     '</section>';
@@ -588,6 +592,21 @@
     return sheetHeader('COLLECTION', '我的收藏品') +
       '<p class="sheet-sub">每颗种子和每束花都是独立物品：品级、模板和品相会一直保留，也可以通过 3D 查看。</p>' +
       body;
+  }
+
+  function flowerShelfModal() {
+    const bouquets = sortedItems(Game.getItems()).filter(function (item) { return item.kind === 'bouquet'; });
+    const cards = bouquets.map(function (item) {
+      const flower = DATA.flowerMap[item.flowerId];
+      if (!flower) return '';
+      return '<button class="flower-shelf-bouquet" type="button" data-action="open-item-3d" data-item="' + esc(item.id) + '" aria-label="用3D欣赏' + esc(flower.name) + '">' +
+        itemPortrait(item) + '<strong>' + esc(flower.name) + '</strong>' + itemGradeBadge(item) +
+        '<small>' + esc(Items.templateById(item.templateId).label) + ' · 点击欣赏 3D</small></button>';
+    }).join('');
+    return sheetHeader('FLOWER SHELF', '我的花架') +
+      '<p class="sheet-sub">收藏每一次盛开。采摘后的成品花束会自动摆上花架。</p>' +
+      (cards ? '<div class="flower-display-shelf">' + cards + '</div>'
+        : '<div class="empty-pouch"><h3>花架还空着</h3><p>采摘第一束花后，来这里欣赏它吧。</p></div>');
   }
 
   function renderMarketScreen() {
@@ -869,6 +888,9 @@
       '</div>' +
       '<div class="settings-card">' +
         '<div class="settings-head"><h2>花园设置</h2><span>安静地种花</span></div>' +
+        (ACCOUNT ? '<div class="setting-row"><div class="setting-copy"><strong>留言反馈</strong><p>遇到问题，给花园留句话</p></div><a class="text-action simple" href="/feedback">去留言 ' + ICONS.arrow + '</a></div>' : '') +
+        (ACCOUNT && ACCOUNT.isAdmin ? '<div class="setting-row"><div class="setting-copy"><strong>管理员</strong><p>仅你可以查看所有留言</p></div><a class="text-action simple" href="/admin/feedback">反馈收件箱 ' + ICONS.arrow + '</a></div>' : '') +
+        '<div class="setting-row"><div class="setting-copy"><strong>更新内容</strong><p>看看花园最近的变化</p></div><button class="text-action simple" data-action="open-release-notes">查看 ' + ICONS.arrow + '</button></div>' +
         '<div class="setting-row name-row"><div class="setting-copy"><strong>花园名字</strong><p>' + renameHint + '</p></div>' +
           '<div class="name-edit"><input class="name-input" data-name-input maxlength="12" value="' + esc(state.player.name) + '" aria-label="输入花园名字"><button class="name-save" data-action="save-name"' + (rename.wait > 0 ? ' disabled' : '') + '>' + (rename.wait > 0 ? '冷却中' : rename.first ? '免费修改' : '3000 金币') + '</button></div>' +
         '</div>' +
@@ -989,6 +1011,14 @@
     if (current.type === 'plant') return plantModal(current.payload);
     if (current.type === 'harvest') return harvestModal(current.payload);
     if (current.type === 'inventory') return inventoryModal();
+    if (current.type === 'flower-shelf') return flowerShelfModal();
+    if (current.type === 'release-notes') {
+      const notes = window.XIAOMAN_RELEASE_NOTES;
+      return sheetHeader('GARDEN UPDATE', '花园又有新变化') +
+        '<p class="sheet-sub">v' + esc(notes.version) + '</p><ul class="release-changes">' +
+        notes.changes.map(function (change) { return '<li>' + esc(change) + '</li>'; }).join('') +
+        '</ul><button class="primary-button" data-action="close-modal">知道了，去看看</button>';
+    }
     if (current.type === 'market-list') return marketListModal(current.payload);
     if (current.type === 'market-buy') return marketBuyModal(current.payload);
     if (current.type === 'market-cancel') return marketCancelModal(current.payload);
@@ -1440,6 +1470,7 @@
   function finishIntro() {
     Game.setSetting('seenIntro', true);
     closeModal();
+    showReleaseNotes();
     highlightPot = true;
     renderAll({ resetScroll: false });
     showToast('先领一份签到礼，再种下第一颗种子吧。', { tone: 'info', duration: 3000 });
@@ -1494,6 +1525,8 @@
     'buy-pot': handleBuyPot,
     'open-pot-shop': function () { closeModal(); switchTab('shop'); },
     'open-inventory': function () { openModal('inventory'); },
+    'open-flower-shelf': function () { openModal('flower-shelf'); },
+    'open-release-notes': function () { openModal('release-notes'); },
     'open-item-3d': function (element) {
       const item = Game.getItem(element.dataset.item);
       if (item && window.Flower3D) Flower3D.openItem(item);
@@ -1753,6 +1786,17 @@
     });
   }
 
+  function showReleaseNotes() {
+    const notes = window.XIAOMAN_RELEASE_NOTES;
+    if (!notes || modalState) return;
+    const key = 'xiaoxiao-release-seen:' + (ACCOUNT ? ACCOUNT.id : 'offline');
+    try {
+      if (Number(window.localStorage.getItem(key)) >= notes.build) return;
+      window.localStorage.setItem(key, String(notes.build));
+    } catch (error) { /* Still show the update if storage is unavailable. */ }
+    openModal('release-notes');
+  }
+
   function init() {
     applyMotionPreference();
     renderBackdrop();
@@ -1769,6 +1813,7 @@
     lastSavedAt = Date.now();
     tickHandle = window.setInterval(handleTick, 1000);
     registerServiceWorker();
+    showReleaseNotes();
     if (boot.events.length && !Game.getState().settings.seenIntro) {
       /* 第一次打开时由引导承担开场，不打断。 */
     }

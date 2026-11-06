@@ -14,6 +14,7 @@ const dryRun = rawArgs.includes('--dry-run');
 const args = rawArgs.filter((arg) => arg !== '--dry-run');
 const version = args[0];
 const build = Number(args[1]);
+const changes = args.slice(2);
 
 if (!version || !/^\d+\.\d+\.\d+$/.test(version) || !Number.isInteger(build) || build <= 0) {
   console.error('用法：npm run version:set -- <版本号，例如 0.2.0> <递增构建号，例如 2> [--dry-run]');
@@ -96,6 +97,13 @@ plan('www/index.html', (text) => text.replace(
   /(src|href)="(\.\/(?:js|vendor|css)\/[^"?]+\.(?:js|css))(?:\?[^"]*)?"/g,
   '$1="$2?v=' + build + '"'
 ));
+
+plan('www/js/release-notes.js', () =>
+  'window.XIAOMAN_RELEASE_NOTES = ' + JSON.stringify({
+    version: version, build: build,
+    changes: changes.length ? changes : ['花园体验优化与问题修复。']
+  }, null, 2) + ';\n'
+);
 
 plan('www/sw.js', (text) => {
   if (!/const CACHE_NAME = '[^']*';/.test(text)) {

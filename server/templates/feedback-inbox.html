@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}反馈收件箱 · 小小花园{% endblock %}
+{% block content %}
+  <h1>反馈收件箱</h1>
+  <p class="auth-lead">仅你的管理员账号可以查看。</p>
+  {% for message in messages %}
+  <article class="feedback-message">
+    <strong>{{ message.username }}</strong>
+    <small>{{ message.created_at }}</small>
+    <p>{{ message.content }}</p>
+  </article>
+  {% else %}<p>暂时没有留言。</p>{% endfor %}
+  {% if next_id %}<p><a href="{{ url_for('feedback_inbox', before=next_id) }}">更早的留言</a></p>{% endif %}
+  <p class="auth-switch"><a href="{{ url_for('game') }}">返回花园</a></p>
+{% endblock %}

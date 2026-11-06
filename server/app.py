@@ -17,6 +17,7 @@ from functools import wraps
 from pathlib import Path
 
 from flask import (
+    abort,
     Flask,
     flash,
     g,
@@ -89,6 +90,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         PERMANENT_SESSION_LIFETIME=timedelta(days=14),
         SESSION_REFRESH_EACH_REQUEST=False,
         MAX_CONTENT_LENGTH=2 * 1024 * 1024,
+        ADMIN_USER_ID=int(test_config.get("ADMIN_USER_ID") or os.environ.get("GARDEN_ADMIN_USER_ID") or 0),
     )
     if test_config.get("TESTING"):
         app.config.update(TESTING=True)
@@ -155,6 +157,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             "csrfToken": csrf_token(),
             "database": app.config["DATABASE_LABEL"],
             "saveRevision": row["revision"] if row else 0,
+            "isAdmin": user["id"] == app.config["ADMIN_USER_ID"],
         }
         payload = {"account": account, "save": save_data}
         encoded = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
@@ -517,6 +520,43 @@ def create_app(test_config: dict | None = None) -> Flask:
             return jsonify({"ok": True, "save": None, "updatedAt": None, "revision": 0})
         return jsonify({"ok": True, "save": json.loads(row["payload"]), "updatedAt": row["updated_at"], "revision": row["revision"]})
 
+    @app.route("/feedback", methods=["GET", "POST"])
+    @login_required
+    def feedback():
+        content = ""
+        if request.method == "POST":
+            content = request.form.get("content", "").strip()
+            if not csrf_ok(request.form.get("csrf_token")):
+                flash("页面已过期，请重新提交。", "error")
+            elif not content or len(content) > 2000:
+                flash("请填写 1–2000 字的反馈内容。", "error")
+            else:
+                database = get_db()
+                since = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat(timespec="seconds")
+                count = database.execute("SELECT COUNT(*) AS total FROM feedback WHERE user_id = ? AND created_at > ?", (current_user()["id"], since)).fetchone()["total"]
+                if count >= 3:
+                    flash("提交得太快了，请稍等一分钟。", "error")
+                else:
+                    database.execute("INSERT INTO feedback (user_id, content, created_at) VALUES (?, ?, ?)", (current_user()["id"], content, utc_now()))
+                    database.commit()
+                    flash("已收到你的反馈，谢谢你帮助花园变得更好。", "success")
+                    return redirect(url_for("feedback"))
+        return render_template("feedback.html", content=content)
+
+    @app.get("/admin/feedback")
+    @login_required
+    def feedback_inbox():
+        if current_user()["id"] != app.config["ADMIN_USER_ID"]:
+            abort(403)
+        before = max(1, min(request.args.get("before", default=2**63 - 1, type=int), 2**63 - 1))
+        rows = get_db().execute(
+            """SELECT feedback.id, content, feedback.created_at, username
+            FROM feedback JOIN users ON users.id = feedback.user_id
+            WHERE feedback.id < ? ORDER BY feedback.id DESC LIMIT 50""",
+            (before,),
+        ).fetchall()
+        return render_template("feedback-inbox.html", messages=rows, next_id=rows[-1]["id"] if len(rows) == 50 else None)
+
     @app.get("/health")
     def health():
         return jsonify({"ok": True, "database": "postgresql" if cloud_db else "sqlite"})
@@ -541,7 +581,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     def security_headers(response):
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("Referrer-Policy", "same-origin")
-        if request.endpoint in {"game", "login", "register", "health", "ready", "api_get_save"}:
+        if request.endpoint in {"game", "login", "register", "health", "ready", "api_get_save", "feedback", "feedback_inbox"}:
             response.headers["Cache-Control"] = "no-store"
         return response
 

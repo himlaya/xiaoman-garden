@@ -2,7 +2,7 @@ name: Test PostgreSQL accounts and market
 
 on:
   push:
-    branches: [main, master, mobile-build]
+    branches: [main, master, mobile-build, web-feedback-shelf]
     paths:
       - 'server/**'
       - 'tests/test_server.py'

@@ -198,6 +198,7 @@
           const materials = Array.isArray(object.material) ? object.material : [object.material];
           materials.forEach(function (material) {
             if (material.map) material.map.dispose();
+            if (material.bumpMap) material.bumpMap.dispose();
             material.dispose();
           });
         }
@@ -359,8 +360,95 @@
     }
 
     function addPot(root) {
-      const potColors = [0xa66f51, 0x819c86, 0x729da4, 0xeee4cf];
-      const clay = mat({ color: potColors[rarityRank], roughness: 0.94 - rarityRank * 0.2, metalness: 0 });
+      const palettes = [
+        { body: 0xb97c60, rim: 0x587d73, ink: 0xf4e5c5, accent: 0xe3b36d },
+        { body: 0xd8c8a9, rim: 0x577f9b, ink: 0xf8edda, accent: 0xd99c78 },
+        { body: 0x93aaa0, rim: 0xf0dfbd, ink: 0x4d726c, accent: 0xc97b68 },
+        { body: 0xe8d9ca, rim: 0x526c8b, ink: 0xf5e9cb, accent: 0xcba75c },
+        { body: 0xc59a91, rim: 0x677d6e, ink: 0xf5e5cd, accent: 0xd9b76f },
+        { body: 0x7e9eac, rim: 0xe6d5b3, ink: 0x476477, accent: 0xbb8065 }
+      ];
+      const surfaces = [
+        { label: '陶土', roughness: 0.96, metalness: 0, clearcoat: 0, bump: 0.018 },
+        { label: '釉陶', roughness: 0.32, metalness: 0, clearcoat: 0.55, bump: 0.008 },
+        { label: '瓷器', roughness: 0.2, metalness: 0, clearcoat: 0.8, bump: 0.004 },
+        { label: '砂岩', roughness: 0.98, metalness: 0, clearcoat: 0, bump: 0.035 },
+        { label: '木纹', roughness: 0.82, metalness: 0, clearcoat: 0.08, bump: 0.02 },
+        { label: '铜器', roughness: 0.38, metalness: 0.72, clearcoat: 0.12, bump: 0.009 }
+      ];
+      const surfaceIndex = (pattern + rarityRank) % surfaces.length;
+      const surface = surfaces[surfaceIndex];
+      const palette = Object.assign({}, palettes[(rarityRank * 2 + pattern % 3) % palettes.length]);
+      if (surfaceIndex === 3) palette.body = 0xbcb9a7;
+      if (surfaceIndex === 4) palette.body = 0xa5825d;
+      if (surfaceIndex === 5) palette.body = 0xb77e5d;
+      const rgb = function (color) { return [color >> 16 & 255, color >> 8 & 255, color & 255]; };
+      const bodyColor = rgb(palette.body);
+      const rimColor = rgb(palette.rim);
+      const inkColor = rgb(palette.ink);
+      const accentColor = rgb(palette.accent);
+      const pixels = new Uint8Array(512 * 256 * 4);
+      const relief = new Uint8Array(pixels.length);
+      const motif = (rarityRank + pattern) % 3;
+      for (let y = 0; y < 256; y++) {
+        const v = y / 255;
+        for (let x = 0; x < 512; x++) {
+          const u = x / 512;
+          const inBand = v > 0.72;
+          let color = inBand ? rimColor : bodyColor;
+          const dx = ((u * 14) % 1 - 0.5) * 6;
+          const dy = (v - 0.855) / 0.075;
+          const radius = Math.hypot(dx, dy);
+          const angle = Math.atan2(dy, dx);
+          const leafX = dx * 0.7 + dy * 0.7;
+          const leafY = -dx * 0.7 + dy * 0.7;
+          const painted = motif === 0
+            ? Math.abs(dx) + Math.abs(dy) < 0.72
+            : motif === 1
+              ? leafX * leafX / 0.75 + leafY * leafY / 0.13 < 1
+              : radius < 0.61 + Math.cos(angle * 5) * 0.18;
+          if (inBand && painted) color = inkColor;
+          if (inBand && motif === 2 && radius < 0.2) color = accentColor;
+          if (Math.abs(v - 0.745) < 0.009 || Math.abs(v - 0.97) < 0.008 || Math.abs(v - 0.085) < 0.008) color = accentColor;
+          // Gentle variation resembles hand-applied glaze without changing on reopening.
+          const noise = Math.sin(x * 127.1 + y * 311.7 + phase) * 43758.5453;
+          const speckle = noise - Math.floor(noise);
+          const grain = (Math.sin(u * TAU * 29 + Math.sin(v * 17 + phase) * 2.2) + 1) * 0.5;
+          const texture = surfaceIndex === 4 ? grain : speckle;
+          const textureStrength = surfaceIndex === 3 ? 0.17 : surfaceIndex === 4 ? 0.2 : 0.025;
+          const shade = 0.96 + Math.sin(u * TAU * 3 + phase) * 0.018 + v * 0.035 + (texture - 0.5) * textureStrength;
+          const offset = (y * 512 + x) * 4;
+          for (let channel = 0; channel < 3; channel++) pixels[offset + channel] = Math.min(255, Math.round(color[channel] * shade));
+          pixels[offset + 3] = 255;
+          const height = Math.round(texture * 255);
+          relief[offset] = relief[offset + 1] = relief[offset + 2] = height;
+          relief[offset + 3] = 255;
+        }
+      }
+      const glaze = new THREE.DataTexture(pixels, 512, 256, THREE.RGBAFormat);
+      glaze.encoding = THREE.sRGBEncoding;
+      glaze.wrapS = THREE.RepeatWrapping;
+      glaze.magFilter = THREE.LinearFilter;
+      glaze.minFilter = THREE.LinearMipmapLinearFilter;
+      glaze.generateMipmaps = true;
+      glaze.needsUpdate = true;
+      const bumpMap = new THREE.DataTexture(relief, 512, 256, THREE.RGBAFormat);
+      bumpMap.wrapS = THREE.RepeatWrapping;
+      bumpMap.magFilter = THREE.LinearFilter;
+      bumpMap.needsUpdate = true;
+      const clay = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff, map: glaze, bumpMap: bumpMap, bumpScale: surface.bump,
+        roughness: surface.roughness, metalness: surface.metalness, clearcoat: surface.clearcoat,
+        clearcoatRoughness: 0.25
+      });
+      mats.push(clay);
+      const materialLabel = document.createElement ? state.overlay.querySelector('.flower3d-itemmeta') : null;
+      if (materialLabel) {
+        const chip = document.createElement('span');
+        chip.className = 'flower3d-meta-chip';
+        chip.textContent = surface.label + '花盆';
+        materialLabel.appendChild(chip);
+      }
       const soilMat = mat({ color: 0x4d392a, roughness: 1 });
       // Cross-sections include the inside wall and base so the rim has real thickness.
       const profiles = [
@@ -371,6 +459,11 @@
       ];
       const profile = profiles[rarityRank].map(function (point) { return new THREE.Vector2(point[0], point[1]); });
       const bodyGeometry = geo(new THREE.LatheGeometry(profile, 64));
+      const potPositions = bodyGeometry.attributes.position;
+      const potUV = bodyGeometry.attributes.uv;
+      for (let i = 0; i < potPositions.count; i++) {
+        potUV.setY(i, Math.max(0, Math.min(1, (potPositions.getY(i) + 1.48) / 0.72)));
+      }
       if (rarityRank === 2) {
         const positions = bodyGeometry.attributes.position;
         for (let i = 0; i < positions.count; i++) {
@@ -386,7 +479,7 @@
       const saucerProfile = [[0, -1.53], [0.71, -1.53], [0.85, -1.49], [0.86, -1.4], [0.82, -1.4], [0.79, -1.46], [0, -1.47]];
       const saucer = new THREE.Mesh(geo(new THREE.LatheGeometry(saucerProfile.map(function (p) {
         return new THREE.Vector2(p[0], p[1]);
-      }), 64)), clay);
+      }), 64)), mat({ color: palette.rim, roughness: 0.7 - rarityRank * 0.12 }));
       root.add(saucer);
       const soilRadius = [0.71, 0.65, 0.67, 0.64][rarityRank];
       const soil = new THREE.Mesh(geo(new THREE.CylinderGeometry(soilRadius, soilRadius, 0.035, 48)), soilMat);

@@ -41,6 +41,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS market_active_item
     ON market_listings(item_id) WHERE status = 'active';
 CREATE INDEX IF NOT EXISTS market_active_listings
     ON market_listings(status, created_at);
+
+CREATE TABLE IF NOT EXISTS feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS feedback_by_user ON feedback(user_id, created_at);
 """
 
 

@@ -141,6 +141,30 @@ class AccountServerTests(DatabaseTestCase):
         self.assertEqual(self._login("重复名字", "wrong-password").status_code, 200)
         self.assertIn("用户名或密码不正确", self._login("重复名字", "wrong-password").get_data(as_text=True))
 
+    def test_feedback_is_private_and_only_fixed_admin_can_read(self):
+        self.assertEqual(self.client.get("/admin/feedback").status_code, 302)
+        self._register("反馈用户")
+        self.assertFalse(self._account_payload()["account"]["isAdmin"])
+        self.assertEqual(self.client.get("/admin/feedback").status_code, 403)
+        self.assertEqual(self.client.post("/feedback", data={"content": "no csrf"}).status_code, 200)
+        page = self.client.get("/feedback").get_data(as_text=True)
+        token = self._csrf(page)
+        response = self.client.post("/feedback", data={"csrf_token": token, "content": "<script>private feedback</script>"})
+        self.assertEqual(response.status_code, 302)
+        self.assertNotIn("private feedback", self.client.get("/feedback").get_data(as_text=True))
+        self.assertEqual(self.client.get("/admin/feedback?before=2").status_code, 403)
+        sender = self.client
+        self.client = self.app.test_client()
+        self._register("管理员")
+        owner_id = self._account_payload()["account"]["id"]
+        self.app.config["ADMIN_USER_ID"] = owner_id
+        self.assertTrue(self._account_payload()["account"]["isAdmin"])
+        inbox = self.client.get("/admin/feedback")
+        self.assertEqual(inbox.status_code, 200)
+        self.assertIn("&lt;script&gt;private feedback&lt;/script&gt;", inbox.get_data(as_text=True))
+        self.assertEqual(inbox.headers["Cache-Control"], "no-store")
+        self.assertEqual(sender.get("/admin/feedback").status_code, 403)
+
     def test_remembered_login_persists_and_logout_clears_it(self):
         self._register()
         csrf = self._account_payload()["account"]["csrfToken"]
