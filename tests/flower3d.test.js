@@ -46,6 +46,11 @@ function preview(kind, options = {}) {
     stage: options.stage || 'bloom', cleanup: [],
     overlay: { querySelector: (selector) => selector.includes('canvas') ? canvas : selector.includes('shell') ? shell : null }
   };
+  if (options.patternSeed !== undefined) {
+    state.item = window.GardenItems.createBouquet(state.flower, {}, { ratio: 1 }, {
+      id: 'porcelain-test', patternSeed: options.patternSeed, grade: 'rare'
+    });
+  }
   if (options.rack) {
     state.shelfItems = options.empty ? [] : window.GameData.flowers.map((flower, index) =>
       window.GardenItems.createBouquet(flower, {}, { ratio: 1 }, { id: 'shelf-' + index, patternSeed: index + 10, grade: 'rare' })
@@ -121,4 +126,32 @@ test('visitor probability is 8% and reduced motion or immature plants suppress i
   const scene = preview(0, { roll: 0.079 });
   assert(scene.visitor);
   scene.dispose();
+});
+
+
+test('porcelain families are reachable, retain smooth glaze and keep stable pigments', () => {
+  for (const [patternSeed, label, channel] of [[2, '青花瓷', 2], [8, '粉彩瓷', 0], [14, '青瓷', 1]]) {
+    const scene = preview(0, { flower: 'daisy', patternSeed });
+    let material;
+    scene.state.scene.traverse((object) => {
+      if (object.material?.name === 'pot-' + label) material = object.material;
+    });
+    assert(material, label + ' must be available');
+    assert(material.clearcoat >= 0.65);
+    assert(material.bumpScale <= 0.001);
+    const pixels = material.map.image.data;
+    let painted = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      if (pixels[i + channel] > pixels[i + (channel + 1) % 3] + 15) painted++;
+    }
+    assert(painted > 100, label + ' must have its own pigment colour');
+    const again = preview(0, { flower: 'daisy', patternSeed });
+    let repeated;
+    again.state.scene.traverse((object) => {
+      if (object.material?.name === material.name) repeated = object.material.map.image.data;
+    });
+    assert.deepEqual(Buffer.from(pixels), Buffer.from(repeated));
+    scene.dispose();
+    again.dispose();
+  }
 });

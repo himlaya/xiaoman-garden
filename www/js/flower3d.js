@@ -573,10 +573,22 @@
         { label: '铜器', roughness: 0.38, metalness: 0.55, clearcoat: 0.12, bump: 0.002 }
       ];
       const surfaceIndex = (pattern + rarityRank) % surfaces.length;
-      const surface = surfaces[surfaceIndex];
+      const surface = Object.assign({}, surfaces[surfaceIndex]);
+      // Divide out the material cycle so each porcelain family can occur at every rarity.
+      const porcelain = surfaceIndex === 2 ? Math.floor(pattern / surfaces.length) % 3 : -1;
+      const china = [
+        { label: '青花瓷', body: 0xf0eee5, ink: 0x24528b, accent: 0x557ba0 },
+        { label: '粉彩瓷', body: 0xf3eade, ink: 0xbd7784, accent: 0x7a987b },
+        { label: '青瓷', body: 0xa9c7b4, ink: 0x7d9e8b, accent: 0x91b09c }
+      ][porcelain];
+      if (china) {
+        surface.label = china.label;
+        surface.roughness = porcelain === 2 ? 0.26 : 0.2;
+        surface.clearcoat = porcelain === 2 ? 0.65 : 0.8;
+      }
       const palette = Object.assign({}, palettes[(rarityRank * 2 + pattern % 3) % palettes.length]);
       if (surfaceIndex === 0) palette.body = [0xb77e61, 0xc38b6b, 0xa96f54][pattern % 3];
-      if (surfaceIndex === 2) palette.body = [0xede8dc, 0xe2e9e2, 0xe4e8e9][pattern % 3];
+      if (china) Object.assign(palette, { body: china.body, rim: china.ink, accent: china.accent });
       if (surfaceIndex === 3) palette.body = 0xbcb9a7;
       if (surfaceIndex === 4) palette.body = 0xa5825d;
       if (surfaceIndex === 5) palette.body = 0xb77e5d;
@@ -600,8 +612,42 @@
           const blossom = Math.hypot(dx, dy) < 0.42 + Math.cos(Math.atan2(dy, dx) * 5) * 0.09;
           const painted = band && (motif === 0 ? leaf : motif === 1 ? blossom : Math.abs(dy) < 0.16);
           const line = ceramic && (Math.abs(v - 0.825) < 0.003 || Math.abs(v - 0.947) < 0.003);
-          const pigment = painted ? rimColor : accentColor;
-          const pigmentAmount = painted ? 0.48 : line ? 0.3 : 0;
+          let pigment = painted ? rimColor : accentColor;
+          let pigmentAmount = painted ? 0.48 : line ? 0.3 : 0;
+          if (china) {
+            // Continuous scrolling stem with alternating leaves and six-petal floral medallions.
+            // All paint is colour only, beneath a smooth glaze, never raised pixel relief.
+            const t = u * TAU * 6;
+            const stem = 0.47 + Math.sin(t) * 0.065;
+            const stemLine = Math.abs(v - stem) < 0.004 && v > 0.31 && v < 0.64;
+            const lx = ((u * 12) % 1 - 0.5) * 2;
+            const leafCenter = 0.47 + Math.sin(t) * 0.065 + Math.cos(t) * 0.048;
+            const ly = (v - leafCenter) / 0.055;
+            const leafShape = lx * lx / 0.55 + (ly + lx * 0.65) ** 2 < 1;
+            const fx = ((u * 6) % 1 - 0.5) * 2;
+            const fy = (v - 0.61) / 0.085;
+            const radius = Math.hypot(fx * 1.6, fy);
+            const petalEdge = 0.65 + Math.cos(Math.atan2(fy, fx * 1.6) * 6) * 0.18;
+            const flowerPaint = radius < petalEdge;
+            const outline = flowerPaint && radius > petalEdge - 0.1;
+            const rings = [0.13, 0.15, 0.795, 0.815, 0.94].some(function (height) { return Math.abs(v - height) < 0.003; });
+            const wave = Math.abs(v - (0.867 + Math.sin(u * TAU * 18) * 0.012)) < 0.003;
+            pigmentAmount = 0;
+            if (porcelain === 0) {
+              pigment = rimColor;
+              if (rings || wave || stemLine || leafShape) pigmentAmount = 0.76;
+              if (flowerPaint) pigmentAmount = outline ? 0.88 : 0.29 + Math.cos(radius * 22) * 0.07;
+            } else if (porcelain === 1) {
+              pigment = stemLine || leafShape || rings ? accentColor : rimColor;
+              if (rings || wave || stemLine || leafShape) pigmentAmount = 0.58;
+              if (flowerPaint) { pigment = rimColor; pigmentAmount = outline ? 0.67 : 0.26 + (1 - radius) * 0.21; }
+              if (radius < 0.13) { pigment = [195, 162, 97]; pigmentAmount = 0.7; }
+            } else {
+              // Restrained carved-flower impression in a single jade-green glaze.
+              pigment = rimColor;
+              if (rings || stemLine || (leafShape && Math.abs(ly + lx * 0.65) > 0.64) || outline) pigmentAmount = 0.2;
+            }
+          }
           const color = bodyColor.map(function (channel, i) {
             return channel * (1 - pigmentAmount) + pigment[i] * pigmentAmount;
           });
