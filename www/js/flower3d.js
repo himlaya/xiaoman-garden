@@ -76,8 +76,11 @@
     const flower = options.flower;
     const item = options.item || null;
     const stage = STAGES.includes(options.stage) ? options.stage : 'bloom';
-    const trigger = document.activeElement;
+    const trigger = options.trigger || document.activeElement;
     const quality = item && Items ? Items.gradeById(item.grade) : { id: 'common', label: '花种预览', color: '#748773' };
+    const canPreviewQuality = options.kind === 'album' && window.FlowerForms.canPreview();
+    const previewGrade = item ? quality.id : (canPreviewQuality ? options.previewGrade || 'common' : 'common');
+    const form = window.FlowerForms.get(flower.id, previewGrade);
     const overlay = document.createElement('div');
     overlay.className = 'flower3d-overlay';
     overlay.setAttribute('data-flower3d', '1');
@@ -118,6 +121,12 @@
         '<span class="flower3d-meta-chip">' + esc(template.label) + '模板 · #' + (Number(item.patternSeed) >>> 0) + '</span>' +
         '<span class="wear-badge ' + esc(wear.className) + '">' + esc(wear.label) + ' ' + Number(item.wear).toFixed(3) + '</span>';
     }
+    if (options.kind !== 'shelf') {
+      const formLabel = document.createElement('span');
+      formLabel.className = 'flower3d-meta-chip';
+      formLabel.textContent = '花型 · ' + form.label;
+      metaEl.appendChild(formLabel);
+    }
     const isItemView = !!item;
     overlay.querySelector('.flower3d-stage-label').textContent = isItemView
       ? (item.kind === 'seed' ? '基因预览 · 种子也独一无二' : '成品花束 · 品相已定格')
@@ -130,7 +139,25 @@
 
     const stageIndex = STAGES.indexOf(stage);
     const stageEl = overlay.querySelector('.flower3d-stages');
-    if (isItemView) {
+    if (canPreviewQuality) {
+      stageEl.classList.add('flower3d-quality-picker');
+      stageEl.setAttribute('aria-label', '预览同一花种的五种品质花型');
+      DATA.itemGrades.forEach(function (grade) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'flower3d-quality grade-' + grade.id;
+        button.textContent = grade.label;
+        button.setAttribute('aria-pressed', String(previewGrade === grade.id));
+        button.addEventListener('click', function () {
+          if (previewGrade !== grade.id) openViewer(Object.assign({}, options, { previewGrade: grade.id, trigger: trigger }));
+        });
+        stageEl.appendChild(button);
+      });
+      overlay.querySelector('.flower3d-stage-label').textContent = '同种花 · 五种品质花型';
+      overlay.querySelector('.flower3d-progress').textContent = '切换欣赏';
+      rarityEl.textContent = Items.gradeById(previewGrade).label;
+      rarityEl.className = 'flower3d-rarity grade-' + previewGrade;
+    } else if (isItemView) {
       stageEl.style.display = 'none';
     } else {
       STAGES.forEach(function (item, index) {
@@ -153,10 +180,11 @@
 
     const state = {
       overlay: overlay,
-      trigger: trigger,
+      trigger: options.trigger || trigger,
       closeButton: closeButton,
       flower: flower,
       item: item,
+      previewGrade: previewGrade,
       stage: stage,
       kind: options.kind,
       shelfItems: options.shelfItems,
@@ -421,7 +449,7 @@
     const variant = state.item && Items ? Items.variantColors(state.flower, state.item) : null;
     const flower = variant ? Object.assign({}, state.flower, { colors: variant.colors }) : state.flower;
     const wear = variant ? variant.wear : 0;
-    const richness = 1.4;
+    const form = window.FlowerForms.get(flower.id, state.item ? state.item.grade : state.previewGrade);
     const pattern = Number(variant ? variant.patternSeed : flower.id.split('').reduce(function (seed, letter) {
       return (seed * 31 + letter.charCodeAt(0)) >>> 0;
     }, 17)) >>> 0;
@@ -527,11 +555,11 @@
         const outline = Math.pow(Math.sin(Math.PI * t), wide ? 0.45 : kind === 'pointed' ? 1.1 : 0.65);
         for (let column = 0; column <= columns; column++) {
           const across = column / columns * 2 - 1;
-          const ruffle = Math.sin(t * 23 + across * 9 + phase) * Math.pow(Math.abs(across), 4) * t * (kind === 'ruffled' ? 0.11 : 0.014);
+          const ruffle = Math.sin(t * 23 + across * 9 + phase) * Math.pow(Math.abs(across), 4) * t * (kind === 'ruffled' ? 0.09 + form.ruffle : form.ruffle);
           const tooth = kind === 'ruffled' ? 1 + Math.cos(across * 32) * Math.pow(t, 8) * 0.07 : 1;
-          const cup = across * across * Math.sin(Math.PI * t) * (wide ? 0.24 : 0.13);
-          const curl = Math.pow(t, 4) * (wide ? -0.12 : 0.1) * (1 + richness * 0.15);
-          positions.push(across * width * outline, length * t * tooth, length * (cup + curl + ruffle));
+          const cup = across * across * Math.sin(Math.PI * t) * (wide ? 0.24 : 0.13) * form.cup;
+          const curl = Math.pow(t, 4) * (wide ? -0.12 : 0.1) * form.curl;
+          positions.push(across * width * outline * form.width, length * t * tooth, length * (cup + curl + ruffle));
           uvs.push(column / columns, t);
           if (row < rows && column < columns) {
             const a = row * (columns + 1) + column;
@@ -881,6 +909,9 @@
     const root = new THREE.Group();
     root.name = 'flower-model-' + flower.id;
     root.userData.species = flower.id;
+    root.userData.modelId = form.modelId;
+    root.userData.quality = form.grade;
+    root.userData.flowerForm = form.label;
     scene.add(root);
     addPot(root);
     if (stage === 'seed') {
@@ -897,11 +928,11 @@
       swayTarget = plant;
 
       const heights = { daisy: 1.28, tulip: 1.5, hyacinth: 1.3, rose: 1.12, sunflower: 1.68, hydrangea: 1.18, lily: 1.32, cosmos: 1.48, carnation: 1.4, peony: 1.22, iris: 1.6, orchid: 1.48 };
-      const fullTop = (heights[shape] || 1.3) * (1 + Math.sin(phase) * 0.035);
+      const fullTop = (heights[shape] || 1.3) * (1 + Math.sin(phase) * 0.035) * form.height;
       const stageScale = stage === 'sprout' ? 0.34 : stage === 'bud' ? 0.8 : 1;
       const top = fullTop * stageScale;
       const bendBase = shape === 'lily' ? 0.32 : shape === 'hyacinth' ? 0.14 : 0.08;
-      const bend = bendBase * stageScale;
+      const bend = bendBase * stageScale * form.bend;
       const curve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(0, 0, 0),
         new THREE.Vector3(bend * 0.18, top * 0.28, 0.015),
@@ -951,8 +982,8 @@
         const leafGroup = new THREE.Group();
         leafGroup.position.copy(base);
         leafGroup.rotation.y = spec[1];
-        leafGroup.rotation.z = spec[2];
-        leafGroup.rotation.x = 0.12;
+        leafGroup.rotation.z = spec[2] + Math.sign(spec[2]) * form.leafLift;
+        leafGroup.rotation.x = 0.12 + form.leafLift;
         const leafMesh = new THREE.Mesh(geo(paint(leafGeometry(length, width), flower.colors.stem, flower.colors.leaf)), leafMat);
         leafGroup.add(leafMesh);
         const vein = new THREE.Mesh(geo(new THREE.CylinderGeometry(0.006, 0.009, length * 0.78, 4)), veinMat);
@@ -999,7 +1030,7 @@
           const pivot = new THREE.Group();
           pivot.rotation.y = (i / count) * TAU + (options.offset || 0) + phase * 0.08;
           const petal = new THREE.Mesh(petals.geometry, petals.material);
-          petal.rotation.x = options.tilt + Math.sin(i * 2.7) * 0.035 + wear * 0.34;
+          petal.rotation.x = options.tilt + form.opening + Math.sin(i * 2.7) * 0.035 + wear * 0.34;
           petal.rotation.z = Math.sin(i * 1.9 + (options.offset || 0)) * 0.035;
           const variation = 0.95 + Math.sin(i * 2.7 + phase) * 0.045;
           petal.scale.set(options.scale * variation * (1 - wear * 0.06), options.scale, options.scale);
@@ -1028,10 +1059,11 @@
         const innerGeo = geo(paint(petalGeometry(big ? 0.86 : 0.62, big ? 0.2 : 0.17, 'round'), flower.colors.petalAlt, flower.colors.petal));
         const outer = { geometry: outerGeo, material: petalMat };
         const inner = { geometry: innerGeo, material: petalMat };
-        addPetalRing(head, outer, { count: big ? 28 : 18, tilt: 1.34, scale: 1, offset: 0.1 });
-        addPetalRing(head, inner, { count: big ? 20 : 10, tilt: 1.16, scale: 0.78, offset: 0.28, y: 0.035 });
-        if (big && richness >= 2) {
-          addPetalRing(head, inner, { count: 16, tilt: 1.42, scale: 0.94, offset: 0.49, y: -0.015 });
+        for (let ring = 0; ring < form.rings; ring++) {
+          addPetalRing(head, ring === 0 ? outer : inner, {
+            count: Math.max(8, form.petals - ring * 4), tilt: 1.34 - ring * 0.13,
+            scale: 1 - ring * 0.12, offset: 0.1 + ring * 0.19, y: ring * 0.038
+          });
         }
         addCenter(head, big ? 0.48 : 0.29, big ? 74 : 28, 0.05);
         setInsectPerch(head, 0.08, 0.19, 0.04);
@@ -1049,7 +1081,8 @@
           { count: 7, len: 0.6, width: 0.38, tilt: 0.76, scale: 0.9, y: 0.08, offset: 0.2, colors: [flower.colors.petalAlt, flower.colors.petal] },
           { count: 5, len: 0.4, width: 0.28, tilt: 0.48, scale: 0.82, y: 0.11, offset: 0.6, colors: [flower.colors.petal, flower.colors.center] }
         ];
-        layers.forEach(function (layer) {
+        layers.push({ count: 7, len: 0.5, width: 0.33, tilt: 0.62, scale: 0.92, y: 0.14, offset: 0.85, colors: [flower.colors.petalAlt, flower.colors.petal] });
+        layers.slice(0, form.layers).forEach(function (layer) {
           const petal = {
             geometry: geo(paint(petalGeometry(layer.len, layer.width, 'wide'), layer.colors[0], layer.colors[1])),
             material: petalMat
@@ -1057,7 +1090,7 @@
           addPetalRing(head, petal, layer);
         });
         const spiralPetal = { geometry: geo(paint(petalGeometry(0.3, 0.19, 'wide'), flower.colors.petalAlt, flower.colors.petal)), material: petalMat };
-        for (let i = 0; i < 3 + Math.floor(richness); i++) {
+        for (let i = 0; i < form.core; i++) {
           addPetalRing(head, spiralPetal, { count: 3, tilt: 0.24 + i * 0.06, scale: 0.55 + i * 0.08, y: 0.17 + i * 0.012, offset: i * 0.8 });
         }
         const bud = new THREE.Mesh(geo(new THREE.SphereGeometry(0.16, 16, 12)), centerAltMat);
@@ -1074,11 +1107,13 @@
         plant.add(head);
         addCalyx(head, -0.025, 0.9);
         const petal = {
-          geometry: geo(paint(petalGeometry(0.94, 0.38, 'round'), flower.colors.petalAlt, flower.colors.petal)),
+          geometry: geo(paint(petalGeometry(0.94, 0.38, form.kind), flower.colors.petalAlt, flower.colors.petal)),
           material: petalMat
         };
-        addPetalRing(head, petal, { count: 3, tilt: 0.32, scale: 1, offset: 0.1 });
-        addPetalRing(head, petal, { count: 3, tilt: 0.42, scale: 0.94, offset: Math.PI / 3 + 0.1 });
+        for (let ring = 0; ring < form.rings; ring++) {
+          addPetalRing(head, petal, { count: 3, tilt: form.tilt - ring * 0.07,
+            scale: 1 - ring * 0.11, offset: ring * Math.PI / 3 + 0.1, y: ring * 0.025 });
+        }
 
         for (let i = 0; i < 6; i += 1) {
           const stamen = new THREE.Mesh(geo(new THREE.SphereGeometry(0.026, 8, 6)), mat({ color: flower.colors.accent, roughness: 0.7 }));
@@ -1108,11 +1143,12 @@
           });
         }
         const cached = floretCache.get(key);
-        for (let i = 0; i < 4; i += 1) {
+        for (let i = 0; i < (form.double ? 8 : 4); i += 1) {
           const petal = new THREE.Mesh(cached.geometry, cached.materials[i % 2]);
-          petal.rotation.z = (i / 4) * TAU;
+          petal.rotation.z = (i / 4) * TAU + (i >= 4 ? Math.PI / 4 : 0);
           petal.rotation.x = wear * 0.38;
-          petal.scale.set(1, 1, 1);
+          petal.scale.setScalar(i >= 4 ? 0.72 : 1);
+          if (i >= 4) petal.position.z = 0.015;
           group.add(petal);
         }
         const center = new THREE.Mesh(cached.center, centerMat);
@@ -1126,13 +1162,13 @@
         head.position.copy(headPosition);
         plant.add(head);
         const batches = new Map();
-        const count = 28 + Math.round(richness * 3);
+        const count = form.florets;
         const radius = 0.62;
         for (let i = 0; i < count; i += 1) {
           const y = 1 - (i / (count - 1)) * 2;
           const ring = Math.sqrt(Math.max(0, 1 - y * y));
           const angle = i * 2.399963;
-          const point = new THREE.Vector3(Math.cos(angle) * ring * radius, y * radius * 0.86, Math.sin(angle) * ring * radius);
+          const point = new THREE.Vector3(Math.cos(angle) * ring * radius, y * radius * form.roundness, Math.sin(angle) * ring * radius);
           const floret = makeFloret(0.23, i % 3 === 0 ? [flower.colors.center, flower.colors.petal] : [flower.colors.petal, flower.colors.petalAlt]);
           floret.position.copy(point);
           floret.lookAt(point.clone().multiplyScalar(2));
@@ -1149,18 +1185,18 @@
           batch.matrices.forEach(function (matrix, index) { blooms.setMatrixAt(index, matrix); });
           head.add(blooms);
         });
-        setInsectPerch(head, 0.05, 0.62, 0.04);
+        setInsectPerch(head, 0.05, radius * form.roundness + 0.09, 0.04);
       }
 
       function buildHyacinth() {
         const cluster = new THREE.Group();
         plant.add(cluster);
-        const count = 21 + Math.round(richness * 3);
+        const count = form.florets;
         for (let i = 0; i < count; i += 1) {
           const t = 0.4 + (i / (count - 1)) * 0.58;
           const center = curve.getPoint(t);
           const angle = i * 2.399963 + 0.4;
-          const ring = 0.27 * (1 - t * 0.55);
+          const ring = 0.27 * (1 - t * 0.55) * form.spread;
           const outward = new THREE.Vector3(Math.cos(angle), 0.18, Math.sin(angle)).normalize();
           const floret = makeBell(0.2);
           floret.position.copy(center).addScaledVector(outward, ring);
@@ -1193,9 +1229,9 @@
             const scallop = Math.cos(angle * (shape === 'lily' ? 5 : 6));
             const flare = Math.pow(t, 8);
             positions.setXYZ(i,
-              positions.getX(i) * (1 + flare * 0.24),
-              positions.getY(i) + flare * scallop * 0.1,
-              positions.getZ(i) * (1 + flare * 0.24));
+              positions.getX(i) * (1 + flare * 0.24 * form.cup),
+              positions.getY(i) + flare * scallop * 0.1 * form.curl,
+              positions.getZ(i) * (1 + flare * 0.24 * form.cup));
           }
           bellGeometry.computeVertexNormals();
           bellGeometry.userData.botanical = 'petal';
@@ -1204,17 +1240,24 @@
         const bell = new THREE.Mesh(bellGeometry, petalMat);
         bell.scale.setScalar(size);
         group.add(bell);
+        if (form.double) {
+          const inner = new THREE.Mesh(bellGeometry, petalMat);
+          inner.scale.setScalar(size * 0.82);
+          inner.rotation.y = Math.PI / 6;
+          inner.position.y = -size * 0.12;
+          group.add(inner);
+        }
         return group;
       }
 
       function buildLily() {
-        const count = 8 + pattern % 3;
+        const count = form.bells;
         for (let i = 0; i < count; i += 1) {
           const t = 0.38 + i / (count - 1) * 0.53;
           const anchor = curve.getPoint(t);
           const side = i % 2 === 0 ? 1 : -1;
-          const bell = makeBell(i === count - 1 ? 0.24 : 0.34);
-          bell.position.set(anchor.x + side * 0.2, anchor.y - 0.04, anchor.z + (i % 3 === 0 ? 0.1 : -0.06));
+          const bell = makeBell((i === count - 1 ? 0.24 : 0.34) * form.bellSize);
+          bell.position.set(anchor.x + side * 0.2 * form.spread, anchor.y - 0.04, anchor.z + (i % 3 === 0 ? 0.1 : -0.06));
           bell.rotation.z = side * 0.38;
           bell.rotation.y = i * 0.7;
           plant.add(bell);
@@ -1233,7 +1276,7 @@
         head.rotation.x = 0.16;
         plant.add(head);
         addCalyx(head, -0.04, carnation ? 0.85 : 1.2);
-        const layers = carnation ? 5 : 6;
+        const layers = form.layers;
         for (let layer = 0; layer < layers; layer++) {
           const length = (carnation ? 0.66 : 0.94) * (1 - layer * 0.105);
           const petals = {
@@ -1257,7 +1300,10 @@
         plant.add(head);
         addCalyx(head, -0.04, 0.7);
         const petals = { geometry: geo(paint(petalGeometry(0.85, 0.32, 'wide'), flower.colors.petalAlt, flower.colors.petal)), material: petalMat };
-        addPetalRing(head, petals, { count: 8, tilt: 1.35, scale: 1, offset: 0.12 });
+        for (let ring = 0; ring < form.rings; ring++) {
+          addPetalRing(head, petals, { count: form.petals, tilt: 1.35 - ring * 0.16,
+            scale: 1 - ring * 0.16, offset: 0.12 + ring * 0.3, y: ring * 0.035 });
+        }
         addCenter(head, 0.21, 36, 0.025);
         // Divided foliage branches in pairs along the slender stem.
         for (let i = 0; i < 8; i++) {
@@ -1277,10 +1323,10 @@
         plant.add(head);
         const standards = { geometry: geo(paint(petalGeometry(0.86, 0.24, 'wide'), flower.colors.petalAlt, flower.colors.petal)), material: petalMat };
         const falls = { geometry: geo(paint(petalGeometry(0.94, 0.3, 'wide'), flower.colors.centerAlt, flower.colors.petal)), material: petalMat };
-        addPetalRing(head, standards, { count: 3, tilt: 0.47, scale: 1, offset: 0.05 });
-        addPetalRing(head, falls, { count: 3, tilt: 1.96, scale: 1, offset: Math.PI / 3 + 0.05, y: 0.08 });
+        addPetalRing(head, standards, { count: 3, tilt: form.standard, scale: 1, offset: 0.05 });
+        addPetalRing(head, falls, { count: 3, tilt: form.fall, scale: 1, offset: Math.PI / 3 + 0.05, y: 0.08 });
         const beard = { geometry: geo(paint(petalGeometry(0.36, 0.04, 'pointed'), flower.colors.centerAlt, flower.colors.center)), material: petalMat };
-        addPetalRing(head, beard, { count: 3, tilt: 1.96, scale: 1, offset: Math.PI / 3 + 0.05, y: 0.105 });
+        addPetalRing(head, beard, { count: 3, tilt: form.fall, scale: 1, offset: Math.PI / 3 + 0.05, y: 0.105 });
         setInsectPerch(head, 0.08, 0.2, 0.15);
       }
 
@@ -1288,10 +1334,10 @@
         const petalGeo = geo(paint(petalGeometry(0.62, 0.36, 'wide'), flower.colors.petalAlt, flower.colors.petal));
         const sepalGeo = geo(paint(petalGeometry(0.67, 0.19, 'pointed'), flower.colors.petalAlt, flower.colors.petal));
         const lipGeo = geo(paint(petalGeometry(0.34, 0.2, 'ruffled'), flower.colors.centerAlt, flower.colors.center));
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < form.blooms; i++) {
           const head = new THREE.Group();
           head.name = 'orchid-flower-' + i;
-          head.position.copy(curve.getPoint(0.65 + i * 0.16));
+          head.position.copy(curve.getPoint(0.55 + i / (form.blooms - 1) * 0.43));
           head.position.x += (i % 2 ? -1 : 1) * 0.32;
           head.rotation.set(1.1, 0, (i - 1) * 0.3);
           head.scale.setScalar(0.7 - i * 0.035);
@@ -1303,13 +1349,14 @@
             head.add(petal);
           }
           const lip = new THREE.Mesh(lipGeo, petalMat);
+          lip.scale.setScalar(form.lip);
           lip.rotation.set(-0.7, 0, Math.PI);
           lip.position.set(0, 0.04, 0.08);
           head.add(lip);
           const column = new THREE.Mesh(geo(new THREE.SphereGeometry(0.065, 12, 8)), centerMat);
           column.position.y = 0.06;
           head.add(column);
-          if (i === 2) setInsectPerch(head, 0, 0.14, 0.05);
+          if (i === Math.min(2, form.blooms - 1)) setInsectPerch(head, 0, 0.14, 0.05);
         }
       }
 

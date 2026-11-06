@@ -1,7 +1,7 @@
 /* 小小花园 · 离线缓存
  * 采用先网络后缓存：开发时能及时看到更新，断网时也能打开花园。
  */
-const CACHE_NAME = 'xiaoman-garden-v0.6.1-24';
+const CACHE_NAME = 'xiaoman-garden-v0.6.2-25';
 const APP_SHELL = [
   './',
   './index.html',
@@ -18,6 +18,7 @@ const APP_SHELL = [
   './js/runtime-config.js',
   './js/account.js',
   './js/flower3d.js',
+  './js/flower-forms.js',
   './vendor/three.min.js',
   './manifest.webmanifest',
   './icons/icon.svg',

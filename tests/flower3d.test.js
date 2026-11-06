@@ -30,7 +30,7 @@ function preview(kind, options = {}) {
     window, document, Game, Math: math, performance: { now: () => now },
     requestAnimationFrame: (callback) => { frame = callback; return 1; }
   });
-  for (const file of ['data.js', 'items.js']) {
+  for (const file of ['data.js', 'items.js', 'flower-forms.js']) {
     vm.runInContext(fs.readFileSync(path.join(web, 'js', file), 'utf8'), context);
   }
   const source = fs.readFileSync(path.join(web, 'js/flower3d.js'), 'utf8')
@@ -109,6 +109,8 @@ test('3D shelf places six real bouquet models per page without creating extra We
     assert.equal(scene.visitor, undefined);
     for (const flower of flowers) {
       assert.equal(flower.scale.x, 0.55);
+      assert.equal(flower.userData.quality, flower.userData.shelfItem.grade);
+      assert.equal(flower.userData.modelId, flower.userData.shelfItem.flowerId + '-rare-v1');
       let patternedPots = 0;
       flower.traverse((object) => { if (object.material?.map && object.material?.bumpMap) patternedPots++; });
       assert(patternedPots > 0);
@@ -182,13 +184,13 @@ test('new species have distinct anatomy and finite thin botanical surfaces at al
   }
 });
 
-test('quality does not change species anatomy, while template and pattern change petal colour', () => {
+test('quality preserves pigment, while template and pattern change petal colour', () => {
   function petalColors(options) {
     const scene = preview(0, { flower: 'rose', patternSeed: 143, ...options });
     const arrays = [];
     scene.state.scene.traverse((object) => {
       if (object.geometry?.userData.botanical === 'petal' && object.geometry.attributes.color) {
-        if (object.material.name === 'botanical-petal') arrays.push(Buffer.from(object.material.map.image.data));
+        if (object.material.name === 'botanical-petal' && arrays.length === 0) arrays.push(Buffer.from(object.material.map.image.data));
       }
     });
     scene.dispose();
@@ -198,6 +200,91 @@ test('quality does not change species anatomy, while template and pattern change
   assert.deepEqual(common, petalColors({ grade: 'legendary', templateId: 'dawn' }));
   assert.notDeepEqual(common, petalColors({ templateId: 'gilded' }));
   assert.notDeepEqual(common, petalColors({ patternSeed: 845 }));
+});
+
+test('all twelve species have five different deterministic botanical models', () => {
+  const crypto = require('node:crypto');
+  const species = ['daisy', 'tulip', 'hyacinth', 'rose', 'sunflower', 'hydrangea', 'lily', 'cosmos', 'carnation', 'peony', 'iris', 'orchid'];
+  function fingerprint(scene) {
+    const root = scene.state.scene.getObjectByName('flower-model-' + scene.state.flower.id);
+    root.updateMatrixWorld(true);
+    const hash = crypto.createHash('sha256');
+    root.traverse((mesh) => {
+      if (!mesh.geometry || !['botanical-petal', 'botanical-leaf'].includes(mesh.material?.name)) return;
+      const positions = mesh.geometry.attributes.position.array;
+      for (const position of positions) assert(Number.isFinite(position));
+      hash.update(Buffer.from(positions.buffer, positions.byteOffset, positions.byteLength));
+      hash.update(JSON.stringify(mesh.matrixWorld.elements));
+      if (mesh.isInstancedMesh) hash.update(Buffer.from(mesh.instanceMatrix.array.buffer));
+    });
+    return hash.digest('hex');
+  }
+  for (const flower of species) {
+    const forms = new Set();
+    let pigment;
+    for (const grade of ['common', 'fine', 'rare', 'epic', 'legendary']) {
+      const options = { flower, grade, patternSeed: 143, templateId: 'gilded', wear: 0.03 };
+      const scene = preview(0, options);
+      const root = scene.state.scene.getObjectByName('flower-model-' + flower);
+      assert.equal(root.userData.quality, grade);
+      assert.equal(root.userData.modelId, flower + '-' + grade + '-v1');
+      forms.add(fingerprint(scene));
+      let map;
+      root.traverse((mesh) => { if (mesh.material?.name === 'botanical-petal') map = mesh.material.map; });
+      const currentPigment = Buffer.from(map.image.data);
+      if (pigment) assert.deepEqual(currentPigment, pigment, 'grade must not erase template pigment');
+      pigment = currentPigment;
+      if (grade === 'legendary') {
+        const repeated = preview(0, options);
+        assert.equal(fingerprint(scene), fingerprint(repeated), 'same specimen must keep its form');
+        repeated.dispose();
+      }
+      scene.dispose();
+    }
+    assert.equal(forms.size, 5, flower + ' must have five actual geometry/pose variants');
+  }
+});
+
+test('only administrators see quality comparison; real items always keep their own grade', () => {
+  class Element {
+    constructor(tag) {
+      this.tag = tag; this.children = []; this.nodes = new Map(); this.attributes = {};
+      this.events = {}; this.style = {}; this.isConnected = true;
+      this.classList = { add() {}, remove() {} };
+    }
+    setAttribute(key, value) { this.attributes[key] = value; }
+    appendChild(child) { this.children.push(child); }
+    querySelector(selector) {
+      if (!this.nodes.has(selector)) this.nodes.set(selector, new Element('div'));
+      return this.nodes.get(selector);
+    }
+    addEventListener(type, handler) { this.events[type] = handler; }
+    focus() {}
+    remove() { this.isConnected = false; }
+  }
+  for (const account of [undefined, {}, { isAdmin: false }, { isAdmin: 'true' }, { isAdmin: true }]) {
+    const window = { __ACCOUNT__: account, addEventListener() {}, removeEventListener() {} };
+    const document = { body: new Element('body'), createElement: tag => new Element(tag), addEventListener() {} };
+    const context = vm.createContext({ window, document });
+    for (const file of ['data.js', 'items.js', 'flower-forms.js', 'flower3d.js']) {
+      vm.runInContext(fs.readFileSync(path.join(web, 'js', file), 'utf8'), context);
+    }
+    const buttons = () => document.body.children.at(-1).querySelector('.flower3d-stages').children.filter(node => node.tag === 'button');
+    window.Flower3D.openFlower('rose');
+    assert.equal(buttons().length, account?.isAdmin === true ? 5 : 0);
+    if (account?.isAdmin === true) {
+      buttons()[4].events.click();
+      assert.equal(buttons()[4].attributes['aria-pressed'], 'true');
+      assert.equal(document.body.children.at(-1).querySelector('.flower3d-rarity').textContent, '传说');
+    }
+    const item = window.GardenItems.createSeed('rose', { grade: 'legendary', templateId: 'gilded', patternSeed: 143, wear: 0.03 });
+    const before = JSON.stringify(item);
+    window.Flower3D.openItem(item);
+    assert.equal(buttons().length, 0);
+    assert.equal(document.body.children.at(-1).querySelector('.flower3d-rarity').textContent, '传说');
+    assert.equal(JSON.stringify(item), before);
+    window.Flower3D.close();
+  }
 });
 
 

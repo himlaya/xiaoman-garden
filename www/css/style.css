@@ -5711,6 +5711,10 @@ body::before {
 .market-confirm-line strong { color: #3f5b42; font-size: 10px; }
 
 .flower3d-itemmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 7px; }
+.flower3d-stages.flower3d-quality-picker { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.flower3d-quality { min-height: 38px; padding: 7px 12px; border-radius: 14px; border: 1px solid currentColor; color: var(--grade, #4c6053); background: rgba(255,255,255,.7); font: inherit; font-size: 12px; cursor: pointer; pointer-events: auto; }
+.flower3d-quality[aria-pressed="true"] { background: #fff9e8; box-shadow: 0 0 0 2px currentColor; font-weight: 700; }
+.flower3d-quality:focus-visible { outline: 2px solid #314c3e; outline-offset: 4px; }
 .flower3d-meta-chip { display: inline-flex; align-items: center; min-height: 18px; padding: 0 6px; border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 99px; color: rgba(67, 88, 64, 0.8); background: rgba(255, 251, 241, 0.48); font-size: 7px; font-weight: 600; }
 .flower3d-itemmeta .item-grade { height: 18px; font-size: 7px; }
 

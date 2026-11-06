@@ -504,7 +504,7 @@
           (owned ? Art.flower(flower.id, 'bloom') : '<div class="silhouette">' + Art.flower(flower.id, 'bud') + '</div>') +
           '<span class="album-index">NO.' + String(index + 1).padStart(2, '0') + '</span>' +
           '<span class="album-rarity">' + (owned ? gradeCount + '/5 种品质' : '未遇见') + '</span>' +
-          (owned ? '<button class="album-3d" type="button" data-open-3d-flower="' + flower.id + '" aria-label="用3D查看' + esc(flower.name) + '">3D</button>' : '') +
+          (owned || (ACCOUNT && ACCOUNT.isAdmin === true) ? '<button class="album-3d" type="button" data-open-3d-flower="' + flower.id + '" aria-label="用3D查看' + esc(flower.name) + '">3D</button>' : '') +
         '</div>' +
         '<div class="album-info">' +
           '<h3>' + (owned ? esc(flower.name) : '？？？') + '</h3>' +
