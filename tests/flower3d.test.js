@@ -188,7 +188,7 @@ test('quality does not change species anatomy, while template and pattern change
     const arrays = [];
     scene.state.scene.traverse((object) => {
       if (object.geometry?.userData.botanical === 'petal' && object.geometry.attributes.color) {
-        arrays.push(Array.from(object.geometry.attributes.color.array));
+        if (object.material.name === 'botanical-petal') arrays.push(Buffer.from(object.material.map.image.data));
       }
     });
     scene.dispose();
@@ -198,4 +198,42 @@ test('quality does not change species anatomy, while template and pattern change
   assert.deepEqual(common, petalColors({ grade: 'legendary', templateId: 'dawn' }));
   assert.notDeepEqual(common, petalColors({ templateId: 'gilded' }));
   assert.notDeepEqual(common, petalColors({ patternSeed: 845 }));
+});
+
+
+test('every species uses coloured sRGB diffuse maps, leaf veins and separate surface maps', () => {
+  const colours = { rose: [0, 1, 20], sunflower: [0, 2, 50], hydrangea: [2, 0, 15] };
+  for (const flower of ['daisy', 'tulip', 'hyacinth', 'rose', 'sunflower', 'hydrangea', 'lily', 'cosmos', 'carnation', 'peony', 'iris', 'orchid']) {
+    const scene = preview(0, { flower, patternSeed: 43, templateId: 'dawn', wear: 0.03 });
+    let petal, leaf;
+    scene.state.scene.traverse((object) => {
+      if (object.material?.name === 'botanical-petal') petal = object.material;
+      if (object.material?.name === 'botanical-leaf') leaf = object.material;
+    });
+    for (const material of [petal, leaf]) {
+      assert(material, flower);
+      assert.equal(material.vertexColors, false, 'pigment must come from the diffuse texture');
+      assert.equal(material.map.encoding, three.sRGBEncoding);
+      assert.equal(material.bumpMap.encoding, three.LinearEncoding);
+      assert.equal(material.roughnessMap.encoding, three.LinearEncoding);
+      assert.notEqual(material.map, material.bumpMap);
+      const pixels = material.map.image.data;
+      const unique = new Set();
+      let green = 0;
+      for (let i = 0; i < pixels.length; i += 4) {
+        unique.add(pixels[i] * 65536 + pixels[i + 1] * 256 + pixels[i + 2]);
+        if (pixels[i + 1] > pixels[i] + 5) green++;
+      }
+      assert(unique.size > 100, flower + ' needs continuous pigment detail');
+      if (material === leaf) assert(green > 1000, 'leaves must retain green pigment');
+    }
+    if (colours[flower]) {
+      const [dominant, other, margin] = colours[flower];
+      const pixels = petal.map.image.data;
+      let coloured = 0;
+      for (let i = 0; i < pixels.length; i += 4) if (pixels[i + dominant] > pixels[i + other] + margin) coloured++;
+      assert(coloured > 1000, flower + ' must retain its characteristic colour');
+    }
+    scene.dispose();
+  }
 });

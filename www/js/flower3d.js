@@ -326,11 +326,11 @@
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     const scene = new THREE.Scene();
     state.scene = scene;
-    scene.add(new THREE.HemisphereLight(0xfff8e7, 0x73816b, 1.1));
-    const key = new THREE.DirectionalLight(0xffead1, 1.6);
+    scene.add(new THREE.HemisphereLight(0xfffaf3, 0x66765b, 0.6));
+    const key = new THREE.DirectionalLight(0xfff4e4, 1.35);
     key.position.set(-4, 7, 6);
     scene.add(key);
-    const fill = new THREE.DirectionalLight(0xd7eaff, 0.65);
+    const fill = new THREE.DirectionalLight(0xdce8ff, 0.35);
     fill.position.set(4, 4, -2);
     scene.add(fill);
     const rack = buildShelfModels(state, THREE);
@@ -450,14 +450,14 @@
     const camera = new THREE.PerspectiveCamera(37, 1, 0.1, 60);
     state.camera = camera;
 
-    scene.add(new THREE.HemisphereLight(0xfffbef, 0x718064, 0.82));
-    const key = new THREE.DirectionalLight(0xffefd0, 1.7);
+    scene.add(new THREE.HemisphereLight(0xfffaf2, 0x657756, 0.52));
+    const key = new THREE.DirectionalLight(0xfff3e3, 1.3);
     key.position.set(-4.5, 6, 5);
     scene.add(key);
-    const fill = new THREE.DirectionalLight(0xd6e4ff, 0.45);
+    const fill = new THREE.DirectionalLight(0xdce8ff, 0.32);
     fill.position.set(4.5, 2.5, 3);
     scene.add(fill);
-    const rim = new THREE.DirectionalLight(0xffdca4, 0.7);
+    const rim = new THREE.DirectionalLight(0xffe7cb, 0.38);
     rim.position.set(0, 3, -5);
     scene.add(rim);
 
@@ -791,41 +791,86 @@
 
     const shape = flower.shape || 'daisy';
     function botanicalTexture(leaf) {
-      const pixels = new Uint8Array(128 * 256 * 4);
-      for (let y = 0; y < 256; y++) {
-        for (let x = 0; x < 128; x++) {
-          const u = x / 127, v = y / 255;
-          const distance = Math.abs(u - 0.5);
-          const central = Math.exp(-distance * (leaf ? 130 : 80));
-          const branches = Math.pow(Math.max(0, Math.cos((v - distance * (leaf ? 0.68 : 0.2)) * (leaf ? 85 : 145))), leaf ? 18 : 7);
-          const grain = Math.sin(u * 191 + v * 137 + phase) * Math.sin(u * 71 - v * 257);
-          const h = Math.round(128 + central * (leaf ? 42 : 9) + branches * (leaf ? 15 : 7) + grain * 2);
-          const i = (y * 128 + x) * 4;
-          pixels[i] = pixels[i + 1] = pixels[i + 2] = h;
-          pixels[i + 3] = 255;
+      const width = 128, height = 256;
+      const colour = new Uint8Array(width * height * 4);
+      const relief = new Uint8Array(colour.length);
+      const roughness = new Uint8Array(colour.length);
+      const rgb = function (hex) {
+        const value = parseInt(hex.replace('#', ''), 16);
+        return [value >> 16 & 255, value >> 8 & 255, value & 255];
+      };
+      const base = rgb(leaf ? flower.colors.leaf : flower.colors.petal);
+      const deep = rgb(leaf ? flower.colors.stem : flower.colors.petalAlt);
+      const tint = variant ? rgb(variant.template.tint) : base;
+      const finish = variant ? variant.template.id : '';
+      const spotted = ['orchid', 'iris'].includes(shape);
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const u = x / (width - 1), v = y / (height - 1);
+          const across = (u - 0.5) * 2;
+          const edge = Math.abs(across);
+          const central = Math.exp(-edge * (leaf ? 65 : 40));
+          const veins = leaf
+            ? Math.pow(Math.max(0, Math.cos((v - edge * 0.34) * 86)), 18)
+            : Math.pow(Math.max(0, Math.cos((across + Math.sin(v * 6 + phase) * 0.018) * 58 + v * 5)), 10);
+          const fine = Math.sin(u * 191 + v * 137 + phase) * Math.sin(u * 71 - v * 257);
+          const mottle = Math.sin(across * 17 + Math.sin(v * 12 + phase)) * Math.sin(v * 23 - across * 5 + phase);
+          const speckle = Math.pow(Math.max(0, Math.sin(across * 41 + phase) * Math.cos(v * 67 - across * 13)), 12);
+          const baseMix = leaf ? 0.26 + edge * 0.17 : 0.14 + Math.pow(1 - v, 1.6) * 0.64;
+          const shade = leaf
+            ? 0.93 + mottle * 0.033 + veins * 0.055 + central * 0.07 + fine * 0.008
+            : 0.98 - veins * (0.028 + (1 - v) * 0.035) + mottle * 0.023 + fine * 0.005;
+          let finishMix = 0;
+          if (!leaf) {
+            if (finish === 'gilded') finishMix = Math.max(0, (edge - 0.76) / 0.24) * 0.78;
+            if (finish === 'frost') finishMix = Math.max(0, edge - 0.52) * 0.75 + veins * 0.06;
+            if (finish === 'ember') finishMix = Math.pow(1 - v, 3) * 0.68;
+            if (finish === 'moon') finishMix = Math.max(0, Math.sin(across * 8 + phase) - 0.45) * v * 0.35;
+            if (finish === 'mist') finishMix = speckle * 0.56;
+            if (finish === 'celadon') finishMix = (0.5 + Math.sin(v * 12 + across * 5 + phase) * 0.5) * 0.3;
+          }
+          const spotMix = !leaf && spotted ? speckle * Math.pow(1 - v, 2) * 0.55 : 0;
+          const worn = !leaf ? Math.max(0, wear - 0.42) * Math.pow(edge, 4) * v * 0.34 : wear * edge * 0.015;
+          const offset = (y * width + x) * 4;
+          for (let channel = 0; channel < 3; channel++) {
+            let value = (base[channel] * (1 - baseMix) + deep[channel] * baseMix) * shade;
+            value = value * (1 - finishMix) + tint[channel] * finishMix;
+            value = value * (1 - spotMix) + deep[channel] * 0.68 * spotMix;
+            value = value * (1 - worn) + [144, 108, 67][channel] * worn;
+            colour[offset + channel] = Math.max(0, Math.min(255, Math.round(value)));
+            relief[offset + channel] = Math.round(128 + central * (leaf ? 34 : 4) + veins * (leaf ? 14 : 7) + fine * 1.5);
+            roughness[offset + channel] = Math.round((leaf ? 146 : 191) + mottle * 8 + veins * 7 + worn * 20);
+          }
+          colour[offset + 3] = relief[offset + 3] = roughness[offset + 3] = 255;
         }
       }
-      const texture = new THREE.DataTexture(pixels, 128, 256, THREE.RGBAFormat);
-      texture.magFilter = THREE.LinearFilter;
-      texture.minFilter = THREE.LinearMipmapLinearFilter;
-      texture.generateMipmaps = true;
-      texture.needsUpdate = true;
-      return texture;
+      function texture(pixels, isColour) {
+        const map = new THREE.DataTexture(pixels, width, height, THREE.RGBAFormat);
+        if (isColour) map.encoding = THREE.sRGBEncoding;
+        map.magFilter = THREE.LinearFilter;
+        map.minFilter = THREE.LinearMipmapLinearFilter;
+        map.generateMipmaps = true;
+        map.needsUpdate = true;
+        return map;
+      }
+      return { colour: texture(colour, true), bump: texture(relief, false), roughness: texture(roughness, false) };
     }
     const leafTexture = botanicalTexture(true);
     const petalTexture = botanicalTexture(false);
     const leafMat = new THREE.MeshPhysicalMaterial({
-      name: 'botanical-leaf', color: 0xffffff, vertexColors: true, roughness: 0.56,
-      metalness: 0, clearcoat: 0.08, clearcoatRoughness: 0.65,
-      bumpMap: leafTexture, bumpScale: 0.003, side: THREE.DoubleSide
+      name: 'botanical-leaf', color: 0xffffff, vertexColors: false, roughness: 0.95,
+      metalness: 0, clearcoat: 0.045, clearcoatRoughness: 0.72,
+      map: leafTexture.colour, roughnessMap: leafTexture.roughness,
+      bumpMap: leafTexture.bump, bumpScale: 0.0025, side: THREE.DoubleSide
     });
     mats.push(leafMat);
     const veinMat = mat({ color: flower.colors.leaf, roughness: 0.82 });
     const petalMat = new THREE.MeshPhysicalMaterial({
-      name: 'botanical-petal', color: 0xffffff, vertexColors: true, roughness: 0.64,
-      metalness: 0, clearcoat: 0, sheen: 0.35, sheenColor: new THREE.Color(flower.colors.petal),
-      sheenRoughness: 0.8, specularIntensity: 0.28,
-      bumpMap: petalTexture, bumpScale: 0.0012, side: THREE.DoubleSide
+      name: 'botanical-petal', color: 0xffffff, vertexColors: false, roughness: 0.95,
+      metalness: 0, clearcoat: 0, sheen: 0.16, sheenColor: new THREE.Color(flower.colors.petal),
+      sheenRoughness: 0.9, specularIntensity: 0.18,
+      map: petalTexture.colour, roughnessMap: petalTexture.roughness,
+      bumpMap: petalTexture.bump, bumpScale: 0.001, side: THREE.DoubleSide
     });
     mats.push(petalMat);
     const greenMat = mat({ color: flower.colors.leaf, roughness: 0.9, side: THREE.DoubleSide });
@@ -1053,8 +1098,9 @@
             geometry: geo(paint(petalGeometry(size, size * 0.64, 'wide'), flower.colors.petalAlt, flower.colors.petal)),
             materials: petalColors.map(function (color) {
               const material = petalMat.clone();
-              material.color.set(color);
-              material.vertexColors = true;
+              // The diffuse map already contains pigment; multiplying it by the petal colour twice makes it muddy.
+              material.color.set(0xffffff);
+              material.vertexColors = false;
               mats.push(material);
               return material;
             }),
