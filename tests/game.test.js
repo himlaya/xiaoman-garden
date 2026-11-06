@@ -35,17 +35,21 @@ function makeHarness(startTime, savedRaw) {
       return now;
     }
   };
+  let forcedRoll;
+  const math = Object.create(Math);
+  math.random = () => forcedRoll === undefined ? Math.random() : forcedRoll;
   const context = vm.createContext({
     window,
     localStorage,
     console,
     Date: FakeDate,
-    Math
+    Math: math
   });
   vm.runInContext(dataSource, context, { filename: 'data.js' });
   vm.runInContext(itemsSource, context, { filename: 'items.js' });
   vm.runInContext(gameSource, context, { filename: 'game.js' });
   return {
+    setRandom(value) { forcedRoll = value; },
     Game: window.Game,
     Data: window.GameData,
     Items: window.GardenItems,
@@ -378,6 +382,8 @@ test('种子模板会继承到同一件成品花束', () => {
   Game.tick();
   const harvested = Game.harvest(0);
   assert.equal(harvested.ok, true);
+  assert.equal(harvested.item.grade, seed.grade);
+  assert.equal(harvested.item.wear, seed.wear);
   assert.equal(harvested.item.templateId, seed.templateId);
   assert.equal(harvested.item.patternSeed, seed.patternSeed);
   assert.equal(harvested.item.provenance.seedId, seed.id);
@@ -402,4 +408,40 @@ test('旧版数量库存会自动迁移成独立种子', () => {
   assert.equal(h.Game.getSeedItems('daisy').length, 2);
   assert.equal(h.Game.getSeedItems('tulip').length, 1);
   assert.equal(state.inventory, undefined);
+});
+
+
+test('all twelve species use the same five quality rolls and support every finish', () => {
+  const h = makeHarness();
+  for (const flower of h.Data.flowers) {
+    assert.equal(flower.rarity, undefined);
+    for (const [roll, grade] of [[0, 'common'], [0.49, 'fine'], [0.76, 'rare'], [0.92, 'epic'], [0.99, 'legendary']]) {
+      h.setRandom(roll);
+      assert.equal(h.Items.createSeed(flower.id).grade, grade);
+      for (const template of h.Data.itemTemplates) {
+        const seed = h.Items.createSeed(flower.id, { grade, templateId: template.id, patternSeed: 123, wear: 0.754 });
+        const bouquet = h.Items.createBouquet(flower, { careScore: 100 }, { ratio: 0 }, { seed });
+        assert.equal(bouquet.grade, grade);
+        assert.equal(bouquet.templateId, template.id);
+        assert.equal(bouquet.patternSeed, 123);
+        assert.equal(bouquet.wear, 0.754);
+      }
+    }
+  }
+});
+
+test('planted quality, finish and condition survive reopening before harvest', () => {
+  const h = makeHarness();
+  h.Game.boot();
+  const seed = h.Game.getSeedItems('daisy')[0];
+  h.Game.plantSeed(0, seed.id);
+  const reopened = makeHarness(h.now, h.store.get('xiaoman-garden-save-v1'));
+  reopened.Game.boot();
+  reopened.advance(h.Data.flowerMap.daisy.growSeconds * 1000);
+  reopened.Game.tick();
+  const item = reopened.Game.harvest(0).item;
+  assert.equal(item.grade, seed.grade);
+  assert.equal(item.wear, seed.wear);
+  assert.equal(item.patternSeed, seed.patternSeed);
+  assert.equal(item.templateId, seed.templateId);
 });

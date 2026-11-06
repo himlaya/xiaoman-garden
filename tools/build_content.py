@@ -30,7 +30,7 @@ HEADER = """/* 小小花园 · 数据
 """
 
 FLOWER_FIELDS = [
-    "id", "name", "en", "rarity", "shape", "seedPrice", "sellPrice",
+    "id", "name", "en", "shape", "seedPrice", "sellPrice",
     "realGrowDays", "realBloomDays", "xp", "bonusSeedChance", "colors",
     "blurb", "language", "cardLine",
 ]

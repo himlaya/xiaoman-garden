@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
 from content import garden  # noqa: E402
 from tools.build_content import FLOWER_FIELDS, OUTPUT, build_data, render_js  # noqa: E402
 
-ALLOWED_SHAPES = {"daisy", "tulip", "hyacinth", "rose", "sunflower", "hydrangea", "lily"}
+ALLOWED_SHAPES = {"daisy", "tulip", "hyacinth", "rose", "sunflower", "hydrangea", "lily", "cosmos", "carnation", "peony", "iris", "orchid"}
 COLOR_KEYS = {"petal", "petalAlt", "center", "centerAlt", "stem", "leaf", "accent"}
 HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 
@@ -23,7 +23,7 @@ class GardenContentTests(unittest.TestCase):
     def test_flowers_are_complete_and_unique(self) -> None:
         data = build_data()
         flowers = data["flowers"]
-        self.assertGreaterEqual(len(flowers), 7)
+        self.assertGreaterEqual(len(flowers), 12)
         ids = [flower["id"] for flower in flowers]
         self.assertEqual(len(ids), len(set(ids)), "花 id 不能重复")
 

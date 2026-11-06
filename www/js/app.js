@@ -164,14 +164,6 @@
     return '<button class="icon-btn ' + (extraClass || '') + '" data-action="' + action + '" aria-label="' + esc(label) + '">' + content + '</button>';
   }
 
-  function rarityClass(rarity) {
-    return 'rarity-' + ((DATA.rarity[rarity] || DATA.rarity['普通']).className);
-  }
-
-  function rarityLabel(rarity) {
-    return (DATA.rarity[rarity] || DATA.rarity['普通']).label;
-  }
-
   function itemGrade(item) {
     return Items.gradeById(item.grade);
   }
@@ -200,7 +192,7 @@
 
   function itemMetaLine(item) {
     const template = itemTemplate(item);
-    return '<span class="item-template">' + esc(template.label) + '模板</span>' + wearBadge(item);
+    return '<span class="item-template">' + esc(template.label) + '模板 · #' + (Number(item.patternSeed) >>> 0) + '</span>' + wearBadge(item);
   }
 
   function itemPortrait(item, extraClass) {
@@ -209,7 +201,7 @@
     const wear = itemWear(item);
     if (!flower) return '';
     return '<span class="item-portrait grade-' + esc(grade.id) + ' ' + esc(wear.className) + ' ' + (extraClass || '') + '">' +
-      Art.flower(item.flowerId, 'bloom') +
+      Art.flower(item.flowerId, 'bloom', { item: item }) +
       '<span class="item-kind">' + itemKindLabel(item) + '</span>' +
     '</span>';
   }
@@ -349,7 +341,7 @@
 
     const flower = view.flower;
     const bloom = view.isBloom;
-    const classes = ['plot', bloom ? 'plot-bloom' : 'plot-growing', view.buffed ? 'is-buffed' : '', rarityClass(flower.rarity)].join(' ');
+    const classes = ['plot', bloom ? 'plot-bloom' : 'plot-growing', view.buffed ? 'is-buffed' : '', 'grade-' + Items.gradeById(view.seedMeta.grade).id].join(' ');
     const careActions = bloom ? '' :
       '<div class="plot-actions">' +
         '<button class="care-button water-button' + (view.waterWait > 0 ? ' is-waiting' : '') + '" data-action="water" data-slot="' + slot + '"' + (view.waterWait > 0 ? ' disabled' : '') + ' aria-label="给' + esc(flower.name) + '浇水">' +
@@ -380,7 +372,7 @@
       '</div>' +
       '<button class="plot-scene scene-planted" data-action="open-plant" data-slot="' + slot + '" aria-label="查看' + esc(flower.name) + '的生长情况">' +
         '<span class="scene-glow" aria-hidden="true"></span>' +
-        '<span class="plant-holder">' + Art.flower(flower.id, view.stage) + '</span>' +
+        '<span class="plant-holder">' + Art.flower(flower.id, view.stage, { item: view.seedMeta }) + '</span>' +
         (bloom ? '<span class="bloom-sparkles" aria-hidden="true"><i></i><i></i><i></i></span>' : '') +
         '<span class="pot" aria-hidden="true"><span class="pot-rim"></span><span class="pot-body"><i></i></span></span>' +
         (view.buffed ? '<span class="buff-tag" aria-hidden="true">' + ICONS.drop + '水润 1.5×</span>' : '') +
@@ -388,7 +380,7 @@
       '<div class="plot-info">' +
         '<div class="plot-title-row">' +
           '<span class="plot-name">' + esc(flower.name) + '</span>' +
-          '<span class="rarity-text ' + rarityClass(flower.rarity) + '">' + rarityLabel(flower.rarity) + '</span>' +
+          itemGradeBadge(view.seedMeta) +
         '</div>' +
         (bloom
           ? bloomPanel
@@ -505,11 +497,13 @@
     const cards = DATA.flowers.map(function (flower, index) {
       const entry = state.collection[flower.id];
       const owned = !!entry;
-      return '<article class="album-card ' + (owned ? 'album-owned ' : 'album-locked ') + rarityClass(flower.rarity) + '">' +
+      const bouquets = Game.getItems().filter(function (item) { return item.flowerId === flower.id && item.kind === 'bouquet'; });
+      const gradeCount = new Set(bouquets.map(function (item) { return item.grade; })).size;
+      return '<article class="album-card ' + (owned ? 'album-owned ' : 'album-locked ') + 'flower-species' + '">' +
         '<div class="album-art">' +
           (owned ? Art.flower(flower.id, 'bloom') : '<div class="silhouette">' + Art.flower(flower.id, 'bud') + '</div>') +
           '<span class="album-index">NO.' + String(index + 1).padStart(2, '0') + '</span>' +
-          '<span class="album-rarity ' + rarityClass(flower.rarity) + '">' + (owned ? rarityLabel(flower.rarity) : '未遇见') + '</span>' +
+          '<span class="album-rarity">' + (owned ? gradeCount + '/5 种品质' : '未遇见') + '</span>' +
           (owned ? '<button class="album-3d" type="button" data-open-3d-flower="' + flower.id + '" aria-label="用3D查看' + esc(flower.name) + '">3D</button>' : '') +
         '</div>' +
         '<div class="album-info">' +
@@ -524,7 +518,7 @@
       '<div class="page-heading">' +
         '<p class="eyebrow">GARDEN JOURNAL</p>' +
         '<h1>花房手记</h1>' +
-        '<p>每一次盛开，都会被好好记下来。</p>' +
+        '<p>花种没有等级，每种花都有 5 种品质、8 类模板和独立纹样编号。</p>' +
       '</div>' +
       '<div class="album-summary">' +
         '<div class="collection-ring" style="--ring-progress:' + percent + '%"><span>' + stats.collected + '<small>/' + stats.totalFlowers + '</small></span></div>' +
@@ -590,7 +584,7 @@
       ? '<div class="owned-list">' + items.map(function (item) { return renderOwnedItem(item, false); }).join('') + '</div>'
       : '<div class="empty-pouch"><span class="big-icon">' + ICONS.sparkle + '</span><h3>还没有收藏品</h3><p>种下一颗种子，等它开成独一无二的花束。</p></div>';
     return sheetHeader('COLLECTION', '我的收藏品') +
-      '<p class="sheet-sub">每颗种子和每束花都是独立物品：品级、模板和品相会一直保留，也可以通过 3D 查看。</p>' +
+      '<p class="sheet-sub">每颗种子和每束花都是独立物品：品质、模板和品相会一直保留，也可以通过 3D 查看。</p>' +
       body;
   }
 
@@ -680,7 +674,7 @@
     const flower = DATA.flowerMap[item.flowerId];
     return sheetHeader('LIST AN ITEM', '把这件收藏交给市场') +
       '<div class="owned-list">' + renderOwnedItem(item, false) + '</div>' +
-      '<label class="market-price-field"><span>你的定价</span><input type="number" data-market-price min="' + Items.market.minPrice + '" max="' + Items.market.maxPrice + '" value="' + itemPriceLabel(item) + '"><small>参考价按品级、模板和品相计算；成交后金币会进入你的存档。</small></label>' +
+      '<label class="market-price-field"><span>你的定价</span><input type="number" data-market-price min="' + Items.market.minPrice + '" max="' + Items.market.maxPrice + '" value="' + itemPriceLabel(item) + '"><small>参考价按品质、模板和品相计算；成交后金币会进入你的存档。</small></label>' +
       '<button class="primary-button" data-action="confirm-market-list" data-item="' + esc(item.id) + '">确认上架</button>' +
       '<p class="sheet-foot">上架后物品会从你的物品库移到市场托管，直到成交或下架。</p>';
   }
@@ -775,10 +769,10 @@
     const seedCards = DATA.flowers.map(function (flower) {
       const owned = Game.seedCount(flower.id);
       const poor = state.player.coins < flower.seedPrice;
-      return '<article class="seed-card ' + rarityClass(flower.rarity) + '">' +
-        '<div class="seed-art ' + rarityClass(flower.rarity) + '">' +
+      return '<article class="seed-card ' + 'flower-species' + '">' +
+        '<div class="seed-art ' + 'flower-species' + '">' +
           Art.flower(flower.id, 'bloom') +
-          '<span class="rarity-chip ' + rarityClass(flower.rarity) + '">' + rarityLabel(flower.rarity) + '</span>' +
+          '<span class="rarity-chip">全品质 · 多模板</span>' +
         '</div>' +
         '<div class="seed-body">' +
           '<div class="seed-title-row"><h3>' + esc(flower.name) + '</h3><span class="seed-owned">已有 ' + owned + ' 颗</span></div>' +
@@ -801,7 +795,7 @@
       '<div class="page-heading">' +
         '<p class="eyebrow">FLOWER MARKET</p>' +
         '<h1>花市</h1>' +
-        '<p>挑一颗种子，把春天带回家。</p>' +
+        '<p>每种花都能获得全部品质与模板，种下后会继承到成品花束。</p>' +
       '</div>' +
       '<div class="market-banner">' +
         '<div class="market-banner-copy"><span>今日的花市</span><strong>慢慢挑，不着急</strong><p>种子种下后，会在现实时间里悄悄生长。</p></div>' +
@@ -1063,7 +1057,7 @@
       ? '<div class="seed-picker-list">' + seeds.map(function (seed) {
           const flower = DATA.flowerMap[seed.flowerId];
           return '<button class="pick-seed" data-action="plant-seed" data-slot="' + slot + '" data-item="' + esc(seed.id) + '" data-flower="' + flower.id + '" data-autofocus>' +
-            '<span class="pick-seed-art">' + Art.flower(flower.id, 'bloom') + '</span>' +
+            '<span class="pick-seed-art">' + Art.flower(flower.id, 'bloom', { item: seed }) + '</span>' +
             '<span class="pick-seed-copy"><strong>' + esc(flower.name) + ' ' + itemGradeBadge(seed) + '</strong><small>' + itemTemplate(seed).label + '模板 · ' + wearBadge(seed) + ' · 花期 ' + formatSpan(flower.bloomSeconds) + '</small></span>' +
             '<span class="pick-seed-action">种下 ' + ICONS.arrow + '</span>' +
           '</button>';
@@ -1071,7 +1065,7 @@
       : '<div class="empty-pouch">' + Art.seedPacket('daisy') + '<h3>种子盒空了</h3><p>去花市买一颗，或者明天来签到。</p><button class="primary-button small" data-action="go-shop" data-autofocus>逛逛花市 ' + ICONS.arrow + '</button></div>';
 
     return sheetHeader('SEED BOX', '选一颗种子') +
-      '<p class="sheet-sub">要种在 <strong>' + String(slot + 1).padStart(2, '0') + ' 号花盆</strong> 里。每一颗种子都有独立的品级与模板，种下后会一直带到花束上。</p>' +
+      '<p class="sheet-sub">要种在 <strong>' + String(slot + 1).padStart(2, '0') + ' 号花盆</strong> 里。每一颗种子都有独立的品质与模板，种下后会一直带到花束上。</p>' +
       body +
       (seeds.length ? '<button class="ghost-button" data-action="go-shop">种子不够？去花市逛逛 ' + ICONS.arrow + '</button>' : '');
   }
@@ -1104,9 +1098,9 @@
 
     return sheetHeader('PLANT NOTE', '正在生长的花') +
       '<div class="plant-detail-hero">' +
-        '<div class="detail-art">' + Art.flower(flower.id, view.stage) + '</div>' +
+        '<div class="detail-art">' + Art.flower(flower.id, view.stage, { item: view.seedMeta }) + '</div>' +
         '<div class="detail-copy">' +
-          '<span class="rarity-chip ' + rarityClass(flower.rarity) + '">' + rarityLabel(flower.rarity) + '</span>' +
+          itemGradeBadge(view.seedMeta) +
           '<h2>' + esc(flower.name) + '</h2>' +
           '<p class="flower-language">「' + esc(flower.language) + '」</p>' +
           '<p class="detail-blurb">' + esc(flower.blurb) + '</p>' +

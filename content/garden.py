@@ -13,7 +13,6 @@ FLOWERS = [
     {'id': 'daisy',
      'name': '白雏菊',
      'en': 'Daisy',
-     'rarity': '普通',
      'shape': 'daisy',
      'seedPrice': 20,
      'sellPrice': 46,
@@ -35,7 +34,6 @@ FLOWERS = [
     {'id': 'tulip',
      'name': '郁金香',
      'en': 'Tulip',
-     'rarity': '少见',
      'shape': 'tulip',
      'seedPrice': 35,
      'sellPrice': 88,
@@ -57,7 +55,6 @@ FLOWERS = [
     {'id': 'hyacinth',
      'name': '风信子',
      'en': 'Hyacinth',
-     'rarity': '少见',
      'shape': 'hyacinth',
      'seedPrice': 60,
      'sellPrice': 150,
@@ -79,7 +76,6 @@ FLOWERS = [
     {'id': 'rose',
      'name': '花园玫瑰',
      'en': 'Rose',
-     'rarity': '稀有',
      'shape': 'rose',
      'seedPrice': 100,
      'sellPrice': 252,
@@ -101,7 +97,6 @@ FLOWERS = [
     {'id': 'sunflower',
      'name': '向日葵',
      'en': 'Sunflower',
-     'rarity': '稀有',
      'shape': 'sunflower',
      'seedPrice': 150,
      'sellPrice': 390,
@@ -123,7 +118,6 @@ FLOWERS = [
     {'id': 'hydrangea',
      'name': '蓝绣球',
      'en': 'Hydrangea',
-     'rarity': '珍稀',
      'shape': 'hydrangea',
      'seedPrice': 240,
      'sellPrice': 640,
@@ -145,7 +139,6 @@ FLOWERS = [
     {'id': 'lily',
      'name': '铃兰',
      'en': 'Lily of the Valley',
-     'rarity': '珍稀',
      'shape': 'lily',
      'seedPrice': 380,
      'sellPrice': 1020,
@@ -165,14 +158,19 @@ FLOWERS = [
      'cardLine': '最安静的花，往往带着最好的消息。'},
 ]
 
+# 花种只决定植物形态与生长习性；品质、模板和品相属于每一件独立物品。
+FLOWERS += [
+    {'id': 'cosmos', 'name': '波斯菊', 'en': 'Cosmos', 'shape': 'cosmos', 'seedPrice': 32, 'sellPrice': 76, 'realGrowDays': 5, 'realBloomDays': 7, 'xp': 18, 'bonusSeedChance': 0.25, 'colors': {'petal': '#eab3ce', 'petalAlt': '#bb638e', 'center': '#ecc45d', 'centerAlt': '#ba8b35', 'stem': '#7e9e65', 'leaf': '#a0b67a', 'accent': '#e8bdcf'}, 'blurb': '八片轻薄花瓣围着金色花心，细叶随风轻轻舒展。', 'language': '自在与真心', 'cardLine': '把轻盈的日子，种进风里。'},
+    {'id': 'carnation', 'name': '康乃馨', 'en': 'Carnation', 'shape': 'carnation', 'seedPrice': 75, 'sellPrice': 188, 'realGrowDays': 7, 'realBloomDays': 9, 'xp': 35, 'bonusSeedChance': 0.21, 'colors': {'petal': '#efb1b3', 'petalAlt': '#c76c83', 'center': '#f5d5c8', 'centerAlt': '#b76575', 'stem': '#6a927d', 'leaf': '#89a99a', 'accent': '#f1cfb9'}, 'blurb': '层叠的褶边花瓣，藏着温柔而细密的心意。', 'language': '感谢与关怀', 'cardLine': '温柔也有自己的形状。'},
+    {'id': 'peony', 'name': '牡丹', 'en': 'Peony', 'shape': 'peony', 'seedPrice': 180, 'sellPrice': 460, 'realGrowDays': 10, 'realBloomDays': 8, 'xp': 75, 'bonusSeedChance': 0.16, 'colors': {'petal': '#edacc1', 'petalAlt': '#b9658a', 'center': '#f1cd76', 'centerAlt': '#bc944d', 'stem': '#668452', 'leaf': '#87a66a', 'accent': '#e8c268'}, 'blurb': '宽大的花瓣层层舒展，捧起一团柔软的春色。', 'language': '圆满与美好', 'cardLine': '把春光开得从容一些。'},
+    {'id': 'iris', 'name': '鸢尾', 'en': 'Iris', 'shape': 'iris', 'seedPrice': 90, 'sellPrice': 226, 'realGrowDays': 8, 'realBloomDays': 7, 'xp': 42, 'bonusSeedChance': 0.2, 'colors': {'petal': '#a99aca', 'petalAlt': '#72619f', 'center': '#f1d07a', 'centerAlt': '#b39742', 'stem': '#658a6b', 'leaf': '#86a586', 'accent': '#e7c96c'}, 'blurb': '三片立瓣与三片垂瓣相间，金色花纹藏在瓣心。', 'language': '信念与好消息', 'cardLine': '风来的方向，总有新消息。'},
+    {'id': 'orchid', 'name': '蝴蝶兰', 'en': 'Moth Orchid', 'shape': 'orchid', 'seedPrice': 130, 'sellPrice': 330, 'realGrowDays': 9, 'realBloomDays': 14, 'xp': 58, 'bonusSeedChance': 0.18, 'colors': {'petal': '#f1e6eb', 'petalAlt': '#cc94b6', 'center': '#dba0c4', 'centerAlt': '#934c87', 'stem': '#587c55', 'leaf': '#789b69', 'accent': '#e6cf7b'}, 'blurb': '圆润花瓣像停在枝上的蝴蝶，唇瓣点着细小斑纹。', 'language': '优雅与祝福', 'cardLine': '慢慢盛开，也很好看。'},
+]
+
 DATA = {
     "flowers": FLOWERS,
     "version": 1,
     "saveKey": 'xiaoman-garden-save-v1',
-    "rarity": {'普通': {'className': 'common', 'label': '常见'},
-     '少见': {'className': 'uncommon', 'label': '少见'},
-     '稀有': {'className': 'rare', 'label': '稀有'},
-     '珍稀': {'className': 'legend', 'label': '珍稀'}},
     "stages": {'seed': {'label': '种子', 'min': 0},
      'sprout': {'label': '发芽', 'min': 0.15},
      'bud': {'label': '结蕾', 'min': 0.5},
@@ -217,7 +215,7 @@ DATA = {
      '施肥能立刻推进一截成长，肥料可以从签到、花市和今日任务里获得。',
      '花开后不要着急，花期内采摘还会得到新鲜加成。',
      '每天签到会送你一颗不一样的花种，连续签到第 7 天有铃兰。',
-     '花儿的成长与花期按现实参考时间的五分之一流动，稀有花虽然等得久，但花束也更值钱。',
+     '每一种花都有全部品质与模板；品质、模板编号和品相从种子继承到成品花束。',
      '花儿会在离线时继续长大，下次回来记得看看它们。',],
 # '调试卡里的时光沙漏可以把时间加速到 3600 倍，想先看看花开可以用它。'
     "weather": [{'label': '晴', 'icon': 'sun', 'note': '适合晒晒太阳'},

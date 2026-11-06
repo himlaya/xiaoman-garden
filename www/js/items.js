@@ -77,7 +77,7 @@
   }
 
   function seedWear() {
-    return Math.round((0.015 + Math.random() * 0.26) * 1000) / 1000;
+    return Math.round(Math.random() * 1000) / 1000;
   }
 
   function bouquetWear(fresh, careScore) {
@@ -91,7 +91,7 @@
     const value = Number(wear) || 0;
     const found = WEAR_BANDS.find(function (band) { return value < band.max; }) || WEAR_BANDS[WEAR_BANDS.length - 1] || {};
     return {
-      label: kind === 'seed' ? (found.seedLabel || found.label || '完好') : (found.label || '盛放'),
+      label: found.label || '盛放',
       color: found.color || '#70905f',
       className: found.className || 'wear-vivid',
       max: found.max || 1
@@ -144,7 +144,7 @@
       grade: grade,
       templateId: templateId,
       patternSeed: opts.patternSeed,
-      wear: opts.wear,
+      wear: typeof opts.wear === 'number' ? opts.wear : seedWear(),
       createdAt: opts.createdAt,
       provenance: {
         grower: opts.grower || '小园丁',
@@ -159,10 +159,7 @@
     const opts = options || {};
     const seed = opts.seed || null;
     const careScore = clamp(Number(plant && plant.careScore) || 0, 0, 100);
-    const seedGrade = seed ? gradeById(seed.grade) : null;
-    const seedIndex = seedGrade ? Math.max(0, GRADES.findIndex(function (grade) { return grade.id === seedGrade.id; })) : 0;
-    const boost = clamp(0.04 + careScore / 100 * 0.14 + Math.max(0, 0.25 - (Number(fresh && fresh.ratio) || 0) * 0.1) + seedIndex * 0.025, 0, 0.32);
-    const grade = opts.grade && GRADES_BY_ID[opts.grade] ? opts.grade : rollGrade(boost);
+    const grade = seed ? gradeById(seed.grade).id : (opts.grade && GRADES_BY_ID[opts.grade] ? opts.grade : rollGrade(0));
     const templateId = seed ? seed.templateId : (opts.templateId || rollTemplate());
     const patternSeed = seed ? seed.patternSeed : (opts.patternSeed || randomInt(0xffffffff));
     const now = Date.now();
@@ -173,7 +170,7 @@
       grade: grade,
       templateId: templateId,
       patternSeed: patternSeed,
-      wear: typeof opts.wear === 'number' ? opts.wear : bouquetWear(fresh, careScore),
+      wear: seed && typeof seed.wear === 'number' ? seed.wear : (typeof opts.wear === 'number' ? opts.wear : bouquetWear(fresh, careScore)),
       createdAt: now,
       provenance: {
         grower: opts.grower || '小园丁',

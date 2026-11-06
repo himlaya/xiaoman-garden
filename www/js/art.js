@@ -318,6 +318,26 @@
       sparkles(c.petal, c.accent);
   }
 
+  function newSpeciesBloom(f, key) {
+    const c = f.colors;
+    let petals = '';
+    const layers = f.shape === 'peony' ? 4 : f.shape === 'carnation' ? 3 : 1;
+    for (let layer = 0; layer < layers; layer++) {
+      const count = f.shape === 'cosmos' ? 8 : f.shape === 'iris' ? 6 : f.shape === 'orchid' ? 5 : 11 - layer;
+      const size = 1 - layer * 0.19;
+      for (let i = 0; i < count; i++) {
+        const angle = i * 360 / count + layer * 19;
+        const ruffled = f.shape === 'carnation';
+        const path = ruffled ? 'M0 2 C-19 -9 -23 -28 -13 -34 L-9 -30 -5 -36 0 -31 5 -36 9 -30 13 -34 C23 -28 19 -9 0 2Z' : 'M0 2 C-24 -4 -25 -31 0 -37 C25 -31 24 -4 0 2Z';
+        const yScale = f.shape === 'iris' ? (i % 2 ? 1.05 : 1.38) : f.shape === 'cosmos' ? 1.08 : 0.87;
+        petals += '<path d="' + path + '" fill="url(#' + key + '-petal)" stroke="' + c.petalAlt + '" stroke-width=".6" transform="rotate(' + angle + ') scale(' + size + ' ' + size * yScale + ')"></path>';
+      }
+    }
+    return soilMound() + '<g class="flower-sway">' + baseFoliage(f, 69) + '<g transform="translate(70 61)">' + petals +
+      '<ellipse rx="' + (f.shape === 'orchid' ? 7 : 9) + '" ry="7" fill="' + c.center + '"></ellipse>' +
+      (f.shape === 'orchid' ? '<path d="M-9 1 Q0 27 9 1 Q0 10 -9 1Z" fill="' + c.centerAlt + '"></path>' : '') + '</g></g>';
+  }
+
   function bloomStage(f, key) {
     const painters = {
       daisy: daisyBloom,
@@ -326,14 +346,15 @@
       rose: roseBloom,
       sunflower: sunflowerBloom,
       hydrangea: hydrangeaBloom,
-      lily: lilyBloom
+      lily: lilyBloom, cosmos: newSpeciesBloom, carnation: newSpeciesBloom, peony: newSpeciesBloom, iris: newSpeciesBloom, orchid: newSpeciesBloom
     };
     return (painters[f.shape] || daisyBloom)(f, key);
   }
 
   function flower(id, stage, options) {
     const opts = options || {};
-    const f = DATA.flowerMap[id] || DATA.flowerMap.daisy;
+    let f = DATA.flowerMap[id] || DATA.flowerMap.daisy;
+    if (opts.item && window.GardenItems) f = Object.assign({}, f, { colors: window.GardenItems.variantColors(f, opts.item).colors });
     const safeStage = stage === 'bloom' || stage === 'bud' || stage === 'sprout' ? stage : 'seed';
     const key = 'flower' + (++uid);
     const c = f.colors;

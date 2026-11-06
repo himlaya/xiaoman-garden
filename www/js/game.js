@@ -118,6 +118,7 @@
       templateId: raw.templateId || (legacySeed ? legacySeed.templateId : null),
       patternSeed: raw.patternSeed || (legacySeed ? legacySeed.patternSeed : null),
       seedGrade: raw.seedGrade || (legacySeed ? legacySeed.grade : null),
+      seedWear: typeof raw.seedWear === 'number' ? clamp(raw.seedWear, 0, 1) : (legacySeed ? legacySeed.wear : 0.03),
       careScore: clamp(Number(raw.careScore) || 0, 0, 100),
       waterCount: Math.max(0, Math.floor(Number(raw.waterCount) || 0)),
       fertilizerCount: Math.max(0, Math.floor(Number(raw.fertilizerCount) || 0))
@@ -492,7 +493,8 @@
       seedMeta: {
         templateId: plant.templateId || null,
         patternSeed: plant.patternSeed || null,
-        grade: plant.seedGrade || null
+        grade: plant.seedGrade || 'common',
+        wear: plant.seedWear ?? 0.03
       },
       isBloom: stage === 'bloom'
     };
@@ -624,6 +626,7 @@
       templateId: seed.templateId,
       patternSeed: seed.patternSeed,
       seedGrade: seed.grade,
+      seedWear: seed.wear,
       careScore: 0,
       waterCount: 0,
       fertilizerCount: 0
@@ -713,7 +716,8 @@
       id: plant.seedId,
       grade: plant.seedGrade || 'common',
       templateId: plant.templateId,
-      patternSeed: plant.patternSeed
+      patternSeed: plant.patternSeed,
+      wear: plant.seedWear ?? 0.03
     };
     const item = addItem(Items.createBouquet(flower, plant, fresh, {
       grower: state.player.name,

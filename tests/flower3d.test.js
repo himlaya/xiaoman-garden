@@ -48,7 +48,7 @@ function preview(kind, options = {}) {
   };
   if (options.patternSeed !== undefined) {
     state.item = window.GardenItems.createBouquet(state.flower, {}, { ratio: 1 }, {
-      id: 'porcelain-test', patternSeed: options.patternSeed, grade: 'rare'
+      id: 'porcelain-test', patternSeed: options.patternSeed, grade: options.grade || 'rare', templateId: options.templateId || 'dawn', wear: options.wear ?? 0.03
     });
   }
   if (options.rack) {
@@ -100,7 +100,7 @@ test('all seven visitors arrive, land on each flower and depart once', () => {
 });
 
 test('3D shelf places six real bouquet models per page without creating extra WebGL renderers', () => {
-  for (const [options, count] of [[{ rack: true }, 6], [{ rack: true, page: 1 }, 1], [{ rack: true, empty: true }, 0]]) {
+  for (const [options, count] of [[{ rack: true }, 6], [{ rack: true, page: 1 }, 6], [{ rack: true, empty: true }, 0]]) {
     const scene = preview(0, options);
     const rack = scene.state.scene.getObjectByName('bouquet-display-rack');
     const flowers = rack.children.filter((object) => object.userData.shelfItem);
@@ -154,4 +154,48 @@ test('porcelain families are reachable, retain smooth glaze and keep stable pigm
     scene.dispose();
     again.dispose();
   }
+});
+
+
+test('new species have distinct anatomy and finite thin botanical surfaces at all stages', () => {
+  const heads = { cosmos: 'cosmos-eight-petal-head', carnation: 'carnation-ruffled-head', peony: 'peony-layered-head', iris: 'iris-standards-and-falls', orchid: 'orchid-flower-2' };
+  for (const [flower, head] of Object.entries(heads)) {
+    for (const stage of ['seed', 'sprout', 'bud', 'bloom']) {
+      const scene = preview(0, { flower, stage, patternSeed: 14, templateId: 'gilded' });
+      if (stage === 'bloom') assert(scene.state.scene.getObjectByName(head), flower);
+      let petals = 0;
+      scene.state.scene.traverse((object) => {
+        const geometry = object.geometry;
+        if (!geometry || !geometry.userData.botanical) return;
+        assert(geometry.attributes.uv, 'botanical surfaces need consistent UVs');
+        for (const value of geometry.attributes.position.array) assert(Number.isFinite(value));
+        if (geometry.userData.botanical === 'petal' && object.material.name === 'botanical-petal') {
+          petals++;
+          assert.equal(object.material.metalness, 0);
+          assert.equal(object.material.clearcoat, 0);
+          assert(object.material.bumpMap);
+        }
+      });
+      if (stage === 'bloom') assert(petals > 0);
+      scene.dispose();
+    }
+  }
+});
+
+test('quality does not change species anatomy, while template and pattern change petal colour', () => {
+  function petalColors(options) {
+    const scene = preview(0, { flower: 'rose', patternSeed: 143, ...options });
+    const arrays = [];
+    scene.state.scene.traverse((object) => {
+      if (object.geometry?.userData.botanical === 'petal' && object.geometry.attributes.color) {
+        arrays.push(Array.from(object.geometry.attributes.color.array));
+      }
+    });
+    scene.dispose();
+    return arrays;
+  }
+  const common = petalColors({ grade: 'common', templateId: 'dawn' });
+  assert.deepEqual(common, petalColors({ grade: 'legendary', templateId: 'dawn' }));
+  assert.notDeepEqual(common, petalColors({ templateId: 'gilded' }));
+  assert.notDeepEqual(common, petalColors({ patternSeed: 845 }));
 });

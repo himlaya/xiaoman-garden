@@ -20,10 +20,6 @@
     });
   }
 
-  function rarityInfo(flower) {
-    return DATA.rarity[flower.rarity] || { className: 'common', label: flower.rarity };
-  }
-
   function prefersReducedMotion() {
     try {
       return !!(window.Game && (Game.getState().settings.reduceMotion ||
@@ -44,7 +40,7 @@
       grade: rawPlant.seedGrade || 'common',
       templateId: rawPlant.templateId,
       patternSeed: rawPlant.patternSeed || 1,
-      wear: 0.03
+      wear: rawPlant.seedWear ?? 0.03
     } : null;
     openViewer({
       kind: 'plant',
@@ -81,7 +77,7 @@
     const item = options.item || null;
     const stage = STAGES.includes(options.stage) ? options.stage : 'bloom';
     const trigger = document.activeElement;
-    const rarity = rarityInfo(flower);
+    const quality = item && Items ? Items.gradeById(item.grade) : { id: 'common', label: '花种预览', color: '#748773' };
     const overlay = document.createElement('div');
     overlay.className = 'flower3d-overlay';
     overlay.setAttribute('data-flower3d', '1');
@@ -93,7 +89,7 @@
         '<header class="flower3d-top">' +
           '<div class="flower3d-heading">' +
             '<p class="flower3d-eyebrow">FLOWER IN 3D</p>' +
-            '<div class="flower3d-name-row"><h2 class="flower3d-name"></h2><span class="flower3d-rarity ' + rarity.className + '"></span></div>' +
+            '<div class="flower3d-name-row"><h2 class="flower3d-name"></h2><span class="flower3d-rarity ' + 'grade-' + quality.id + '"></span></div>' +
             '<p class="flower3d-language"></p>' +
             '<div class="flower3d-itemmeta"></div>' +
           '</div>' +
@@ -110,8 +106,8 @@
 
     overlay.querySelector('.flower3d-name').textContent = flower.name;
     const rarityEl = overlay.querySelector('.flower3d-rarity');
-    rarityEl.textContent = rarity.label;
-    rarityEl.classList.add(rarity.className);
+    rarityEl.textContent = quality.label;
+    rarityEl.classList.add('grade-' + quality.id);
     overlay.querySelector('.flower3d-language').textContent = '「' + flower.language + '」';
     const metaEl = overlay.querySelector('.flower3d-itemmeta');
     if (item && Items) {
@@ -119,7 +115,7 @@
       const template = Items.templateById(item.templateId);
       const wear = Items.wearBand(item.wear, item.kind);
       metaEl.innerHTML = '<span class="item-grade grade-' + esc(grade.id) + '">' + esc(grade.label) + '</span>' +
-        '<span class="flower3d-meta-chip">' + esc(template.label) + '模板</span>' +
+        '<span class="flower3d-meta-chip">' + esc(template.label) + '模板 · #' + (Number(item.patternSeed) >>> 0) + '</span>' +
         '<span class="wear-badge ' + esc(wear.className) + '">' + esc(wear.label) + ' ' + Number(item.wear).toFixed(3) + '</span>';
     }
     const isItemView = !!item;
@@ -217,6 +213,7 @@
           materials.forEach(function (material) {
             if (material.map) material.map.dispose();
             if (material.bumpMap) material.bumpMap.dispose();
+        if (material.roughnessMap) material.roughnessMap.dispose();
             material.dispose();
           });
         }
@@ -424,13 +421,12 @@
     const variant = state.item && Items ? Items.variantColors(state.flower, state.item) : null;
     const flower = variant ? Object.assign({}, state.flower, { colors: variant.colors }) : state.flower;
     const wear = variant ? variant.wear : 0;
-    const rarityRank = { '普通': 0, '少见': 1, '稀有': 2, '珍稀': 3 }[flower.rarity] || 0;
-    const gradeRank = variant ? Math.max(0, ['common', 'fine', 'rare', 'epic', 'legendary'].indexOf(variant.grade.id)) : 0;
-    const richness = rarityRank + gradeRank * 0.22;
+    const richness = 1.4;
     const pattern = Number(variant ? variant.patternSeed : flower.id.split('').reduce(function (seed, letter) {
       return (seed * 31 + letter.charCodeAt(0)) >>> 0;
     }, 17)) >>> 0;
     const phase = (pattern % 997) / 997 * TAU;
+    const potShapeIndex = Math.floor(pattern / 18) % 4;
     const stage = state.stage;
     const reduced = prefersReducedMotion();
 
@@ -472,6 +468,7 @@
       mats.forEach(function (material) {
         if (material.map) material.map.dispose();
         if (material.bumpMap) material.bumpMap.dispose();
+        if (material.roughnessMap) material.roughnessMap.dispose();
         material.dispose();
       });
     });
@@ -495,7 +492,21 @@
         const edge = Math.min(1, Math.abs(position.getX(i)) / Math.max(0.001, geometry.boundingBox.max.x));
         const vein = Math.pow(Math.max(0, Math.cos(position.getX(i) * 80 + t * 8)), 12);
         currentColor.copy(from).lerp(to, Math.min(1, t * 0.85 + edge * 0.15));
-        currentColor.lerp(ivory, vein * t * 0.035 * richness);
+        currentColor.lerp(ivory, vein * t * 0.024);
+        if (variant && geometry.userData.botanical === 'petal') {
+          const finish = variant.template.id;
+          const signedX = position.getX(i) / Math.max(0.001, geometry.boundingBox.max.x);
+          const pigment = new THREE.Color(variant.template.tint);
+          let amount = 0;
+          if (finish === 'gilded') amount = Math.max(0, (edge - 0.72) / 0.28) * 0.74;
+          if (finish === 'frost') amount = Math.max(0, edge - 0.35) * 0.8 + vein * 0.15;
+          if (finish === 'ember') amount = Math.pow(1 - t, 2) * 0.7;
+          if (finish === 'moon') amount = Math.max(0, Math.sin(signedX * 8 + phase) - 0.45) * t * 0.38;
+          if (finish === 'mist') amount = Math.pow(Math.max(0, Math.sin(signedX * 37 + t * 29 + phase)), 10) * 0.48;
+          if (finish === 'celadon') amount = (0.5 + Math.sin(t * 12 + signedX * 5 + phase) * 0.5) * 0.3;
+          currentColor.lerp(pigment, amount);
+          currentColor.lerp(new THREE.Color('#987959'), Math.max(0, wear - 0.38) * edge * t * 0.6);
+        }
         colors[i * 3] = currentColor.r;
         colors[i * 3 + 1] = currentColor.g;
         colors[i * 3 + 2] = currentColor.b;
@@ -509,16 +520,19 @@
       const columns = 10;
       const positions = [];
       const indices = [];
+      const uvs = [];
       const wide = kind === 'wide';
       for (let row = 0; row <= rows; row++) {
         const t = row / rows;
         const outline = Math.pow(Math.sin(Math.PI * t), wide ? 0.45 : kind === 'pointed' ? 1.1 : 0.65);
         for (let column = 0; column <= columns; column++) {
           const across = column / columns * 2 - 1;
-          const ruffle = Math.sin(t * 17 + phase) * Math.pow(Math.abs(across), 4) * t * 0.018 * richness;
+          const ruffle = Math.sin(t * 23 + across * 9 + phase) * Math.pow(Math.abs(across), 4) * t * (kind === 'ruffled' ? 0.11 : 0.014);
+          const tooth = kind === 'ruffled' ? 1 + Math.cos(across * 32) * Math.pow(t, 8) * 0.07 : 1;
           const cup = across * across * Math.sin(Math.PI * t) * (wide ? 0.24 : 0.13);
           const curl = Math.pow(t, 4) * (wide ? -0.12 : 0.1) * (1 + richness * 0.15);
-          positions.push(across * width * outline, length * t, length * (cup + curl + ruffle));
+          positions.push(across * width * outline, length * t * tooth, length * (cup + curl + ruffle));
+          uvs.push(column / columns, t);
           if (row < rows && column < columns) {
             const a = row * (columns + 1) + column;
             indices.push(a, a + 1, a + columns + 1, a + 1, a + columns + 2, a + columns + 1);
@@ -528,29 +542,35 @@
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
       geometry.setIndex(indices);
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geometry.userData.botanical = 'petal';
       geometry.computeVertexNormals();
       return geometry;
     }
 
     function leafGeometry(length, width) {
-      const shape = new THREE.Shape();
-      shape.moveTo(0, 0);
-      shape.bezierCurveTo(-width, length * 0.2, -width * 0.78, length * 0.8, 0, length);
-      shape.bezierCurveTo(width * 0.78, length * 0.8, width, length * 0.2, 0, 0);
-      const geometry = new THREE.ExtrudeGeometry(shape, {
-        depth: 0.025,
-        bevelEnabled: true,
-        bevelThickness: 0.012,
-        bevelSize: 0.012,
-        bevelSegments: 1,
-        curveSegments: 12
-      });
-      geometry.translate(0, 0, -0.0125);
-      const position = geometry.attributes.position;
-      for (let i = 0; i < position.count; i += 1) {
-        const x = position.getX(i);
-        position.setZ(i, position.getZ(i) + Math.min(1, Math.abs(x) / Math.max(0.001, width)) * 0.06);
+      const positions = [], uvs = [], indices = [];
+      const rows = 24, columns = 10;
+      for (let r = 0; r <= rows; r++) {
+        const t = r / rows;
+        const outline = Math.pow(Math.sin(Math.PI * t), 0.75);
+        for (let c = 0; c <= columns; c++) {
+          const across = c / columns * 2 - 1;
+          const teeth = ['rose', 'hydrangea'].includes(flower.shape) ? 1 + Math.sin(t * 95) * 0.04 : 1;
+          positions.push(across * width * outline * teeth, length * t,
+            length * (Math.sin(t * Math.PI) * 0.09 + across * across * outline * 0.07 - t * t * 0.04));
+          uvs.push(c / columns, t);
+          if (r < rows && c < columns) {
+            const a = r * (columns + 1) + c;
+            indices.push(a, a + 1, a + columns + 1, a + 1, a + columns + 2, a + columns + 1);
+          }
+        }
       }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geometry.setIndex(indices);
+      geometry.userData.botanical = 'leaf';
       geometry.computeVertexNormals();
       return geometry;
     }
@@ -572,9 +592,9 @@
         { label: '木纹', roughness: 0.82, metalness: 0, clearcoat: 0.08, bump: 0.004 },
         { label: '铜器', roughness: 0.38, metalness: 0.55, clearcoat: 0.12, bump: 0.002 }
       ];
-      const surfaceIndex = (pattern + rarityRank) % surfaces.length;
+      const surfaceIndex = pattern % surfaces.length;
       const surface = Object.assign({}, surfaces[surfaceIndex]);
-      // Divide out the material cycle so each porcelain family can occur at every rarity.
+      // Porcelain family and pot shape are specimen variants, independent of flower species and quality.
       const porcelain = surfaceIndex === 2 ? Math.floor(pattern / surfaces.length) % 3 : -1;
       const china = [
         { label: '青花瓷', body: 0xf0eee5, ink: 0x24528b, accent: 0x557ba0 },
@@ -586,7 +606,7 @@
         surface.roughness = porcelain === 2 ? 0.26 : 0.2;
         surface.clearcoat = porcelain === 2 ? 0.65 : 0.8;
       }
-      const palette = Object.assign({}, palettes[(rarityRank * 2 + pattern % 3) % palettes.length]);
+      const palette = Object.assign({}, palettes[(potShapeIndex * 2 + pattern % 3) % palettes.length]);
       if (surfaceIndex === 0) palette.body = [0xb77e61, 0xc38b6b, 0xa96f54][pattern % 3];
       if (china) Object.assign(palette, { body: china.body, rim: china.ink, accent: china.accent });
       if (surfaceIndex === 3) palette.body = 0xbcb9a7;
@@ -598,7 +618,7 @@
       const accentColor = rgb(palette.accent);
       const pixels = new Uint8Array(512 * 256 * 4);
       const relief = new Uint8Array(pixels.length);
-      const motif = (rarityRank + pattern) % 3;
+      const motif = (potShapeIndex + pattern) % 3;
       for (let y = 0; y < 256; y++) {
         const v = y / 255;
         for (let x = 0; x < 512; x++) {
@@ -710,14 +730,14 @@
         [[0, -1.48], [0.57, -1.48], [0.64, -1.42], [0.74, -1.26], [0.77, -0.93], [0.76, -0.8], [0.73, -0.77], [0.69, -0.79], [0.68, -0.94], [0.64, -1.35], [0, -1.38]],
         [[0, -1.48], [0.47, -1.48], [0.49, -1.4], [0.67, -1.34], [0.8, -1.12], [0.79, -0.97], [0.71, -0.85], [0.72, -0.78], [0.68, -0.76], [0.65, -0.8], [0.66, -0.88], [0.73, -1.01], [0.73, -1.13], [0.59, -1.3], [0, -1.38]]
       ];
-      const profile = profiles[rarityRank].map(function (point) { return new THREE.Vector2(point[0], point[1]); });
+      const profile = profiles[potShapeIndex].map(function (point) { return new THREE.Vector2(point[0], point[1]); });
       const bodyGeometry = geo(new THREE.LatheGeometry(profile, 64));
       const potPositions = bodyGeometry.attributes.position;
       const potUV = bodyGeometry.attributes.uv;
       for (let i = 0; i < potPositions.count; i++) {
         potUV.setY(i, Math.max(0, Math.min(1, (potPositions.getY(i) + 1.48) / 0.72)));
       }
-      if (rarityRank === 2) {
+      if (potShapeIndex === 2) {
         const positions = bodyGeometry.attributes.position;
         for (let i = 0; i < positions.count; i++) {
           const angle = Math.atan2(positions.getZ(i), positions.getX(i));
@@ -734,7 +754,7 @@
         return new THREE.Vector2(p[0], p[1]);
       }), 64)), mat({ color: palette.body, roughness: surface.roughness, metalness: surface.metalness }));
       root.add(saucer);
-      const soilRadius = [0.71, 0.65, 0.67, 0.64][rarityRank];
+      const soilRadius = [0.71, 0.65, 0.67, 0.64][potShapeIndex];
       const soil = new THREE.Mesh(geo(new THREE.CylinderGeometry(soilRadius, soilRadius, 0.035, 48)), soilMat);
       soil.position.y = -0.845;
       root.add(soil);
@@ -770,12 +790,42 @@
     }
 
     const shape = flower.shape || 'daisy';
-    const leafMat = mat({ color: 0xffffff, vertexColors: true, roughness: 0.88, side: THREE.DoubleSide });
-    const veinMat = mat({ color: flower.colors.leaf, roughness: 0.9 });
+    function botanicalTexture(leaf) {
+      const pixels = new Uint8Array(128 * 256 * 4);
+      for (let y = 0; y < 256; y++) {
+        for (let x = 0; x < 128; x++) {
+          const u = x / 127, v = y / 255;
+          const distance = Math.abs(u - 0.5);
+          const central = Math.exp(-distance * (leaf ? 130 : 80));
+          const branches = Math.pow(Math.max(0, Math.cos((v - distance * (leaf ? 0.68 : 0.2)) * (leaf ? 85 : 145))), leaf ? 18 : 7);
+          const grain = Math.sin(u * 191 + v * 137 + phase) * Math.sin(u * 71 - v * 257);
+          const h = Math.round(128 + central * (leaf ? 42 : 9) + branches * (leaf ? 15 : 7) + grain * 2);
+          const i = (y * 128 + x) * 4;
+          pixels[i] = pixels[i + 1] = pixels[i + 2] = h;
+          pixels[i + 3] = 255;
+        }
+      }
+      const texture = new THREE.DataTexture(pixels, 128, 256, THREE.RGBAFormat);
+      texture.magFilter = THREE.LinearFilter;
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      texture.generateMipmaps = true;
+      texture.needsUpdate = true;
+      return texture;
+    }
+    const leafTexture = botanicalTexture(true);
+    const petalTexture = botanicalTexture(false);
+    const leafMat = new THREE.MeshPhysicalMaterial({
+      name: 'botanical-leaf', color: 0xffffff, vertexColors: true, roughness: 0.56,
+      metalness: 0, clearcoat: 0.08, clearcoatRoughness: 0.65,
+      bumpMap: leafTexture, bumpScale: 0.003, side: THREE.DoubleSide
+    });
+    mats.push(leafMat);
+    const veinMat = mat({ color: flower.colors.leaf, roughness: 0.82 });
     const petalMat = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff, vertexColors: true, roughness: 0.7 - richness * 0.075,
-      metalness: 0, clearcoat: Math.min(0.55, richness * 0.13), clearcoatRoughness: 0.32,
-      side: THREE.DoubleSide
+      name: 'botanical-petal', color: 0xffffff, vertexColors: true, roughness: 0.64,
+      metalness: 0, clearcoat: 0, sheen: 0.35, sheenColor: new THREE.Color(flower.colors.petal),
+      sheenRoughness: 0.8, specularIntensity: 0.28,
+      bumpMap: petalTexture, bumpScale: 0.0012, side: THREE.DoubleSide
     });
     mats.push(petalMat);
     const greenMat = mat({ color: flower.colors.leaf, roughness: 0.9, side: THREE.DoubleSide });
@@ -784,28 +834,10 @@
     const centerAltMat = mat({ color: flower.colors.centerAlt, roughness: 0.9 });
 
     const root = new THREE.Group();
+    root.name = 'flower-model-' + flower.id;
+    root.userData.species = flower.id;
     scene.add(root);
     addPot(root);
-    if (variant) {
-      const gradeRing = new THREE.Mesh(geo(new THREE.TorusGeometry([0.78, 0.7, 0.73, 0.7][rarityRank], 0.008, 8, 64)), basic({
-        color: variant.gradeColor,
-        transparent: true,
-        opacity: 0.92
-      }));
-      gradeRing.rotation.x = Math.PI / 2;
-      gradeRing.position.y = -0.77;
-      root.add(gradeRing);
-      const soilGlow = new THREE.Mesh(geo(new THREE.RingGeometry(0.6, 0.715, 48)), basic({
-        color: variant.gradeColor,
-        transparent: true,
-        opacity: 0.18,
-        depthWrite: false,
-        side: THREE.DoubleSide
-      }));
-      soilGlow.rotation.x = -Math.PI / 2;
-      soilGlow.position.y = -0.816;
-      root.add(soilGlow);
-    }
     if (stage === 'seed') {
       addSeed(root);
     }
@@ -819,7 +851,7 @@
       root.add(plant);
       swayTarget = plant;
 
-      const heights = { daisy: 1.28, tulip: 1.5, hyacinth: 1.3, rose: 1.12, sunflower: 1.68, hydrangea: 1.18, lily: 1.32 };
+      const heights = { daisy: 1.28, tulip: 1.5, hyacinth: 1.3, rose: 1.12, sunflower: 1.68, hydrangea: 1.18, lily: 1.32, cosmos: 1.48, carnation: 1.4, peony: 1.22, iris: 1.6, orchid: 1.48 };
       const fullTop = (heights[shape] || 1.3) * (1 + Math.sin(phase) * 0.035);
       const stageScale = stage === 'sprout' ? 0.34 : stage === 'bud' ? 0.8 : 1;
       const top = fullTop * stageScale;
@@ -858,6 +890,11 @@
           [0.02, 2.2, -0.72, 1.12, 0.15], [0.02, 3.8, 0.7, 1.12, 0.15], [0.16, 0.8, -1.05, 0.7, 0.12]
         ]
       };
+      leafSets.cosmos = [[0.15, 2.2, -1.1, 0.62, 0.055], [0.32, 0.5, 1.1, 0.58, 0.05], [0.5, 3.6, -1, 0.44, 0.045]];
+      leafSets.carnation = [[0.15, 2.1, -0.8, 0.6, 0.045], [0.35, 3.6, 0.85, 0.55, 0.04], [0.6, 0.5, -0.8, 0.42, 0.04]];
+      leafSets.peony = [[0.2, 2.1, -0.9, 0.58, 0.23], [0.38, 3.6, 0.9, 0.52, 0.21], [0.5, 0.6, -0.85, 0.46, 0.19]];
+      leafSets.iris = [[0.02, 2.3, -0.32, 1.28, 0.075], [0.02, 3.7, 0.32, 1.18, 0.07], [0.1, 0.5, -0.4, 0.92, 0.065]];
+      leafSets.orchid = [[0.02, 2.2, -1.1, 0.86, 0.27], [0.02, 3.7, 1.1, 0.82, 0.26], [0.05, 0.55, -1.25, 0.68, 0.23]];
       const leaves = leafSets[shape] || leafSets.daisy;
       const leafLimit = stage === 'sprout' ? 2 : leaves.length;
       for (let i = 0; i < leafLimit; i += 1) {
@@ -946,7 +983,7 @@
         const innerGeo = geo(paint(petalGeometry(big ? 0.86 : 0.62, big ? 0.2 : 0.17, 'round'), flower.colors.petalAlt, flower.colors.petal));
         const outer = { geometry: outerGeo, material: petalMat };
         const inner = { geometry: innerGeo, material: petalMat };
-        addPetalRing(head, outer, { count: big ? 24 + Math.round(richness * 2) : 15 + gradeRank, tilt: 1.34, scale: 1, offset: 0.1 });
+        addPetalRing(head, outer, { count: big ? 28 : 18, tilt: 1.34, scale: 1, offset: 0.1 });
         addPetalRing(head, inner, { count: big ? 20 : 10, tilt: 1.16, scale: 0.78, offset: 0.28, y: 0.035 });
         if (big && richness >= 2) {
           addPetalRing(head, inner, { count: 16, tilt: 1.42, scale: 0.94, offset: 0.49, y: -0.015 });
@@ -995,13 +1032,9 @@
           geometry: geo(paint(petalGeometry(0.94, 0.38, 'round'), flower.colors.petalAlt, flower.colors.petal)),
           material: petalMat
         };
-        const innerPetal = {
-          geometry: geo(paint(petalGeometry(0.8, 0.32, 'round'), flower.colors.center, flower.colors.petal)),
-          material: petalMat
-        };
         addPetalRing(head, petal, { count: 3, tilt: 0.32, scale: 1, offset: 0.1 });
         addPetalRing(head, petal, { count: 3, tilt: 0.42, scale: 0.94, offset: Math.PI / 3 + 0.1 });
-        if (gradeRank >= 3) addPetalRing(head, innerPetal, { count: 3, tilt: 0.2, scale: 0.85, offset: 0.58, y: 0.04 });
+
         for (let i = 0; i < 6; i += 1) {
           const stamen = new THREE.Mesh(geo(new THREE.SphereGeometry(0.026, 8, 6)), mat({ color: flower.colors.accent, roughness: 0.7 }));
           const angle = (i / 6) * TAU;
@@ -1017,9 +1050,13 @@
         const key = size + petalColors.join('');
         if (!floretCache.has(key)) {
           floretCache.set(key, {
-            geometry: geo(petalGeometry(size, size * 0.64, 'wide')),
+            geometry: geo(paint(petalGeometry(size, size * 0.64, 'wide'), flower.colors.petalAlt, flower.colors.petal)),
             materials: petalColors.map(function (color) {
-              return mat({ color: color, roughness: 0.64 - richness * 0.055, side: THREE.DoubleSide });
+              const material = petalMat.clone();
+              material.color.set(color);
+              material.vertexColors = true;
+              mats.push(material);
+              return material;
             }),
             center: geo(new THREE.SphereGeometry(size * 0.15, 6, 4))
           });
@@ -1115,6 +1152,7 @@
               positions.getZ(i) * (1 + flare * 0.24));
           }
           bellGeometry.computeVertexNormals();
+          bellGeometry.userData.botanical = 'petal';
           paint(bellGeometry, flower.colors.petal, flower.colors.petalAlt);
         }
         const bell = new THREE.Mesh(bellGeometry, petalMat);
@@ -1124,7 +1162,7 @@
       }
 
       function buildLily() {
-        const count = 7 + Math.min(3, gradeRank);
+        const count = 8 + pattern % 3;
         for (let i = 0; i < count; i += 1) {
           const t = 0.38 + i / (count - 1) * 0.53;
           const anchor = curve.getPoint(t);
@@ -1139,6 +1177,93 @@
           pedicel.rotation.z = side * 0.9;
           plant.add(pedicel);
           if (i === count - 2) setInsectPerch(plant, bell.position.x, bell.position.y - 0.08, bell.position.z);
+        }
+      }
+
+      function buildLayeredFlower(carnation) {
+        const head = new THREE.Group();
+        head.name = carnation ? 'carnation-ruffled-head' : 'peony-layered-head';
+        head.position.copy(headPosition);
+        head.rotation.x = 0.16;
+        plant.add(head);
+        addCalyx(head, -0.04, carnation ? 0.85 : 1.2);
+        const layers = carnation ? 5 : 6;
+        for (let layer = 0; layer < layers; layer++) {
+          const length = (carnation ? 0.66 : 0.94) * (1 - layer * 0.105);
+          const petals = {
+            geometry: geo(paint(petalGeometry(length, length * (carnation ? 0.54 : 0.64), carnation ? 'ruffled' : 'wide'),
+              layer % 2 ? flower.colors.petal : flower.colors.petalAlt, flower.colors.petal)),
+            material: petalMat
+          };
+          addPetalRing(head, petals, { count: carnation ? 11 - layer : 12 - layer,
+            tilt: (carnation ? 1.12 : 1.32) - layer * 0.17, scale: 1,
+            y: layer * 0.045, offset: layer * 0.43 });
+        }
+        addCenter(head, carnation ? 0.09 : 0.15, 16, 0.25);
+        setInsectPerch(head, 0.1, 0.36, 0.06);
+      }
+
+      function buildCosmos() {
+        const head = new THREE.Group();
+        head.name = 'cosmos-eight-petal-head';
+        head.position.copy(headPosition);
+        head.rotation.x = 0.3;
+        plant.add(head);
+        addCalyx(head, -0.04, 0.7);
+        const petals = { geometry: geo(paint(petalGeometry(0.85, 0.32, 'wide'), flower.colors.petalAlt, flower.colors.petal)), material: petalMat };
+        addPetalRing(head, petals, { count: 8, tilt: 1.35, scale: 1, offset: 0.12 });
+        addCenter(head, 0.21, 36, 0.025);
+        // Divided foliage branches in pairs along the slender stem.
+        for (let i = 0; i < 8; i++) {
+          const needle = new THREE.Mesh(geo(paint(leafGeometry(0.26, 0.018), flower.colors.stem, flower.colors.leaf)), leafMat);
+          needle.position.copy(curve.getPoint(0.16 + Math.floor(i / 2) * 0.09));
+          needle.rotation.z = (i % 2 ? 1 : -1) * 1.15;
+          needle.rotation.y = i * 0.8;
+          plant.add(needle);
+        }
+        setInsectPerch(head, 0.03, 0.14, 0);
+      }
+
+      function buildIris() {
+        const head = new THREE.Group();
+        head.name = 'iris-standards-and-falls';
+        head.position.copy(headPosition);
+        plant.add(head);
+        const standards = { geometry: geo(paint(petalGeometry(0.86, 0.24, 'wide'), flower.colors.petalAlt, flower.colors.petal)), material: petalMat };
+        const falls = { geometry: geo(paint(petalGeometry(0.94, 0.3, 'wide'), flower.colors.centerAlt, flower.colors.petal)), material: petalMat };
+        addPetalRing(head, standards, { count: 3, tilt: 0.47, scale: 1, offset: 0.05 });
+        addPetalRing(head, falls, { count: 3, tilt: 1.96, scale: 1, offset: Math.PI / 3 + 0.05, y: 0.08 });
+        const beard = { geometry: geo(paint(petalGeometry(0.36, 0.04, 'pointed'), flower.colors.centerAlt, flower.colors.center)), material: petalMat };
+        addPetalRing(head, beard, { count: 3, tilt: 1.96, scale: 1, offset: Math.PI / 3 + 0.05, y: 0.105 });
+        setInsectPerch(head, 0.08, 0.2, 0.15);
+      }
+
+      function buildOrchid() {
+        const petalGeo = geo(paint(petalGeometry(0.62, 0.36, 'wide'), flower.colors.petalAlt, flower.colors.petal));
+        const sepalGeo = geo(paint(petalGeometry(0.67, 0.19, 'pointed'), flower.colors.petalAlt, flower.colors.petal));
+        const lipGeo = geo(paint(petalGeometry(0.34, 0.2, 'ruffled'), flower.colors.centerAlt, flower.colors.center));
+        for (let i = 0; i < 3; i++) {
+          const head = new THREE.Group();
+          head.name = 'orchid-flower-' + i;
+          head.position.copy(curve.getPoint(0.65 + i * 0.16));
+          head.position.x += (i % 2 ? -1 : 1) * 0.32;
+          head.rotation.set(1.1, 0, (i - 1) * 0.3);
+          head.scale.setScalar(0.7 - i * 0.035);
+          plant.add(head);
+          addPetalRing(head, { geometry: sepalGeo, material: petalMat }, { count: 3, tilt: 1.28, scale: 1, offset: 0.03 });
+          for (let side = -1; side <= 1; side += 2) {
+            const petal = new THREE.Mesh(petalGeo, petalMat);
+            petal.rotation.set(1.32, 0, side * 1.03);
+            head.add(petal);
+          }
+          const lip = new THREE.Mesh(lipGeo, petalMat);
+          lip.rotation.set(-0.7, 0, Math.PI);
+          lip.position.set(0, 0.04, 0.08);
+          head.add(lip);
+          const column = new THREE.Mesh(geo(new THREE.SphereGeometry(0.065, 12, 8)), centerMat);
+          column.position.y = 0.06;
+          head.add(column);
+          if (i === 2) setInsectPerch(head, 0, 0.14, 0.05);
         }
       }
 
@@ -1157,6 +1282,14 @@
         bud.position.y = 0.13;
         budGroup.add(bud);
         addCalyx(budGroup, -0.08, 1.05);
+      } else if (shape === 'cosmos') {
+        buildCosmos();
+      } else if (shape === 'carnation' || shape === 'peony') {
+        buildLayeredFlower(shape === 'carnation');
+      } else if (shape === 'iris') {
+        buildIris();
+      } else if (shape === 'orchid') {
+        buildOrchid();
       } else if (shape === 'rose') {
         buildRose();
       } else if (shape === 'tulip') {
@@ -1259,22 +1392,6 @@
         new THREE.Vector3(0, 0.015, 0), new THREE.Vector3(0.25, 0.38, 0.15),
         new THREE.Vector3(1.4, 0.7, -0.4), new THREE.Vector3(3.1, 1.4, -1.5)
       ]);
-    }
-
-    if (rarityRank === 3 && stage === 'bloom') {
-      const dewGeo = geo(new THREE.SphereGeometry(0.018, 6, 4));
-      const dewMat = mat({ color: 0xfff7d5, roughness: 0.22, metalness: 0.15 });
-      const dew = new THREE.InstancedMesh(dewGeo, dewMat, 12);
-      const transform = new THREE.Object3D();
-      for (let i = 0; i < 12; i++) {
-        const angle = i * 2.399963 + phase;
-        const radius = 0.82 + Math.sin(i * 1.7 + phase) * 0.1;
-        transform.position.set(Math.cos(angle) * radius, -0.1 + (i / 12) * 1.25, Math.sin(angle) * radius);
-        transform.scale.setScalar(0.65 + (i % 3) * 0.25);
-        transform.updateMatrix();
-        dew.setMatrixAt(i, transform.matrix);
-      }
-      root.add(dew);
     }
 
     const cameraTarget = new THREE.Vector3(0, 0.06, 0);
