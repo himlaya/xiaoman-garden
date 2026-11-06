@@ -6080,10 +6080,10 @@ button.online-account-card { width: 100%; text-align: left; }
   }
 }
 
-.flower-display-shelf { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 12px; padding: 14px 5px 25px; background: linear-gradient(90deg, transparent 5%, rgba(111, 81, 53, .14) 5%, rgba(111, 81, 53, .14) 6%, transparent 6%, transparent 94%, rgba(111, 81, 53, .14) 94%, rgba(111, 81, 53, .14) 95%, transparent 95%); }
-.flower-shelf-bouquet { position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; padding: 12px 8px 18px; color: var(--ink); border: 0; border-bottom: 9px solid #aa8261; border-radius: 12px 12px 3px 3px; background: linear-gradient(180deg, rgba(255,252,240,.8), rgba(216,227,204,.5)); box-shadow: 0 9px 9px -8px rgba(62,44,28,.5); }
-.flower-shelf-bouquet .item-portrait { width: 100%; height: 125px; flex-basis: auto; }
-.flower-shelf-bouquet .item-portrait .flower-render { height: 130px; }
-.flower-shelf-bouquet small { font-size: 9px; color: #7c8871; }
-.flower-shelf-bouquet:focus-visible { outline: 2px solid #597d5b; outline-offset: 4px; }
 .release-changes { padding-left: 20px; margin: 15px 0 25px; color: var(--ink); line-height: 1.9; font-size: 14px; }
+
+
+.flower3d-stages.shelf3d-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-height: 19vh; overflow-y: auto; padding: 6px; }
+.shelf3d-controls button, .flower3d-back { border: 1px solid #c5d1bb; border-radius: 12px; background: #fffbef; color: #3e5e45; font: inherit; font-size: 11px; padding: 7px 10px; cursor: pointer; }
+.shelf3d-controls button:focus-visible, .flower3d-back:focus-visible { outline: 2px solid #597d5b; outline-offset: 2px; }
+.flower3d-back { margin-top: 8px; }

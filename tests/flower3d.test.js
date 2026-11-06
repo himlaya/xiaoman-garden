@@ -10,9 +10,11 @@ const three = require(path.join(web, 'vendor/three.min.js'));
 function preview(kind, options = {}) {
   let frame;
   let now = 0;
+  let renderers = 0;
   const rolls = [options.roll ?? 0, (kind + 0.1) / 7, 0];
   const math = Object.assign(Object.create(Math), { random: () => rolls.shift() ?? 0.99 });
   const renderer = class {
+    constructor() { renderers++; }
     setPixelRatio() {}
     setClearColor() {}
     setSize() {}
@@ -32,7 +34,7 @@ function preview(kind, options = {}) {
     vm.runInContext(fs.readFileSync(path.join(web, 'js', file), 'utf8'), context);
   }
   const source = fs.readFileSync(path.join(web, 'js/flower3d.js'), 'utf8')
-    .replace('window.Flower3D = {', 'window.Flower3D = { createScene: createScene,');
+    .replace('window.Flower3D = {', 'window.Flower3D = { createScene: createScene, buildShelfModels: buildShelfModels,');
   vm.runInContext(source, context);
   const canvas = { addEventListener() {}, removeEventListener() {} };
   const shell = {
@@ -44,9 +46,17 @@ function preview(kind, options = {}) {
     stage: options.stage || 'bloom', cleanup: [],
     overlay: { querySelector: (selector) => selector.includes('canvas') ? canvas : selector.includes('shell') ? shell : null }
   };
-  window.Flower3D.createScene(state);
+  if (options.rack) {
+    state.shelfItems = options.empty ? [] : window.GameData.flowers.map((flower, index) =>
+      window.GardenItems.createBouquet(flower, {}, { ratio: 1 }, { id: 'shelf-' + index, patternSeed: index + 10, grade: 'rare' })
+    );
+    state.shelfPage = options.page || 0;
+    state.scene = new three.Scene();
+    state.scene.add(window.Flower3D.buildShelfModels(state, window.THREE));
+  } else window.Flower3D.createScene(state);
   return {
-    state, document, get visitor() { return state.scene.getObjectByName('flower-visitor'); },
+    state, document, get renderers() { return renderers; },
+    get visitor() { return state.scene.getObjectByName('flower-visitor'); },
     advance(seconds) {
       for (let i = 0; i < Math.round(seconds * 50); i++) {
         now += 20;
@@ -81,6 +91,24 @@ test('all seven visitors arrive, land on each flower and depart once', () => {
       assert.equal(scene.visitor.visible, false);
       scene.dispose();
     }
+  }
+});
+
+test('3D shelf places six real bouquet models per page without creating extra WebGL renderers', () => {
+  for (const [options, count] of [[{ rack: true }, 6], [{ rack: true, page: 1 }, 1], [{ rack: true, empty: true }, 0]]) {
+    const scene = preview(0, options);
+    const rack = scene.state.scene.getObjectByName('bouquet-display-rack');
+    const flowers = rack.children.filter((object) => object.userData.shelfItem);
+    assert.equal(flowers.length, count);
+    assert.equal(scene.renderers, 0);
+    assert.equal(scene.visitor, undefined);
+    for (const flower of flowers) {
+      assert.equal(flower.scale.x, 0.55);
+      let patternedPots = 0;
+      flower.traverse((object) => { if (object.material?.map && object.material?.bumpMap) patternedPots++; });
+      assert(patternedPots > 0);
+    }
+    scene.dispose();
   }
 });
 

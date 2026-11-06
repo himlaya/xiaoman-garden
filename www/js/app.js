@@ -594,21 +594,6 @@
       body;
   }
 
-  function flowerShelfModal() {
-    const bouquets = sortedItems(Game.getItems()).filter(function (item) { return item.kind === 'bouquet'; });
-    const cards = bouquets.map(function (item) {
-      const flower = DATA.flowerMap[item.flowerId];
-      if (!flower) return '';
-      return '<button class="flower-shelf-bouquet" type="button" data-action="open-item-3d" data-item="' + esc(item.id) + '" aria-label="用3D欣赏' + esc(flower.name) + '">' +
-        itemPortrait(item) + '<strong>' + esc(flower.name) + '</strong>' + itemGradeBadge(item) +
-        '<small>' + esc(Items.templateById(item.templateId).label) + ' · 点击欣赏 3D</small></button>';
-    }).join('');
-    return sheetHeader('FLOWER SHELF', '我的花架') +
-      '<p class="sheet-sub">收藏每一次盛开。采摘后的成品花束会自动摆上花架。</p>' +
-      (cards ? '<div class="flower-display-shelf">' + cards + '</div>'
-        : '<div class="empty-pouch"><h3>花架还空着</h3><p>采摘第一束花后，来这里欣赏它吧。</p></div>');
-  }
-
   function renderMarketScreen() {
     const state = Game.getState();
     const items = sortedItems(Game.getItems());
@@ -1011,7 +996,6 @@
     if (current.type === 'plant') return plantModal(current.payload);
     if (current.type === 'harvest') return harvestModal(current.payload);
     if (current.type === 'inventory') return inventoryModal();
-    if (current.type === 'flower-shelf') return flowerShelfModal();
     if (current.type === 'release-notes') {
       const notes = window.XIAOMAN_RELEASE_NOTES;
       return sheetHeader('GARDEN UPDATE', '花园又有新变化') +
@@ -1525,7 +1509,10 @@
     'buy-pot': handleBuyPot,
     'open-pot-shop': function () { closeModal(); switchTab('shop'); },
     'open-inventory': function () { openModal('inventory'); },
-    'open-flower-shelf': function () { openModal('flower-shelf'); },
+    'open-flower-shelf': function () {
+      closeModal();
+      if (window.Flower3D) Flower3D.openShelf(sortedItems(Game.getItems()));
+    },
     'open-release-notes': function () { openModal('release-notes'); },
     'open-item-3d': function (element) {
       const item = Game.getItem(element.dataset.item);

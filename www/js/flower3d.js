@@ -67,6 +67,14 @@
     openFlower(item.flowerId, item);
   }
 
+  function openShelf(items, page) {
+    const bouquets = items.filter(function (item) { return item.kind === 'bouquet' && DATA.flowerMap[item.flowerId]; });
+    openViewer({
+      kind: 'shelf', flower: DATA.flowerMap[bouquets[0]?.flowerId || 'daisy'], stage: 'bloom',
+      shelfItems: bouquets, shelfPage: Math.max(0, Math.min(Number(page) || 0, Math.ceil(bouquets.length / 6) - 1))
+    });
+  }
+
   function openViewer(options) {
     closeViewer();
     const flower = options.flower;
@@ -155,6 +163,8 @@
       item: item,
       stage: stage,
       kind: options.kind,
+      shelfItems: options.shelfItems,
+      shelfPage: options.shelfPage,
       raf: 0,
       renderer: null,
       scene: null,
@@ -173,9 +183,17 @@
     };
     window.addEventListener('keydown', state.keyHandler);
     closeButton.addEventListener('click', closeViewer);
+    if (options.returnShelf) {
+      const back = document.createElement('button');
+      back.className = 'flower3d-back';
+      back.textContent = '返回花架';
+      back.addEventListener('click', function () { openShelf(options.returnShelf.items, options.returnShelf.page); });
+      overlay.querySelector('.flower3d-heading').appendChild(back);
+    }
 
     try {
-      createScene(state);
+      if (state.kind === 'shelf') createShelfScene(state);
+      else createScene(state);
     } catch (error) {
       showFallback(state);
     }
@@ -222,10 +240,178 @@
     if (canvas) canvas.style.display = 'none';
     const fallback = state.overlay.querySelector('.flower3d-fallback');
     if (!fallback) return;
-    const art = window.Art ? Art.flower(state.flower.id, state.stage) : '';
+    const art = window.Art && state.kind !== 'shelf' ? Art.flower(state.flower.id, state.stage) : '';
     fallback.innerHTML = '<div class="flower3d-fallback-art">' + art + '</div>' +
-      '<p>这个设备暂时没有开启 WebGL。<br>先看看手绘版的花吧。</p>';
+      (state.kind === 'shelf'
+        ? '<p>当前设备未开启 WebGL，暂时无法显示三维花架。<br>可用下方按钮选择花束。</p>'
+        : '<p>这个设备暂时没有开启 WebGL。<br>先看看手绘版的花吧。</p>');
     fallback.hidden = false;
+  }
+
+  function buildShelfModels(state, THREE) {
+    const rack = new THREE.Group();
+    rack.name = 'bouquet-display-rack';
+    const wood = new THREE.MeshStandardMaterial({ color: 0xa47b57, roughness: 0.85 });
+    const edge = new THREE.MeshStandardMaterial({ color: 0x76583f, roughness: 0.9 });
+    const unit = new THREE.BoxGeometry(1, 1, 1);
+    state.cleanup.push(function () { unit.dispose(); wood.dispose(); edge.dispose(); });
+    function beam(x, y, z, width, height, depth, material) {
+      const mesh = new THREE.Mesh(unit, material);
+      mesh.position.set(x, y, z);
+      mesh.scale.set(width, height, depth);
+      rack.add(mesh);
+    }
+    for (const y of [-0.88, 1.42]) {
+      beam(0, y, 0, 5.6, 0.13, 1.65, wood);
+      beam(0, y - 0.09, 0.73, 5.6, 0.12, 0.07, edge);
+      for (let slat = 0; slat < 5; slat++) beam(0, y + 0.067, -0.62 + slat * 0.31, 5.5, 0.012, 0.015, edge);
+    }
+    for (const x of [-2.6, 2.6]) {
+      beam(x, 1.3, -0.69, 0.12, 4.65, 0.12, wood);
+      beam(x, -0.67, 0.65, 0.12, 0.55, 0.12, wood);
+    }
+    beam(0, 3.56, -0.69, 5.3, 0.12, 0.12, edge);
+    const shown = state.shelfItems.slice(state.shelfPage * 6, state.shelfPage * 6 + 6);
+    shown.forEach(function (item, index) {
+      const modelState = {
+        flower: DATA.flowerMap[item.flowerId], item: item, stage: 'bloom',
+        modelOnly: true, overlay: state.overlay, cleanup: []
+      };
+      state.cleanup.push(function () { modelState.cleanup.forEach(function (cleanup) { cleanup(); }); });
+      const model = createScene(modelState);
+      model.name = 'shelf-bouquet-' + item.id;
+      model.userData.shelfItem = item;
+      model.scale.setScalar(0.55);
+      model.position.set((index % 3 - 1) * 1.65, index < 3 ? 0 : 2.3, 0);
+      rack.add(model);
+    });
+    return rack;
+  }
+
+  function createShelfScene(state) {
+    const THREE = window.THREE;
+    const overlay = state.overlay;
+    overlay.querySelector('.flower3d-name').textContent = '我的 3D 花架';
+    overlay.querySelector('.flower3d-rarity').textContent = state.shelfItems.length + ' 束';
+    overlay.querySelector('.flower3d-language').textContent = '把每一次盛开，摆成一处风景。';
+    overlay.querySelector('.flower3d-itemmeta').textContent = '';
+    overlay.querySelector('.flower3d-stage-label').textContent = state.shelfItems.length ? '点击花束，单独欣赏' : '采摘后的花束会自动摆上花架';
+    const pages = Math.max(1, Math.ceil(state.shelfItems.length / 6));
+    overlay.querySelector('.flower3d-progress').textContent = (state.shelfPage + 1) + ' / ' + pages + ' 架';
+    const controls = overlay.querySelector('.flower3d-stages');
+    controls.style.display = 'flex';
+    controls.classList.add('shelf3d-controls');
+    controls.innerHTML = '';
+    const shown = state.shelfItems.slice(state.shelfPage * 6, state.shelfPage * 6 + 6);
+    function inspect(item) {
+      openViewer({ kind: 'item', flower: DATA.flowerMap[item.flowerId], item: item, stage: 'bloom',
+        returnShelf: { items: state.shelfItems, page: state.shelfPage } });
+    }
+    function button(label, disabled, action) {
+      const node = document.createElement('button');
+      node.type = 'button';
+      node.textContent = label;
+      node.disabled = disabled;
+      node.addEventListener('click', action);
+      controls.appendChild(node);
+    }
+    button('上一架', state.shelfPage === 0, function () { openShelf(state.shelfItems, state.shelfPage - 1); });
+    shown.forEach(function (item) { button(DATA.flowerMap[item.flowerId].name + ' · ' + Items.gradeById(item.grade).label, false, function () { inspect(item); }); });
+    button('下一架', state.shelfPage + 1 === pages, function () { openShelf(state.shelfItems, state.shelfPage + 1); });
+    if (!THREE) throw new Error('Three.js 未加载');
+    const canvas = overlay.querySelector('.flower3d-canvas');
+    const shell = overlay.querySelector('.flower3d-shell');
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    state.renderer = renderer;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.setClearColor(0x000000, 0);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    const scene = new THREE.Scene();
+    state.scene = scene;
+    scene.add(new THREE.HemisphereLight(0xfff8e7, 0x73816b, 1.1));
+    const key = new THREE.DirectionalLight(0xffead1, 1.6);
+    key.position.set(-4, 7, 6);
+    scene.add(key);
+    const fill = new THREE.DirectionalLight(0xd7eaff, 0.65);
+    fill.position.set(4, 4, -2);
+    scene.add(fill);
+    const rack = buildShelfModels(state, THREE);
+    scene.add(rack);
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+    state.camera = camera;
+    const target = new THREE.Vector3(0, 1.25, 0);
+    let azimuth = 0.18;
+    let polar = 1.38;
+    let zoom = 1;
+    let fit = 12;
+    function resize() {
+      const rect = shell.getBoundingClientRect();
+      renderer.setSize(Math.max(1, rect.width), Math.max(1, rect.height), false);
+      camera.aspect = Math.max(0.3, rect.width / Math.max(1, rect.height));
+      camera.updateProjectionMatrix();
+      fit = Math.max(8.5, 3.3 / (Math.tan(19 * Math.PI / 180) * camera.aspect));
+    }
+    const pointers = new Map();
+    let moved = false;
+    function down(event) {
+      if (event.button !== undefined && event.button !== 0) return;
+      if (pointers.size === 0) moved = false;
+      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY });
+      canvas.setPointerCapture?.(event.pointerId);
+    }
+    function move(event) {
+      const previous = pointers.get(event.pointerId);
+      if (!previous) return;
+      if (Math.hypot(event.clientX - previous.startX, event.clientY - previous.startY) > 6) moved = true;
+      if (pointers.size === 2) {
+        const other = Array.from(pointers.entries()).find(function (entry) { return entry[0] !== event.pointerId; })[1];
+        const oldDistance = Math.hypot(previous.x - other.x, previous.y - other.y);
+        const newDistance = Math.hypot(event.clientX - other.x, event.clientY - other.y);
+        if (newDistance > 0) zoom = Math.max(0.65, Math.min(1.8, zoom * oldDistance / newDistance));
+        moved = true;
+      } else {
+        azimuth -= (event.clientX - previous.x) * 0.007;
+        polar = Math.max(0.9, Math.min(1.55, polar - (event.clientY - previous.y) * 0.005));
+      }
+      previous.x = event.clientX;
+      previous.y = event.clientY;
+    }
+    function up(event) {
+      const select = pointers.has(event.pointerId) && pointers.size === 1 && !moved && event.type !== 'pointercancel';
+      pointers.delete(event.pointerId);
+      if (canvas.hasPointerCapture?.(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+      if (!select) return;
+      const rect = canvas.getBoundingClientRect();
+      const ray = new THREE.Raycaster();
+      ray.setFromCamera(new THREE.Vector2((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1), camera);
+      let object = ray.intersectObject(rack, true)[0]?.object;
+      while (object && !object.userData.shelfItem) object = object.parent;
+      if (object) inspect(object.userData.shelfItem);
+    }
+    function wheel(event) {
+      event.preventDefault();
+      zoom = Math.max(0.65, Math.min(1.8, zoom + event.deltaY * 0.001));
+    }
+    const events = { pointerdown: down, pointermove: move, pointerup: up, pointercancel: up, wheel: wheel };
+    Object.keys(events).forEach(function (name) { canvas.addEventListener(name, events[name], { passive: false }); });
+    window.addEventListener('resize', resize);
+    state.cleanup.push(function () {
+      window.removeEventListener('resize', resize);
+      Object.keys(events).forEach(function (name) { canvas.removeEventListener(name, events[name]); });
+    });
+    function animate() {
+      if (state.disposed) return;
+      const radius = fit * zoom;
+      camera.position.set(Math.sin(azimuth) * Math.sin(polar) * radius, target.y + Math.cos(polar) * radius, Math.cos(azimuth) * Math.sin(polar) * radius);
+      camera.lookAt(target);
+      renderer.render(scene, camera);
+      const loading = overlay.querySelector('.flower3d-loading');
+      if (loading) loading.remove();
+      state.raf = requestAnimationFrame(animate);
+    }
+    resize();
+    state.raf = requestAnimationFrame(animate);
   }
 
   function createScene(state) {
@@ -248,18 +434,20 @@
     const stage = state.stage;
     const reduced = prefersReducedMotion();
 
-    const renderer = new THREE.WebGLRenderer({
+    const renderer = state.modelOnly ? null : new THREE.WebGLRenderer({
       canvas: canvas,
       antialias: true,
       alpha: true,
       powerPreference: 'high-performance'
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.setClearColor(0x000000, 0);
-    renderer.outputEncoding = THREE.sRGBEncoding;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.9;
-    state.renderer = renderer;
+    if (renderer) {
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setClearColor(0x000000, 0);
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 0.9;
+      state.renderer = renderer;
+    }
 
     const scene = new THREE.Scene();
     state.scene = scene;
@@ -279,6 +467,14 @@
 
     const geos = [];
     const mats = [];
+    state.cleanup.push(function () {
+      geos.forEach(function (geometry) { geometry.dispose(); });
+      mats.forEach(function (material) {
+        if (material.map) material.map.dispose();
+        if (material.bumpMap) material.bumpMap.dispose();
+        material.dispose();
+      });
+    });
     function geo(g) { geos.push(g); return g; }
     function mat(params) { const m = new THREE.MeshStandardMaterial(params); mats.push(m); return m; }
     function basic(params) { const m = new THREE.MeshBasicMaterial(params); mats.push(m); return m; }
@@ -442,7 +638,7 @@
         clearcoatRoughness: 0.25
       });
       mats.push(clay);
-      const materialLabel = document.createElement ? state.overlay.querySelector('.flower3d-itemmeta') : null;
+      const materialLabel = !state.modelOnly && document.createElement ? state.overlay.querySelector('.flower3d-itemmeta') : null;
       if (materialLabel) {
         const chip = document.createElement('span');
         chip.className = 'flower3d-meta-chip';
@@ -921,6 +1117,8 @@
       }
     }
 
+    if (state.modelOnly) return root;
+
     // Roll once per preview. Only one visitor can appear, after a quiet delay.
     let visitor = null;
     let visitorTime = 0;
@@ -1195,10 +1393,6 @@
       canvas.removeEventListener('pointercancel', onPointerEnd);
       canvas.removeEventListener('wheel', onWheel);
     });
-    state.cleanup.push(function () {
-      geos.forEach(function (geometry) { geometry.dispose(); });
-      mats.forEach(function (material) { material.dispose(); });
-    });
     state.raf = requestAnimationFrame(animate);
   }
 
@@ -1220,6 +1414,7 @@
     openPlant: openPlant,
     openFlower: openFlower,
     openItem: openItem,
+    openShelf: openShelf,
     close: closeViewer
   };
 })();
