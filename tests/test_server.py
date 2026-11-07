@@ -472,6 +472,7 @@ class DeploymentConfigTests(unittest.TestCase):
                 connection.executescript(SCHEMA.replace("    revision INTEGER NOT NULL DEFAULT 0,\n", ""))
                 connection.execute("INSERT INTO users VALUES (7, 'legacy', 'hash', 'today', NULL)")
                 connection.execute("INSERT INTO saves VALUES (7, '{}', 'today')")
+            connection.close()  # sqlite's transaction context does not close the file on Windows.
             init_db(database)
             init_db(database)
             connection = connect_db(database)
@@ -501,6 +502,7 @@ class PostgresMigrationTests(DatabaseTestCase):
                 connection.execute("INSERT INTO users VALUES (7, 'legacy', 'original-password-hash', 'today', NULL)")
                 connection.execute("INSERT INTO saves VALUES (7, ?, 'today')", (json.dumps({"player": {"coins": 42}, "garden": [], "items": []}),))
                 connection.execute("INSERT INTO market_listings (id, seller_id, item_id, item_json, price, created_at) VALUES (12, 7, 'escrow', '{}', 5, 'today')")
+            connection.close()
             target = self.app.config["DATABASE"]
             self.assertEqual(migrate(source, target), {"users": 1, "saves": 1, "market_listings": 1})
             connection = connect_db(target)

@@ -1,5 +1,5 @@
 /* 小小花园 · 3D 花房
- * 用本地 Three.js 程序化生成花朵，不依赖外部 CDN。
+ * 盛开花朵加载本地 Blender 模型，生长阶段和花盆由 Three.js 生成。
  * 支持拖动旋转、滚轮/双指缩放；种子→发芽→结蕾→盛开都各有形态。
  */
 (function () {
@@ -302,7 +302,7 @@
         flower: DATA.flowerMap[item.flowerId], item: item, stage: 'bloom',
         modelOnly: true, overlay: state.overlay, cleanup: []
       };
-      state.cleanup.push(function () { modelState.cleanup.forEach(function (cleanup) { cleanup(); }); });
+      state.cleanup.push(function () { modelState.disposed = true; modelState.cleanup.forEach(function (cleanup) { cleanup(); }); });
       const model = createScene(modelState);
       model.name = 'shelf-bouquet-' + item.id;
       model.userData.shelfItem = item;
@@ -1398,6 +1398,30 @@
       } else {
         buildDisc(false);
       }
+    }
+
+    if (stage === 'bloom' && plant && window.FlowerAssets && THREE.GLTFLoader) {
+      let cancelled = false;
+      state.cleanup.push(function () { cancelled = true; });
+      state.assetReady = window.FlowerAssets.load(THREE, flower.id, form.grade, {
+        petal: petalMat, leaf: leafMat, stem: greenDark, center: centerMat, pollen: centerAltMat
+      }).then(function (asset) {
+        if (cancelled || state.disposed) { window.FlowerAssets.dispose(asset); return; }
+        // Keep visiting insects attached while replacing the botanical geometry.
+        if (insectPerch) plant.attach(insectPerch);
+        const replaced = new Set();
+        plant.children.slice().forEach(function (child) {
+          if (child === insectPerch) return;
+          child.traverse(function (mesh) { if (mesh.geometry) replaced.add(mesh.geometry); });
+          plant.remove(child);
+        });
+        replaced.forEach(function (geometry) { geometry.dispose(); });
+        for (let i = geos.length - 1; i >= 0; i--) { if (replaced.has(geos[i])) geos.splice(i, 1); }
+        plant.add(asset);
+        asset.traverse(function (mesh) { if (mesh.geometry) geos.push(mesh.geometry); });
+        root.userData.modelId = asset.userData.modelId;
+        root.userData.assetSource = 'Blender';
+      }).catch(function () { /* Keep the current preview if offline or an asset fails. */ });
     }
 
     if (state.modelOnly) return root;

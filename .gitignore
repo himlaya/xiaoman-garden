@@ -36,3 +36,4 @@ server/data/
 *.sqlite3-wal
 preview-*.png
 screenshots/
+art/blender/*.blend1

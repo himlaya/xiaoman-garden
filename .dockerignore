@@ -10,6 +10,7 @@ ios
 harmony
 tests
 content
+art
 *.log
 server/data
 **/__pycache__

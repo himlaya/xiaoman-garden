@@ -5,4 +5,6 @@
 - 许可证：MIT，见 `THREE-LICENSE.txt`
 - 用途：小小花园 3D 花房，本地打包，不依赖 CDN
 
-3D 模型（花、叶子、花盆）由 `www/js/flower3d.js` 在运行时程序化生成。
+`GLTFLoader.js` 同样来自 Three.js r147 的 `examples/js/loaders/GLTFLoader.js`，采用同一 MIT 许可证。
+
+盛开花朵使用 Blender 导出的本地 GLB；花盆、生长阶段和加载失败时的备用模型由 `www/js/flower3d.js` 生成。见 `art/blender/README.md`。
