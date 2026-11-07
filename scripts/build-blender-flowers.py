@@ -175,21 +175,35 @@ def build(flower, form, rank):
         for k in range(64 if fid=='sunflower' else 26):
             a=k*2.399963; r=radius*.9*math.sqrt((k+.5)/(64 if fid=='sunflower' else 26))
             orb(pollen,add(center,(r*math.cos(a),.06+.07*math.sqrt(max(0,1-(r/radius)**2)),r*math.sin(a))),.012,.7,3,5)
-    elif fid in ('rose','peony','carnation'):
+    elif fid=='rose':
+        # Convex petal bowls wrap around the bud. Straight radial wedges produce
+        # exposed triangular undersides when seen from the mobile camera.
         layers=form['layers']
-        outer={'rose':.64,'peony':.76,'carnation':.58}[fid]
+        for ring in range(layers+2):
+            radius=.59*(1-ring/(layers+2)*.87)
+            count=max(3,7-ring//2)
+            for k in range(count):
+                angle=TAU*(k+.5*(ring%2))/count+ring*.22
+                def fn(t,u,angle=angle,radius=radius,ring=ring,count=count):
+                    across=u*2-1
+                    phi=angle+across*math.pi/count*.99*(.08+.92*math.sin(t*math.pi/2)**.6)
+                    r=.018+radius*math.sin(t*math.pi/2)*(1-.07*across*across*t**8)
+                    y=ring*.016+.44*(1-math.cos(t*math.pi/2))-.07*t**8
+                    y+=.013*math.sin(across*8+ring)*abs(across)**4*t**5
+                    return add(center,(r*math.cos(phi),y,r*math.sin(phi)))
+                p.surface(fn,16,8)
+        orb(p,add(center,(0,.3,0)),.035,1.1,6,10)
+        orb(s,add(center,(0,-.02,0)),.11,.65,6,10)
+    elif fid in ('peony','carnation'):
+        layers=form['layers']
+        outer={'peony':.76,'carnation':.58}[fid]
         for ring in range(layers):
             maxr=outer*(1-ring/(layers+1)*.8)
             minr=max(.025,maxr*.31)
-            count=(9 if fid=='peony' else 8 if fid=='carnation' else 7)-int(ring/3)
+            count=(9 if fid=='peony' else 8)-int(ring/3)
             for k in range(count):
-                rise=.5 if fid=='rose' else .09
-                cup=-.24 if fid=='rose' else .14+ring*.015
-                petal(p,add(center,(0,ring*.085,0)),TAU*(k+.5*(ring%2))/count+ring*.14,maxr-minr,math.pi/count*.97,minr,rise,cup,(.028+rank*.007) if fid=='carnation' else .012+rank*.003,rounded=True)
-        if fid=='rose':
-            for k in range(3):
-                petal(p,add(center,(0,layers*.085+.02,0)),k*TAU/3+.4,.105,.9,.018,.16,-.035,.005,rounded=True)
-        else: orb(c,add(center,(0,layers*.077+.03,0)),.075,.7)
+                petal(p,add(center,(0,ring*.032,0)),TAU*(k+.5*(ring%2))/count+ring*.14,(maxr-minr)*(1+math.sin(k*2.4+ring)*.025),math.pi/count*.97,minr,.17,.06+ring*.008,(.028+rank*.007) if fid=='carnation' else .012+rank*.003,rounded=True)
+        orb(c,add(center,(0,layers*.03+.03,0)),.075,.7)
     elif fid=='tulip':
         for ring in range(form['rings']):
             # Offset cup shells avoid the old six planes crossing at the base.

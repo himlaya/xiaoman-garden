@@ -1,6 +1,6 @@
 window.XIAOMAN_RELEASE_NOTES = {
   "version": "0.7.0",
-  "build": 26,
+  "build": 27,
   "changes": [
     "全部 12 种花、5 个品质换用 Blender 模型，单花预览与花架同步更新。",
     "重建花瓣分层、花簇间距、枝梗和叶片，保留模板花色、纹样与品相。",

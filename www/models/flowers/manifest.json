@@ -110,36 +110,36 @@
     "rose-common": {
       "url": "./models/flowers/rose-common-v2.glb",
       "modelId": "rose-common-v2",
-      "triangles": 7656,
-      "bytes": 227948,
+      "triangles": 17768,
+      "bytes": 512712,
       "label": "疏瓣杯形"
     },
     "rose-fine": {
       "url": "./models/flowers/rose-fine-v2.glb",
       "modelId": "rose-fine-v2",
-      "triangles": 10176,
-      "bytes": 299124,
+      "triangles": 20808,
+      "bytes": 598272,
       "label": "螺旋高心"
     },
     "rose-rare": {
       "url": "./models/flowers/rose-rare-v2.glb",
       "modelId": "rose-rare-v2",
-      "triangles": 12336,
-      "bytes": 360136,
+      "triangles": 23848,
+      "bytes": 683840,
       "label": "舒展莲座"
     },
     "rose-epic": {
       "url": "./models/flowers/rose-epic-v2.glb",
       "modelId": "rose-epic-v2",
-      "triangles": 12336,
-      "bytes": 360136,
+      "triangles": 23848,
+      "bytes": 683844,
       "label": "卷边重瓣"
     },
     "rose-legendary": {
       "url": "./models/flowers/rose-legendary-v2.glb",
       "modelId": "rose-legendary-v2",
-      "triangles": 14496,
-      "bytes": 421172,
+      "triangles": 26280,
+      "bytes": 752320,
       "label": "密瓣花心"
     },
     "sunflower-common": {
@@ -286,14 +286,14 @@
       "url": "./models/flowers/carnation-common-v2.glb",
       "modelId": "carnation-common-v2",
       "triangles": 10432,
-      "bytes": 308652,
+      "bytes": 308648,
       "label": "疏瓣细齿"
     },
     "carnation-fine": {
       "url": "./models/flowers/carnation-fine-v2.glb",
       "modelId": "carnation-fine-v2",
       "triangles": 12952,
-      "bytes": 379840,
+      "bytes": 379836,
       "label": "浅杯褶瓣"
     },
     "carnation-rare": {
@@ -328,7 +328,7 @@
       "url": "./models/flowers/peony-fine-v2.glb",
       "modelId": "peony-fine-v2",
       "triangles": 11512,
-      "bytes": 339116,
+      "bytes": 339112,
       "label": "半重瓣浅碗"
     },
     "peony-rare": {
@@ -349,7 +349,7 @@
       "url": "./models/flowers/peony-legendary-v2.glb",
       "modelId": "peony-legendary-v2",
       "triangles": 20152,
-      "bytes": 583192,
+      "bytes": 583196,
       "label": "千层花冠"
     },
     "iris-common": {

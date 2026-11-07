@@ -16,7 +16,8 @@ node --test tests/blender-assets.test.js
 ```
 
 Geometry is authored with distinct botanical structures and explicit UVs:
-annular petals with separated angular sectors and layer heights; offset tulip
+annular petals with separated angular sectors and layer heights; convex rose
+petals wrapping a compact flower centre; offset tulip
 cup shells; spherical hydrangea floret spacing; tiered hyacinth flowers;
 individual lily-of-the-valley bells; iris standards/falls; and orchid blossoms
 on a flowering arch. Thin edges are generated with Blender Solidify modifiers.
