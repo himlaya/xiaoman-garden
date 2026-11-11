@@ -1,6 +1,7 @@
 """Build the entire botanical collection with Blender, then export production GLBs.
 
 blender --background --factory-startup --python scripts/build-blender-flowers.py
+Pass -- --keep-existing to export only assets missing from the existing manifest.
 Coordinates in the helpers are Y-up; mesh creation converts to Blender Z-up.
 Petal layers use offset shells and separate angular sectors rather than rotated
 planes that cut through the flower centre. Only attachment points overlap.
@@ -20,7 +21,12 @@ ART.mkdir(parents=True, exist_ok=True)
 OUT.mkdir(parents=True, exist_ok=True)
 RECIPES = json.loads((ART / 'recipes.json').read_text(encoding='utf-8'))
 TAU = math.tau
+manifest_path = OUT / 'manifest.json'
 manifest = {'version': 2, 'generator': 'Blender ' + bpy.app.version_string, 'models': {}}
+keep_existing = '--keep-existing' in sys.argv
+if manifest_path.exists() and keep_existing:
+    manifest['models'] = json.loads(manifest_path.read_text(encoding='utf-8'))['models']
+row_count = len(RECIPES)
 bpy.ops.object.select_all(action='SELECT')
 bpy.ops.object.delete(use_global=False)
 
@@ -113,12 +119,12 @@ def tube(mesh, points, radius=.018, sides=8):
 def orb(mesh, center, radius, flatten=1, rows=8, sides=16):
     mesh.surface(lambda t,u: (center[0]+radius*math.sin(.005+t*(math.pi-.01))*math.cos(u*TAU), center[1]+radius*flatten*math.cos(.005+t*(math.pi-.01)), center[2]+radius*math.sin(.005+t*(math.pi-.01))*math.sin(u*TAU)), rows, sides)
 
-def petal(mesh, center, angle, length, span, base, rise=.1, cup=.1, ruffle=0, pointed=False, axes=None, resolution=(12,6), rounded=False):
+def petal(mesh, center, angle, length, span, base, rise=.1, cup=.1, ruffle=0, pointed=False, axes=None, resolution=(12,6), rounded=False, sweep=0):
     """An annular petal wedge with separated, noncrossing left/right edges."""
     def point(t,u):
         across = u*2-1
         outline = max(.012, math.sin(math.pi*t*(.7 if rounded else 1))**(.8 if pointed else .48))
-        theta = angle + across*span*outline
+        theta = angle + sweep*t*t + across*span*outline
         radius = base + length*t*(1-.24*abs(across)**4*t**5 if rounded else 1)
         y = rise*t + cup*t*t + .025*across*across*math.sin(math.pi*t)
         y += ruffle*math.sin(across*19+t*17)*abs(across)**4*t**3
@@ -132,19 +138,49 @@ def petal(mesh, center, angle, length, span, base, rise=.1, cup=.1, ruffle=0, po
 def leaves(mesh, stem, flower_id, rank):
     long = flower_id in ('tulip','hyacinth','lily','iris','orchid')
     count = 4 if long else 3
-    width = {'cosmos':.045,'carnation':.045,'iris':.07,'tulip':.15,'orchid':.24,'peony':.2,'hydrangea':.22}.get(flower_id,.14)
+    width = {'cosmos':.045,'carnation':.045,'iris':.07,'tulip':.15,'orchid':.24,'peony':.2,'hydrangea':.22,'true-lily':.065,'gardenia':.17,'camellia':.14,'gypsophila':.022}.get(flower_id,.14)
     length = .85 if flower_id in ('iris','lily','tulip') else .58
+    if flower_id == 'true-lily': count = 6
     for k in range(count):
         height = .035+k*.025 if long else .22+k*.23
+        if flower_id == 'true-lily': height = .24 + k*.18
         center = stem(height)
         angle = k*2.4 + rank*.11
         def fn(t,u,center=center,angle=angle):
             across = (u*2-1)*width*max(.008,math.sin(math.pi*t)**.7)
+            if flower_id == 'camellia': across *= 1 + .055*math.sin(t*TAU*14)
             reach = length*t*(.6 if flower_id=='iris' else .9)
             lift = length*t*(1.15 if flower_id=='iris' else .55)-.16*t*t
             midrib = .035*(1-(u*2-1)**2)*math.sin(math.pi*t)
             return (center[0]+math.cos(angle)*reach-math.sin(angle)*across,center[1]+lift+midrib,center[2]+math.sin(angle)*reach+math.cos(angle)*across)
         mesh.surface(fn,14,6)
+
+
+def pinwheel(mesh, center, radius, count, layers, twist, rise):
+    for ring in range(layers):
+        scale = 1 - .135 * ring
+        for index in range(count):
+            angle = index * TAU / count + ring * .38
+            def surface(t, u, angle=angle, ring=ring, scale=scale):
+                across = 2*u - 1
+                theta = angle + twist*t*t + across * math.pi/count * .96 * math.sin(math.pi*t*.77)**.57
+                r = radius * scale * (.15 + .85*t) * (1 - .19*across*across*t**5)
+                y = radius * (rise*t + .09*t*t + .11*ring + .035*across*across*t)
+                return add(center, (r*math.cos(theta), y, r*math.sin(theta)))
+            mesh.surface(surface, 13, 8)
+
+
+def tiny_bloom(petals, centers, pos, axis, length, count, rings, twist):
+    axes = basis(axis)
+    for ring in range(rings):
+        anchor = add(pos, mul(axes[2], ring*length*.22))
+        for index in range(count):
+            angle = index * TAU / count + ring*.48
+            petal(petals, anchor, angle, length*(1-ring*.2), math.pi/count*.83,
+                  length*.13, length*.09, length*.13, axes=axes,
+                  resolution=(7, 5), rounded=True, sweep=twist)
+    orb(centers, pos, length*.17, .8, 4, 7)
+
 
 def build(flower, form, rank):
     fid = flower['id']
@@ -155,7 +191,7 @@ def build(flower, form, rank):
     materials={role: material(fid+'-'+role,palette[key]) for role,key in [('petal','petal'),('leaf','leaf'),('stem','stem'),('center','center'),('pollen','centerAlt')]}
     parts={role:BotanicalMesh(name+'-'+role,role,mat,collection) for role,mat in materials.items()}
     p,l,s,c,pollen=[parts[k] for k in ('petal','leaf','stem','center','pollen')]
-    h={'daisy':1.28,'rose':1.25,'tulip':1.45,'sunflower':1.62,'hydrangea':1.36,'hyacinth':1.7,'lily':1.6,'cosmos':1.45,'carnation':1.35,'peony':1.32,'iris':1.55,'orchid':1.5}[fid]*form['height']
+    h={'daisy':1.28,'rose':1.25,'tulip':1.45,'sunflower':1.62,'hydrangea':1.36,'hyacinth':1.7,'lily':1.6,'cosmos':1.45,'carnation':1.35,'peony':1.32,'iris':1.55,'orchid':1.5,'jasmine':1.39,'true-lily':1.62,'gardenia':1.37,'camellia':1.44,'gypsophila':1.59}[fid]*form['height']
     def stem(y): return (.065*form['bend']*(y/h)**2, y, .025*math.sin(y*2))
     stemtop=h
     if fid=='hyacinth': stemtop=.65+(math.ceil(form['florets']/(5 if rank<3 else 6))-1)*.18+.06
@@ -258,6 +294,65 @@ def build(flower, form, rank):
                 return add(pos,(r*math.cos(a),y,r*math.sin(a)))
             p.surface(fn,14,20)
             orb(c,add(pos,(0,-size*.7,0)),.018,1,4,6)
+    elif fid in ('gardenia', 'camellia'):
+        gardenia = fid == 'gardenia'
+        radius = (.59 if gardenia else .65) * form['width']
+        pinwheel(p, center, radius, form['petals'], form['rings'],
+                 .54 if gardenia else .07, .18 if gardenia else .21)
+        orb(s, center, .106, .7, 6, 10)
+        if form['rings'] <= 2:
+            orb(c, add(center, (0, .045, 0)), .088 if gardenia else .12, .6)
+            if not gardenia:
+                for index in range(20):
+                    angle = index * 2.39996
+                    offset = .105 * math.sqrt((index+.5)/20)
+                    tip = add(center, (offset*math.cos(angle), .123 + .028*math.sin(index), offset*math.sin(angle)))
+                    tube(c, [add(center, (0, .05, 0)), tip], .006, 5)
+                    orb(pollen, tip, .013, 1.25, 4, 6)
+    elif fid == 'true-lily':
+        axis = (.12, .97, .27) if rank != 2 else (.35, .56, .75)
+        axes = basis(axis)
+        for ring in range(form['rings']):
+            for index in range(6):
+                angle = index * TAU / 6 + ring*.52
+                anchor = add(center, mul(axes[2], ring*.058))
+                petal(p, anchor, angle, form['reach']*(1-ring*.22), (.46 if index%2 else .39)*form['width'],
+                      .034, form['lift'], form['curl'], form['ruffle']*.15,
+                      pointed=rank != 3, axes=axes, resolution=(20, 10), rounded=rank == 3)
+        for index in range(6):
+            angle = index * TAU / 6 + .2
+            outward = add(mul(axes[0], math.cos(angle)), mul(axes[1], math.sin(angle)))
+            tip = add(add(center, mul(axes[2], .36 + form['lift']*.12)), mul(outward, .13))
+            tube(c, [center, add(add(center, mul(axes[2], .24)), mul(outward, .075)), tip], .009, 6)
+            orb(pollen, tip, .034, .52, 6, 9)
+        style = add(center, mul(axes[2], .48))
+        tube(c, [center, style], .011, 6)
+        orb(c, style, .025, .62, 5, 8)
+    elif fid == 'jasmine':
+        count = form['blooms']
+        for index in range(count):
+            angle = index * TAU / count
+            direction = (math.cos(angle), 0, math.sin(angle))
+            joint = stem(h*.8)
+            tip = add(center, add(mul(direction, (.34 + .035*(index%2))*form['width']), (0, .07*(index%3), 0)))
+            tube(s, [joint, add(joint, mul(direction, .15)), tip], .009, 6)
+            tiny_bloom(p, c, tip, add(mul(direction, .57), (0, 1, .25)), .125, form['petals'], form['rings'], .31 + rank*.035)
+    elif fid == 'gypsophila':
+        sprays = form['sprays']
+        for index in range(sprays):
+            angle = index * 2.39996
+            direction = (math.cos(angle), 0, math.sin(angle))
+            sideways = (-direction[2], 0, direction[0])
+            joint = stem(h*(.48+.07*index))
+            branch = add(joint, add(mul(direction, .27), (0, .26, 0)))
+            tube(s, [joint, branch], .009, 6)
+            for floret in range(form['florets']):
+                lateral = (floret-(form['florets']-1)/2)*.16
+                tip = add(branch, add(mul(direction, .15+.055*(floret%2)), mul(sideways, lateral)))
+                tip = add(tip, (0, .25+.08*(floret%2), 0))
+                tube(s, [branch, tip], .0045, 5)
+                tiny_bloom(p, c, tip, add(mul(direction, .4), (0, 1, lateral)), .057 if rank < 3 else .067, 5, form['rings'], 0)
+        tiny_bloom(p, c, center, (0, 1, 0), .062, 5, form['rings'], 0)
     elif fid=='iris':
         for k in range(3):
             a=k*TAU/3
@@ -292,7 +387,8 @@ def build(flower, form, rank):
     bpy.ops.object.select_all(action='DESELECT')
     for obj in objects: obj.select_set(True)
     filepath=OUT/(name+'.glb')
-    bpy.ops.export_scene.gltf(filepath=str(filepath),export_format='GLB',use_selection=True,export_apply=True,export_extras=True,export_yup=True,export_animations=False,export_cameras=False,export_lights=False,export_materials='EXPORT')
+    if fid+'-'+form['grade'] not in manifest['models'] or not filepath.exists():
+        bpy.ops.export_scene.gltf(filepath=str(filepath),export_format='GLB',use_selection=True,export_apply=True,export_extras=True,export_yup=True,export_animations=False,export_cameras=False,export_lights=False,export_materials='EXPORT')
     binary=filepath.read_bytes()
     document=json.loads(binary[20:20+struct.unpack_from('<I',binary,12)[0]])
     triangles=sum(document['accessors'][primitive['indices']]['count']//3 for mesh in document['meshes'] for primitive in mesh['primitives'])
@@ -301,13 +397,13 @@ def build(flower, form, rank):
     # Gallery layout is saved in the editable master project, after local export.
     row=[f['id'] for f in RECIPES].index(fid)
     for obj in objects:
-        obj.location=(rank*2.5,0,(11-row)*2.8)
+        obj.location=(rank*2.5,0,(row_count-1-row)*2.8)
     return objects
 
 for flower in RECIPES:
     for rank, form in enumerate(flower['forms']): build(flower,form,rank)
 
-(OUT/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+manifest_path.write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 
 def label(text,x,z,size=.16):
     curve=bpy.data.curves.new('Label '+text,'FONT')
@@ -317,8 +413,10 @@ def label(text,x,z,size=.16):
     obj.location=(x,-.18,z); obj.rotation_euler=(math.pi/2,0,0)
     curve.materials.append(material('Ink','#534f49',1))
 
-for rank,grade in enumerate(('COMMON','FINE','RARE','EPIC','LEGENDARY')): label(grade,rank*2.5,34.05,.2)
-for row,flower in enumerate(RECIPES): label(flower['en'],5,(11-row)*2.8-.3,.22)
+gallery_height = (row_count-1)*2.8
+midpoint = gallery_height/2
+for rank,grade in enumerate(('COMMON','FINE','RARE','EPIC','LEGENDARY')): label(grade,rank*2.5,gallery_height+3.25,.2)
+for row,flower in enumerate(RECIPES): label(flower['en'],5,(row_count-1-row)*2.8-.3,.22)
 
 scene=bpy.context.scene
 scene.render.engine='CYCLES'
@@ -329,20 +427,21 @@ scene.world.node_tree.nodes.get('Background').inputs['Color'].default_value=(.72
 scene.world.node_tree.nodes.get('Background').inputs['Strength'].default_value=.65
 scene.view_settings.view_transform='Standard'
 scene.view_settings.look='Medium High Contrast' if 'Medium High Contrast' in [i.name for i in bpy.types.ColorManagedViewSettings.bl_rna.properties['look'].enum_items] else 'None'
-bpy.ops.object.camera_add(location=(5,-45,24))
+bpy.ops.object.camera_add(location=(5,-45,midpoint+8.6))
 camera=bpy.context.object
-direction=Vector((5,0,16.7))-camera.location
+direction=Vector((5,0,midpoint+1.2))-camera.location
 camera.rotation_euler=direction.to_track_quat('-Z','Y').to_euler()
-camera.data.type='ORTHO';camera.data.ortho_scale=36
+camera.data.type='ORTHO';camera.data.ortho_scale=gallery_height+6
 scene.camera=camera
 for position,energy,size in [((-5,-10,27),2200,10),((13,-4,15),1800,12),((4,5,29),2600,10)]:
     bpy.ops.object.light_add(type='AREA',location=position)
     lamp=bpy.context.object;lamp.data.energy=energy;lamp.data.shape='DISK';lamp.data.size=size
-    lamp.rotation_euler=(Vector((5,0,17))-lamp.location).to_track_quat('-Z','Y').to_euler()
+    lamp.rotation_euler=(Vector((5,0,midpoint+1.6))-lamp.location).to_track_quat('-Z','Y').to_euler()
 scene.render.resolution_x=1500;scene.render.resolution_y=3600;scene.render.resolution_percentage=100
 scene.render.image_settings.file_format='PNG'
 scene.render.filepath=str(ART/'collection-preview.png')
 scene.render.film_transparent=False
-bpy.ops.wm.save_as_mainfile(filepath=str(ART/'garden-60-models.blend'))
+bpy.context.preferences.filepaths.save_version = 0
+bpy.ops.wm.save_as_mainfile(filepath=str(ART/'garden-85-models.blend'), compress=True)
 if '--no-render' not in sys.argv: bpy.ops.render.render(write_still=True)
 print('COLLECTION_COMPLETE',len(manifest['models']),flush=True)

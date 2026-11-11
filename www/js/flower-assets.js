@@ -5,7 +5,6 @@
   'use strict';
   const cache = new Map();
   const grades = ['common', 'fine', 'rare', 'epic', 'legendary'];
-  const species = ['daisy', 'tulip', 'hyacinth', 'rose', 'sunflower', 'hydrangea', 'lily', 'cosmos', 'carnation', 'peony', 'iris', 'orchid'];
 
   function source(url) {
     if (!cache.has(url)) {
@@ -14,14 +13,14 @@
         return response.arrayBuffer();
       }).catch(function (error) { cache.delete(url); throw error; });
       cache.set(url, pending);
-      // Keep browsing the entire album from retaining all sixty binary buffers.
+      // Keep browsing the entire album from retaining the entire asset collection.
       if (cache.size > 12) cache.delete(cache.keys().next().value);
     }
     return cache.get(url);
   }
 
   function load(THREE, flowerId, grade, materials) {
-    if (!species.includes(flowerId) || !grades.includes(grade)) return Promise.reject(new Error('Unknown flower model'));
+    if (!Object.hasOwn(window.GameData.flowerMap, flowerId) || !grades.includes(grade)) return Promise.reject(new Error('Unknown flower model'));
     const modelId = flowerId + '-' + grade + '-v2';
     return source('./models/flowers/' + modelId + '.glb').then(function (bytes) {
       return new Promise(function (resolve, reject) {

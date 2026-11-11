@@ -338,6 +338,47 @@
       (f.shape === 'orchid' ? '<path d="M-9 1 Q0 27 9 1 Q0 10 -9 1Z" fill="' + c.centerAlt + '"></path>' : '') + '</g></g>';
   }
 
+  function addedSpeciesBloom(f, key) {
+    const c = f.colors;
+    const gradient = 'url(#' + key + '-petal)';
+    const clusters = {
+      jasmine: [[51, 64], [70, 48], [89, 63]],
+      gypsophila: [[45, 68], [54, 51], [62, 72], [68, 42], [77, 60], [86, 49], [95, 68], [79, 77]]
+    };
+    const blooms = clusters[f.shape];
+    let stems = '';
+    let flowers = '';
+    if (blooms) {
+      const scale = f.shape === 'jasmine' ? 0.41 : 0.23;
+      for (const [x, y] of blooms) {
+        stems += '<path d="M70 100 Q' + x + ' 86 ' + x + ' ' + y + '" stroke="' + c.stem + '" stroke-width="1.6" fill="none"/>';
+        flowers += '<g transform="translate(' + x + ' ' + y + ') scale(' + scale + ')">';
+        for (let i = 0; i < 5; i++) {
+          flowers += '<path d="M0 1 Q-13 -7 -9 -20 Q4 -25 12 -15 Q11 -6 0 1Z" fill="' + gradient + '" stroke="' + c.petalAlt + '" transform="rotate(' + i*72 + ')"/>';
+        }
+        flowers += '<circle r="4" fill="' + c.center + '"/></g>';
+      }
+    } else {
+      const lily = f.shape === 'true-lily';
+      const camellia = f.shape === 'camellia';
+      const count = lily ? 6 : camellia ? 9 : 7;
+      const layers = lily ? 1 : camellia ? 4 : 3;
+      const outline = lily ? 'M0 3 Q-13 -9 0 -43 Q13 -9 0 3Z' : camellia ? 'M0 3 C-26 -9 -21 -37 0 -37 C21 -37 26 -9 0 3Z' : 'M0 3 C-20 -3 -20 -33 2 -38 C21 -42 20 -19 0 3Z';
+      flowers = '<g transform="translate(70 60)">';
+      for (let layer = 0; layer < layers; layer++) {
+        for (let i = 0; i < count; i++) {
+          const rotation = i*360/count + layer*17;
+          flowers += '<path d="' + outline + '" fill="' + gradient + '" stroke="' + c.petalAlt + '" stroke-width=".7" transform="rotate(' + rotation + ') scale(' + (1-layer*.19) + ')"/>';
+        }
+      }
+      for (let i = 0; i < 6; i++) {
+        flowers += '<g transform="rotate(' + i*60 + ')"><path d="M0 0L0 -' + (lily ? 17 : 7) + '" stroke="' + c.center + '" stroke-width="2"/><ellipse cy="-' + (lily ? 17 : 7) + '" rx="2.4" ry="1.5" fill="' + c.centerAlt + '"/></g>';
+      }
+      flowers += '</g>';
+    }
+    return soilMound() + '<g class="flower-sway">' + baseFoliage(f, blooms ? 99 : 68) + stems + flowers + '</g>';
+  }
+
   function bloomStage(f, key) {
     const painters = {
       daisy: daisyBloom,
@@ -346,7 +387,8 @@
       rose: roseBloom,
       sunflower: sunflowerBloom,
       hydrangea: hydrangeaBloom,
-      lily: lilyBloom, cosmos: newSpeciesBloom, carnation: newSpeciesBloom, peony: newSpeciesBloom, iris: newSpeciesBloom, orchid: newSpeciesBloom
+      lily: lilyBloom, cosmos: newSpeciesBloom, carnation: newSpeciesBloom, peony: newSpeciesBloom, iris: newSpeciesBloom, orchid: newSpeciesBloom,
+      jasmine: addedSpeciesBloom, 'true-lily': addedSpeciesBloom, gardenia: addedSpeciesBloom, camellia: addedSpeciesBloom, gypsophila: addedSpeciesBloom
     };
     return (painters[f.shape] || daisyBloom)(f, key);
   }

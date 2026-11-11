@@ -14,7 +14,8 @@ if str(ROOT) not in sys.path:
 from content import garden  # noqa: E402
 from tools.build_content import FLOWER_FIELDS, OUTPUT, build_data, render_js  # noqa: E402
 
-ALLOWED_SHAPES = {"daisy", "tulip", "hyacinth", "rose", "sunflower", "hydrangea", "lily", "cosmos", "carnation", "peony", "iris", "orchid"}
+ALLOWED_SHAPES = {"daisy", "tulip", "hyacinth", "rose", "sunflower", "hydrangea", "lily", "cosmos", "carnation", "peony", "iris", "orchid",
+                  "jasmine", "true-lily", "gardenia", "camellia", "gypsophila"}
 COLOR_KEYS = {"petal", "petalAlt", "center", "centerAlt", "stem", "leaf", "accent"}
 HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 

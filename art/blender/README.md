@@ -1,13 +1,13 @@
 # Blender botanical collection
 
-The editable master project is `garden-60-models.blend`. Each named collection
-contains one species/quality model. The contact sheet shows all 60 exports.
+The editable master project is `garden-85-models.blend`. Each named collection
+contains one species/quality model. The contact sheet shows all 85 models.
 
-Production assets are in `www/models/flowers/`: twelve species, five qualities
+Production assets are in `www/models/flowers/`: seventeen species, five qualities
 per species, with a manifest of URLs, sizes and actual exported triangle counts.
 The web app loads them only when needed. The largest model is below 2 MB.
 
-Rebuild from the repository root with an installed Blender 5.2:
+Rebuild from the repository root with Blender 4.3 or later:
 
 ```text
 node scripts/export-flower-recipes.js
@@ -19,8 +19,8 @@ Geometry is authored with distinct botanical structures and explicit UVs:
 annular petals with separated angular sectors and layer heights; convex rose
 petals wrapping a compact flower centre; offset tulip
 cup shells; spherical hydrangea floret spacing; tiered hyacinth flowers;
-individual lily-of-the-valley bells; iris standards/falls; and orchid blossoms
-on a flowering arch. Thin edges are generated with Blender Solidify modifiers.
+lily-of-the-valley bells; iris standards and falls; orchid arches; jasmine pinwheels;
+lily tepals and anthers; layered gardenias and camellias; and branching baby’s breath. Thin edges are generated with Blender Solidify modifiers.
 Flower stems and leaves are included; the app keeps each specimen's existing pot.
 
 GLBs include pigment colours, UVs, normals and botanical role metadata. The app

@@ -831,7 +831,7 @@
       const deep = rgb(leaf ? flower.colors.stem : flower.colors.petalAlt);
       const tint = variant ? rgb(variant.template.tint) : base;
       const finish = variant ? variant.template.id : '';
-      const spotted = ['orchid', 'iris'].includes(shape);
+      const spotted = ['orchid', 'iris', 'true-lily'].includes(shape);
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
           const u = x / (width - 1), v = y / (height - 1);
@@ -1049,19 +1049,19 @@
         parent.add(insectPerch);
       }
 
-      function buildDisc(big) {
+      function buildDisc(big, geometry) {
         const head = new THREE.Group();
         head.position.copy(headPosition);
         head.rotation.x = big ? 0.4 : 0.34;
         plant.add(head);
         addCalyx(head, -0.035, big ? 1.25 : 1);
-        const outerGeo = geo(paint(petalGeometry(big ? 1.1 : 0.8, big ? 0.22 : 0.18, big ? 'pointed' : 'round'), flower.colors.centerAlt, flower.colors.petal));
+        const outerGeo = geo(paint(petalGeometry(big ? 1.1 : 0.8, big ? 0.22 : 0.18, geometry || (big ? 'pointed' : 'round')), flower.colors.centerAlt, flower.colors.petal));
         const innerGeo = geo(paint(petalGeometry(big ? 0.86 : 0.62, big ? 0.2 : 0.17, 'round'), flower.colors.petalAlt, flower.colors.petal));
         const outer = { geometry: outerGeo, material: petalMat };
         const inner = { geometry: innerGeo, material: petalMat };
-        for (let ring = 0; ring < form.rings; ring++) {
+        for (let ring = 0; ring < (form.rings || 1); ring++) {
           addPetalRing(head, ring === 0 ? outer : inner, {
-            count: Math.max(8, form.petals - ring * 4), tilt: 1.34 - ring * 0.13,
+            count: Math.max(shape === 'true-lily' ? 6 : 8, (form.petals || 6) - ring * 4), tilt: 1.34 - ring * 0.13,
             scale: 1 - ring * 0.12, offset: 0.1 + ring * 0.19, y: ring * 0.038
           });
         }
@@ -1395,6 +1395,8 @@
         buildHyacinth();
       } else if (shape === 'lily') {
         buildLily();
+      } else if (shape === 'true-lily') {
+        buildDisc(false, 'pointed');
       } else {
         buildDisc(false);
       }

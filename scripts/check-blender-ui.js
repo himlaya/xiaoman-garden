@@ -8,8 +8,8 @@ const output = path.join(root, 'screenshots', 'blender');
 fs.mkdirSync(output, { recursive: true });
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const server = spawn(process.execPath, [path.join(__dirname, 'serve.js'), '--port', '4174'], { windowsHide: true, stdio: 'ignore' });
-const browser = spawn('C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', [
-  '--headless=new', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
+const browser = spawn(process.env.GARDEN_BROWSER || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', [
+  '--headless=new', ...(process.platform === 'linux' && process.getuid?.() === 0 ? ['--no-sandbox'] : []), '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
   '--remote-debugging-port=9336', '--no-first-run', '--no-default-browser-check', '--no-proxy-server',
   '--user-data-dir=' + path.join(os.tmpdir(), 'garden-blender-check-' + Date.now()),
   'http://127.0.0.1:4174/'
@@ -70,7 +70,7 @@ async function main() {
     fs.writeFileSync(path.join(output, flower + '.png'), Buffer.from(screenshot.data, 'base64'));
     results.push(details);
   }
-  await evaluate(`Flower3D.openShelf(GameData.flowers.slice(0,6).map((flower,index)=>GardenItems.createBouquet(flower,{}, {ratio:1}, {id:'shelf-'+index,grade:'rare',templateId:'dawn',patternSeed:index+10,wear:.03})),0)`);
+  await evaluate(`Flower3D.openShelf(GameData.flowers.filter(flower => ['peony', 'jasmine', 'true-lily', 'gardenia', 'camellia', 'gypsophila'].includes(flower.id)).map((flower,index)=>GardenItems.createBouquet(flower,{}, {ratio:1}, {id:'shelf-'+index,grade:'rare',templateId:'dawn',patternSeed:index+10,wear:.03})),0)`);
   await until(`(()=>{const rack=window._flowerScene?.getObjectByName('bouquet-display-rack');return rack && rack.children.filter(child=>child.userData.assetSource==='Blender').length===6;})()`);
   const shelf = await send('Page.captureScreenshot', { format: 'png' });
   fs.writeFileSync(path.join(output, 'shelf.png'), Buffer.from(shelf.data, 'base64'));
@@ -78,7 +78,7 @@ async function main() {
   await pause(800);
   if (errors.length) throw new Error(errors.join('\n'));
   fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify({ models: results, shelfModels: 6, errors }, null, 2));
-  console.log('Browser passed: 12 species, 6 shelf models, item textures, controls and close-during-load');
+  console.log(`Browser passed: ${species.length} species, 6 shelf models, item textures, controls and close-during-load`);
 }
 main().catch(async error => {
   console.error(error);

@@ -10,6 +10,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, 'www/models/flowers/
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const context = vm.createContext({ THREE, window: {}, ArrayBuffer, TextDecoder, console, URL, setTimeout, clearTimeout });
 vm.runInContext(read('www/vendor/GLTFLoader.js'), context);
+vm.runInContext(read('www/js/data.js'), context);
 let requests = 0;
 context.fetch = async url => {
   requests++;
@@ -19,8 +20,9 @@ context.fetch = async url => {
 vm.runInContext(read('www/js/flower-assets.js'), context);
 const assets = context.window.FlowerAssets;
 
-test('all 60 Blender exports parse, retain five distinct forms and fit the mobile scene', async () => {
-  assert.equal(Object.keys(manifest.models).length, 60);
+test('all catalogued Blender exports parse, retain five distinct forms and fit the mobile scene', async () => {
+  const flowerIds = new Set(Array.from(context.window.GameData.flowers, flower => flower.id));
+  assert.equal(Object.keys(manifest.models).length, flowerIds.size * 5);
   const forms = new Map();
   for (const [key, info] of Object.entries(manifest.models)) {
     const split = key.lastIndexOf('-');
@@ -55,7 +57,7 @@ test('all 60 Blender exports parse, retain five distinct forms and fit the mobil
     assets.dispose(model);
     Object.values(materials).forEach(material => material.dispose());
   }
-  assert.equal(forms.size, 12);
+  assert.deepEqual(new Set(forms.keys()), flowerIds);
   for (const [species, values] of forms) assert.equal(values.size, 5, species);
 });
 

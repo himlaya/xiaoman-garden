@@ -411,8 +411,13 @@ test('旧版数量库存会自动迁移成独立种子', () => {
 });
 
 
-test('all twelve species use the same five quality rolls and support every finish', () => {
+test('all catalog species use the same five quality rolls and support every finish', () => {
   const h = makeHarness();
+  assert.equal(h.Data.flowerMap.lily.name, '铃兰');
+  assert.equal(h.Data.flowerMap['true-lily'].name, '百合');
+  for (const id of ['jasmine', 'gardenia', 'camellia', 'gypsophila', 'peony']) {
+    assert.ok(h.Data.flowerMap[id], id);
+  }
   for (const flower of h.Data.flowers) {
     assert.equal(flower.rarity, undefined);
     for (const [roll, grade] of [[0, 'common'], [0.49, 'fine'], [0.76, 'rare'], [0.92, 'epic'], [0.99, 'legendary']]) {

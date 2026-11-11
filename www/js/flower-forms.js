@@ -72,6 +72,27 @@
     { blooms: 2, lip: 1 }, { blooms: 3, lip: 0.85 }, { blooms: 3, lip: 1.25 },
     { blooms: 4, lip: 1.5 }, { blooms: 5, lip: 1.35 }
   ]);
+  species('jasmine', ['疏枝星瓣', '风车旋瓣', '双轮小簇', '卷瓣重轮', '密簇重瓣'], [
+    { blooms: 3, rings: 1, petals: 5 }, { blooms: 4, rings: 1, petals: 7 },
+    { blooms: 3, rings: 2, petals: 6 }, { blooms: 4, rings: 2, petals: 7 }, { blooms: 5, rings: 3, petals: 7 }
+  ]);
+  species('true-lily', ['六瓣平展', '长筒喇叭', '反卷垂花', '宽瓣星形', '复轮重瓣'], [
+    { rings: 1, reach: .65, lift: .12, curl: -.12 }, { rings: 1, reach: .56, lift: .52, curl: -.14 },
+    { rings: 1, reach: .61, lift: .35, curl: -.56 }, { rings: 1, reach: .73, lift: .2, curl: -.22 },
+    { rings: 2, reach: .63, lift: .25, curl: -.16 }
+  ]);
+  species('gardenia', ['单轮风车', '半重瓣', '宽瓣旋心', '卷边重瓣', '密心叠瓣'], [
+    { rings: 1, petals: 6 }, { rings: 2, petals: 7 }, { rings: 3, petals: 7 },
+    { rings: 4, petals: 8 }, { rings: 5, petals: 8 }
+  ]);
+  species('camellia', ['单瓣金蕊', '半重瓣浅杯', '莲座重瓣', '抱心重瓣', '规整叠瓣'], [
+    { rings: 1, petals: 7 }, { rings: 2, petals: 8 }, { rings: 4, petals: 9 },
+    { rings: 5, petals: 9 }, { rings: 6, petals: 10 }
+  ]);
+  species('gypsophila', ['轻疏三枝', '细密五枝', '宽幅云簇', '双瓣云簇', '满枝重瓣'], [
+    { sprays: 3, florets: 3, rings: 1 }, { sprays: 5, florets: 3, rings: 1 },
+    { sprays: 5, florets: 4, rings: 1 }, { sprays: 5, florets: 4, rings: 2 }, { sprays: 6, florets: 4, rings: 2 }
+  ]);
   window.FlowerForms = Object.freeze({
     canPreview: function () { return window.__ACCOUNT__?.isAdmin === true; },
     get: function (flowerId, grade) {
