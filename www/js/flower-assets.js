@@ -22,7 +22,9 @@
   function load(THREE, flowerId, grade, materials) {
     if (!Object.hasOwn(window.GameData.flowerMap, flowerId) || !grades.includes(grade)) return Promise.reject(new Error('Unknown flower model'));
     const modelId = flowerId + '-' + grade + '-v2';
-    return source('./models/flowers/' + modelId + '.glb').then(function (bytes) {
+    const build = window.XIAOMAN_VERSION?.build;
+    const url = './models/flowers/' + modelId + '.glb' + (build ? '?v=' + build : '');
+    return source(url).then(function (bytes) {
       return new Promise(function (resolve, reject) {
         new THREE.GLTFLoader().parse(bytes, '', function (gltf) {
           const root = gltf.scene;

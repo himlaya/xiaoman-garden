@@ -11,10 +11,13 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const context = vm.createContext({ THREE, window: {}, ArrayBuffer, TextDecoder, console, URL, setTimeout, clearTimeout });
 vm.runInContext(read('www/vendor/GLTFLoader.js'), context);
 vm.runInContext(read('www/js/data.js'), context);
+vm.runInContext(read('www/js/version.js'), context);
 let requests = 0;
 context.fetch = async url => {
   requests++;
-  const buffer = fs.readFileSync(path.join(root, 'www', url));
+  const asset = new URL(url, 'https://garden.test/');
+  assert.equal(asset.searchParams.get('v'), String(context.window.XIAOMAN_VERSION.build));
+  const buffer = fs.readFileSync(path.join(root, 'www', asset.pathname));
   return { ok: true, arrayBuffer: async () => buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) };
 };
 vm.runInContext(read('www/js/flower-assets.js'), context);
