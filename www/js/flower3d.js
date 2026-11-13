@@ -818,6 +818,10 @@
     }
 
     const shape = flower.shape || 'daisy';
+    const waxyFoliage = ['gardenia', 'camellia', 'jasmine'].includes(shape);
+    const waxyPetals = ['gardenia', 'camellia'].includes(shape);
+    const petalRoughness = waxyPetals ? 120 : ['peony', 'carnation', 'rose'].includes(shape) ? 151 : 135;
+
     function botanicalTexture(leaf) {
       const width = 128, height = 256;
       const colour = new Uint8Array(width * height * 4);
@@ -832,6 +836,7 @@
       const tint = variant ? rgb(variant.template.tint) : base;
       const finish = variant ? variant.template.id : '';
       const spotted = ['orchid', 'iris', 'true-lily'].includes(shape);
+      const roughnessBase = leaf ? (waxyFoliage ? 81 : 117) : petalRoughness;
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
           const u = x / (width - 1), v = y / (height - 1);
@@ -844,10 +849,10 @@
           const fine = Math.sin(u * 191 + v * 137 + phase) * Math.sin(u * 71 - v * 257);
           const mottle = Math.sin(across * 17 + Math.sin(v * 12 + phase)) * Math.sin(v * 23 - across * 5 + phase);
           const speckle = Math.pow(Math.max(0, Math.sin(across * 41 + phase) * Math.cos(v * 67 - across * 13)), 12);
-          const baseMix = leaf ? 0.26 + edge * 0.17 : 0.14 + Math.pow(1 - v, 1.6) * 0.64;
+          const baseMix = leaf ? 0.19 + edge * 0.17 + (1-v) * 0.24 : 0.14 + Math.pow(1 - v, 1.6) * 0.64;
           const shade = leaf
-            ? 0.93 + mottle * 0.033 + veins * 0.055 + central * 0.07 + fine * 0.008
-            : 0.98 - veins * (0.028 + (1 - v) * 0.035) + mottle * 0.023 + fine * 0.005;
+            ? 0.96 + mottle * 0.025 + veins * 0.034 + central * 0.05 + fine * 0.003
+            : 1.00 - veins * (0.011 + (1 - v) * 0.018) + mottle * 0.009 + fine * 0.002;
           let finishMix = 0;
           if (!leaf) {
             if (finish === 'gilded') finishMix = Math.max(0, (edge - 0.76) / 0.24) * 0.78;
@@ -866,8 +871,8 @@
             value = value * (1 - spotMix) + deep[channel] * 0.68 * spotMix;
             value = value * (1 - worn) + [144, 108, 67][channel] * worn;
             colour[offset + channel] = Math.max(0, Math.min(255, Math.round(value)));
-            relief[offset + channel] = Math.round(128 + central * (leaf ? 34 : 4) + veins * (leaf ? 14 : 7) + fine * 1.5);
-            roughness[offset + channel] = Math.round((leaf ? 146 : 191) + mottle * 8 + veins * 7 + worn * 20);
+            relief[offset + channel] = Math.round(128 + central * (leaf ? 18 : 2) + veins * (leaf ? 7 : 3) + fine * 0.5);
+            roughness[offset + channel] = Math.round(roughnessBase + mottle * 3 + veins * 2 + worn * 18);
           }
           colour[offset + 3] = relief[offset + 3] = roughness[offset + 3] = 255;
         }
@@ -886,19 +891,21 @@
     const leafTexture = botanicalTexture(true);
     const petalTexture = botanicalTexture(false);
     const leafMat = new THREE.MeshPhysicalMaterial({
-      name: 'botanical-leaf', color: 0xffffff, vertexColors: false, roughness: 0.95,
-      metalness: 0, clearcoat: 0.045, clearcoatRoughness: 0.72,
+      name: 'botanical-leaf', color: 0xffffff, vertexColors: false, roughness: 1,
+      metalness: 0, clearcoat: waxyFoliage ? 0.19 : 0.07, clearcoatRoughness: 0.34,
+      specularIntensity: waxyFoliage ? 0.48 : 0.35,
       map: leafTexture.colour, roughnessMap: leafTexture.roughness,
-      bumpMap: leafTexture.bump, bumpScale: 0.0025, side: THREE.DoubleSide
+      bumpMap: leafTexture.bump, bumpScale: 0.00065, side: THREE.DoubleSide
     });
     mats.push(leafMat);
     const veinMat = mat({ color: flower.colors.leaf, roughness: 0.82 });
     const petalMat = new THREE.MeshPhysicalMaterial({
-      name: 'botanical-petal', color: 0xffffff, vertexColors: false, roughness: 0.95,
-      metalness: 0, clearcoat: 0, sheen: 0.16, sheenColor: new THREE.Color(flower.colors.petal),
-      sheenRoughness: 0.9, specularIntensity: 0.18,
+      name: 'botanical-petal', color: 0xffffff, vertexColors: false, roughness: 1,
+      metalness: 0, clearcoat: 0, sheen: waxyPetals ? 0.12 : 0.25,
+      sheenColor: new THREE.Color(flower.colors.petal),
+      sheenRoughness: 0.65, specularIntensity: waxyPetals ? 0.38 : 0.30,
       map: petalTexture.colour, roughnessMap: petalTexture.roughness,
-      bumpMap: petalTexture.bump, bumpScale: 0.001, side: THREE.DoubleSide
+      bumpMap: petalTexture.bump, bumpScale: 0.00024, side: THREE.DoubleSide
     });
     mats.push(petalMat);
     const greenMat = mat({ color: flower.colors.leaf, roughness: 0.9, side: THREE.DoubleSide });

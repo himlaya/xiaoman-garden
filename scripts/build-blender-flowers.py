@@ -55,8 +55,9 @@ def material(name, colour, roughness=.84):
     return m
 
 class BotanicalMesh:
-    def __init__(self, name, role, mat, collection):
+    def __init__(self, name, role, mat, collection, thin=False):
         self.name, self.role, self.mat, self.collection = name, role, mat, collection
+        self.thin = thin
         self.vertices, self.faces, self.uvs, self.colours = [], [], [], []
 
     def surface(self, fn, rows=12, cols=6, wrap=False):
@@ -69,7 +70,10 @@ class BotanicalMesh:
                 self.vertices.append((x, -z, y))
                 self.uvs.append((u, t))
                 # Subtle root-to-edge pigment and veins remain in the standalone GLB.
-                pigment = .64 + .33*t + .025*math.cos(u*42 + t*9)
+                if self.thin and self.role in ('petal', 'leaf'):
+                    pigment = .79 + .19*t + .008*math.cos(u*36+t*9)
+                else:
+                    pigment = .64 + .33*t + .025*math.cos(u*42 + t*9)
                 base = self.mat.diffuse_color
                 self.colours.append(tuple(c*pigment for c in base[:3]) + (1,))
         for i in range(rows):
@@ -101,7 +105,10 @@ class BotanicalMesh:
         obj['botanical'] = self.role
         if self.role in ('petal', 'leaf'):
             solid = obj.modifiers.new('Botanical edge thickness', 'SOLIDIFY')
-            solid.thickness = .0025 if self.role == 'petal' else .0035
+            if self.thin:
+                solid.thickness = .00038 if self.role == 'petal' else .0011
+            else:
+                solid.thickness = .0025 if self.role == 'petal' else .0035
             solid.offset = 0
         return obj
 
@@ -116,15 +123,40 @@ def basis(axis):
 
 def tube(mesh, points, radius=.018, sides=8, tip_scale=1):
     points = [Vector(p) for p in points]
-    for k in range(len(points)-1):
-        a, b, n = basis(points[k+1]-points[k])
-        p, q = tuple(points[k]), tuple(points[k+1])
-        def surface(t, u):
-            progress = (k+t)/(len(points)-1)
-            width = radius*(1+(tip_scale-1)*progress)
-            edge = add(mul(a,width*math.cos(u*TAU)),mul(b,width*math.sin(u*TAU)))
-            return add(add(mul(p,1-t),mul(q,t)),edge)
-        mesh.surface(surface, 1, sides)
+    if not mesh.thin:
+        for k,(p,q) in enumerate(zip(points,points[1:])):
+            a,b,_ = basis(q-p)
+            def segment(t,u):
+                width = radius*(1+(tip_scale-1)*(k+t)/(len(points)-1))
+                edge = add(mul(a,width*math.cos(u*TAU)),mul(b,width*math.sin(u*TAU)))
+                return add(tuple(p.lerp(q,t)),edge)
+            mesh.surface(segment,1,sides)
+        return
+    frames = []
+    for i, point in enumerate(points):
+        previous = points[max(0, i-1)]
+        following = points[min(len(points)-1, i+1)]
+        axis = (following-previous).normalized()
+        if frames:
+            # Project the previous ring onto the new plane to avoid seams at bends.
+            across = frames[-1][0] - axis*frames[-1][0].dot(axis)
+            across.normalize()
+        else:
+            across = Vector(basis(axis)[0])
+        frames.append((across, axis.cross(across).normalized()))
+
+    def surface(t, u):
+        end = len(points)-1
+        row = round(t*(end+2))-1
+        i = max(0,min(end,row))
+        width = radius*(1+(tip_scale-1)*i/end)
+        if row < 0 or row > end:
+            width *= .001
+        a,b = frames[i]
+        angle = u*TAU
+        return tuple(points[i]+width*(a*math.cos(angle)+b*math.sin(angle)))
+
+    mesh.surface(surface, len(points)+1, sides)
 
 def orb(mesh, center, radius, flatten=1, rows=8, sides=16):
     mesh.surface(lambda t,u: (center[0]+radius*math.sin(.005+t*(math.pi-.01))*math.cos(u*TAU), center[1]+radius*flatten*math.cos(.005+t*(math.pi-.01)), center[2]+radius*math.sin(.005+t*(math.pi-.01))*math.sin(u*TAU)), rows, sides)
@@ -231,7 +263,8 @@ def realistic_leaves(mesh, branches, stem, fid, rank, height):
 
 
 def corolla(mesh, origin, axes, angle, length, width, rise, recurvature,
-            seed, sweep=0, shoulder=.72, edge=.012, throat=0, resolution=(18,10)):
+            seed, sweep=0, shoulder=.72, edge=.012, throat=0, resolution=(18,10),
+            sector=None, layer_gap=None):
     a,b,n = axes
     radial = add(mul(a,math.cos(angle)),mul(b,math.sin(angle)))
     tangent = add(mul(a,-math.sin(angle)),mul(b,math.cos(angle)))
@@ -244,7 +277,17 @@ def corolla(mesh, origin, axes, angle, length, width, rise, recurvature,
         reach = length*(t-.13*v*v*t**5)+wrinkle
         across = v*width*profile+sweep*t*t
         height = rise*t + throat*math.sin(math.pi*t*.84)-recurvature*t**4
-        height += width*.36*v*v*profile+wrinkle*.72
+        height += width*.26*v*v*profile+wrinkle*.64
+        if sector:
+            base_radius, half_angle = sector
+            limit = (base_radius+reach)*math.tan(half_angle)
+            ratio = across/max(.0001,limit)
+            across = limit*math.tanh(ratio) if length<.20 else across/(1+ratio**6)**(1/6)
+        if layer_gap:
+            # Every tier follows the same bowl. Its local curvature stays
+            # inside its allotted height band even when petals overlap in plan.
+            r = math.hypot(sector[0]+reach,across)
+            height = .22*r + layer_gap*.39*math.tanh(height/layer_gap)
         return local_point(origin,(radial,tangent,n),reach,height,across)
 
     mesh.surface(surface,*resolution)
@@ -277,19 +320,21 @@ def layered_bloom(petals, center, axes, rings, count, radius, fid, rank):
     for ring in range(rings):
         scale = 1-ring*.81/(rings+.3)
         petals_in_ring = max(4,count-ring//2)
+        gap = radius*(.071 if fid=='peony' else .061)
         for i in range(petals_in_ring):
             noise = math.sin(i*4.76+ring*2.14+rank)
             irregularity = .025 if fid=='camellia' else .065
-            angle = (i+.5*(ring%2))*TAU/petals_in_ring+ring*.26+noise*irregularity
-            root = local_point(center,axes,radius*.13*scale*math.cos(angle),
-                               radius*ring*(.061 if fid=='peony' else .053),
-                               radius*.13*scale*math.sin(angle))
+            angle = (i+ring*.618)*TAU/petals_in_ring+noise*irregularity
+            base = radius*.115*scale
+            root = local_point(center,axes,base*math.cos(angle),gap*ring,base*math.sin(angle))
             length = radius*scale*(.78+irregularity*noise)
             width = length*(.37 if fid=='gardenia' else .42)
             rise = radius*(.11+.021*ring)*(1.26 if fid=='peony' else 1)
-            sweep = length*(.23 if fid=='gardenia' else .035+.040*noise)
-            edge = length*(.013 if fid=='camellia' else .027+.005*rank)
-            corolla(petals,root,axes,angle,length,width,rise,length*.072,i+ring*3,sweep,.72,edge)
+            sweep = length*(.125 if fid=='gardenia' else .026+.028*noise)
+            edge = length*(.010 if fid=='camellia' else .017+.003*rank)
+            corolla(petals,root,axes,angle,length,width,rise,length*.072,i+ring*3,
+                    sweep,.72,edge,sector=(base,math.pi/petals_in_ring-irregularity-.008),
+                    layer_gap=gap)
 
 
 def small_flower(petals, centers, greens, origin, axis, length, count, rings, twist):
@@ -298,12 +343,15 @@ def small_flower(petals, centers, greens, origin, axis, length, count, rings, tw
     tube(greens,[origin,throat],length*.18,6,.73)
     resolution = (5,4) if length < .065 else (8,6)
     for ring in range(rings):
-        root = add(throat,mul(axes[2],ring*length*.16))
         for i in range(count):
-            corolla(petals,root,axes,i*TAU/count+ring*.48,length*(1-ring*.22),
-                    length*.30,length*.16,length*.10,i,length*twist,.70,length*.014,
-                    resolution=resolution)
-    orb(centers,throat,length*.13,.65,4,7)
+            angle = i*TAU/count+ring*.48
+            base = length*.115
+            gap = length*.22
+            root = local_point(throat,axes,base*math.cos(angle),ring*gap,base*math.sin(angle))
+            corolla(petals,root,axes,angle,length*(1-ring*.22),length*.30,
+                    length*.16,length*.10,i,length*twist,.70,length*.014,
+                    resolution=resolution,sector=(base,math.pi/count-.025),layer_gap=gap)
+    elliptical_tip(centers,throat,axes,length*.14,length*.14,length*.11)
 
 
 def realistic_bloom(fid, form, rank, stem, height, p, s, c, pollen):
@@ -317,6 +365,16 @@ def realistic_bloom(fid, form, rank, stem, height, p, s, c, pollen):
             corolla(s,calyx,axes,i*TAU/5,radius*.23,radius*.075,.02,.049,i,
                     shoulder=.47,resolution=(8,5))
         layered_bloom(p,center,axes,rings,form.get('petals',8+rank),radius,fid,rank)
+        # The receptacle meets the petal bases from below. The central bud
+        # fits inside the innermost ring, away from the visible petal faces.
+        elliptical_tip(s,add(center,mul(axes[2],-.028)),axes,
+                       radius*.12,radius*.12,.036)
+        if fid=='gardenia' or rings>3:
+            inner_scale = 1-(rings-1)*.81/(rings+.3)
+            core_width = radius*.107*inner_scale
+            core_height = radius*(.071 if fid=='peony' else .061)*(rings-1)
+            elliptical_tip(p,add(center,mul(axes[2],core_height+.012)),axes,
+                           core_width,core_width,.018)
         if rings <= 3:
             core = add(center,mul(axes[2],radius*.095))
             if fid == 'gardenia':
@@ -340,7 +398,10 @@ def realistic_bloom(fid, form, rank, stem, height, p, s, c, pollen):
                 length = form['reach']*(.92 if i%2==0 else 1)*(1-ring*.22)
                 corolla(p,root,axes,angle,length,length*(.19 if i%2==0 else .25)*form['width'],
                         form['lift']*(1-ring*.42),-form['curl'],i+ring*.42,.028*math.sin(i*1.7),
-                        .55,.011,.095 if rank==1 else .046,resolution=(24,10))
+                        .55,.008,.095 if rank==1 else .046,resolution=(24,10),
+                        sector=(.026,math.pi/6-.013),layer_gap=.062 if form['rings']>1 else None)
+        elliptical_tip(p,add(center,mul(axes[2],.009)),axes,.024,.024,.015)
+        elliptical_tip(s,add(center,mul(axes[2],-.024)),axes,.053,.053,.027)
         if rank != 4:
             stamens(c,pollen,center,axes,6,.15,.38+form['lift']*.23,.045)
         tip = add(center,mul(axes[2],.47+form['lift']*.13))
@@ -394,7 +455,18 @@ def build(flower, form, rank):
     bpy.context.scene.collection.children.link(collection)
     palette=flower['colors']
     materials={role: material(fid+'-'+role,palette[key]) for role,key in [('petal','petal'),('leaf','leaf'),('stem','stem'),('center','center'),('pollen','centerAlt')]}
-    parts={role:BotanicalMesh(name+'-'+role,role,mat,collection) for role,mat in materials.items()}
+    if fid in REALISTIC_FLOWERS:
+        waxy = fid in ('gardenia','camellia')
+        for role, roughness in [('petal',.40 if waxy else .51),('leaf',.29 if waxy else .43),('stem',.53)]:
+            shader = materials[role].node_tree.nodes.get('Principled BSDF')
+            shader.inputs['Roughness'].default_value = roughness
+            shader.inputs['Specular IOR Level'].default_value = .34
+            if role=='petal':
+                shader.inputs['Sheen Weight'].default_value = .09 if waxy else .15
+                shader.inputs['Subsurface Weight'].default_value = .08
+                shader.inputs['Subsurface Scale'].default_value = .015
+    parts={role:BotanicalMesh(name+'-'+role,role,mat,collection,thin=fid in REALISTIC_FLOWERS)
+           for role,mat in materials.items()}
     p,l,s,c,pollen=[parts[k] for k in ('petal','leaf','stem','center','pollen')]
     h={'daisy':1.28,'rose':1.25,'tulip':1.45,'sunflower':1.62,'hydrangea':1.36,'hyacinth':1.7,'lily':1.6,'cosmos':1.45,'carnation':1.35,'peony':1.32,'iris':1.55,'orchid':1.5,'jasmine':1.39,'true-lily':1.62,'gardenia':1.37,'camellia':1.44,'gypsophila':1.59}[fid]*form['height']
     def stem(y): return (.065*form['bend']*(y/h)**2, y, .025*math.sin(y*2))
