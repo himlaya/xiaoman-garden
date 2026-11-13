@@ -818,8 +818,8 @@
     }
 
     const shape = flower.shape || 'daisy';
-    const waxyFoliage = ['gardenia', 'camellia', 'jasmine'].includes(shape);
-    const waxyPetals = ['gardenia', 'camellia'].includes(shape);
+    const waxyFoliage = ['gardenia', 'camellia', 'jasmine', 'orchid', 'tulip'].includes(shape);
+    const waxyPetals = ['gardenia', 'camellia', 'orchid', 'tulip'].includes(shape);
     const petalRoughness = waxyPetals ? 120 : ['peony', 'carnation', 'rose'].includes(shape) ? 151 : 135;
 
     function botanicalTexture(leaf) {
