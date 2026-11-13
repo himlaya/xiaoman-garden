@@ -487,24 +487,46 @@ def build(flower, form, rank):
             a=k*2.399963; r=radius*.9*math.sqrt((k+.5)/(64 if fid=='sunflower' else 26))
             orb(pollen,add(center,(r*math.cos(a),top+radius*.44*math.sqrt(max(0,1-(r/radius)**2)),r*math.sin(a))),.012,.7,3,5)
     elif fid=='rose':
-        # Convex petal bowls wrap around the bud. Straight radial wedges produce
-        # exposed triangular undersides when seen from the mobile camera.
-        layers=form['layers']
-        for ring in range(layers+2):
-            radius=.59*(1-ring/(layers+2)*.87)
-            count=max(3,7-ring//2)
+        layers = form['layers']+2
+        radius = .55*form['width']
+        profile = .27+rank*.024
+
+        # A closed, petal-coloured bud underlies the inner petals. It also
+        # covers their attachment points when the flower is seen from above.
+        orb(p,add(center,(0,.128,0)),radius*.44,1.04,15,32)
+
+        # A low continuous cup joins the petal roots beneath the overlapping
+        # edges, so gaps between the guard petals reveal pink tissue.
+        def cup(t,u):
+            angle = u*TAU
+            r = radius*(.012+.894*t)
+            y = -.009+(profile-.073)*t**2.7
+            y += .008*math.cos(7*angle)*t**3
+            return add(center,(r*math.cos(angle),y,r*math.sin(angle)))
+
+        p.surface(cup,20,72)
+        orb(s,add(center,(0,-.034,0)),radius*.36,.43,8,16)
+        for ring in range(layers):
+            fraction = ring/(layers-1)
+            reach = radius*(1-.75*fraction)
+            count = max(4,7-ring//2)
             for k in range(count):
-                angle=TAU*(k+.5*(ring%2))/count+ring*.22
-                def fn(t,u,angle=angle,radius=radius,ring=ring,count=count):
-                    across=u*2-1
-                    phi=angle+across*math.pi/count*.99*(.08+.92*math.sin(t*math.pi/2)**.6)
-                    r=radius*(.60+.40*math.sin(t*math.pi/2))*(1-.033*across*across*t**8)
-                    y=.04+ring*.025+.37*(1-math.cos(t*math.pi/2))-.047*t**8
-                    y+=.006*math.sin(across*8+ring)*abs(across)**4*t**5
-                    return add(center,(r*math.cos(phi),y,r*math.sin(phi)))
-                p.surface(fn,16,8)
-        elliptical_tip(c,add(center,(0,.16,0)),basis((0,1,0)),.04,.04,.155)
-        orb(s,add(center,(0,-.018,0)),.17,.53,8,14)
+                angle = TAU*(k+ring*.618)/count
+                wobble = math.sin(k*2.39+ring*1.7)
+
+                def surface(t,u):
+                    v = 2*u-1
+                    shoulder = math.sin(t*math.pi*.5)
+                    # Petals flare from a shared base and overlap like shingles.
+                    # A signed lift lifts one edge over its neighbour.
+                    theta = angle+v*math.pi/count*(.16+1.08*shoulder**.7)+.12*t*t
+                    r = reach*(.20+.80*shoulder)*(1-.14*v*v*t**4)
+                    y = .023+.19*fraction+(profile-.12*fraction)*t**1.8
+                    y += (.025*v-.025*v*v+.012*wobble)*t**1.6
+                    y -= (.062-.032*fraction)*t**9
+                    return add(center,(r*math.cos(theta),y,r*math.sin(theta)))
+
+                p.surface(surface,22,12)
     elif fid == 'carnation':
         axes = basis((.06,.88,.47))
         radius = .58*form['width']

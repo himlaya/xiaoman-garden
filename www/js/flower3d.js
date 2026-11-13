@@ -1100,9 +1100,9 @@
         for (let i = 0; i < form.core; i++) {
           addPetalRing(head, spiralPetal, { count: 3, tilt: 0.24 + i * 0.06, scale: 0.55 + i * 0.08, y: 0.17 + i * 0.012, offset: i * 0.8 });
         }
-        const bud = new THREE.Mesh(geo(new THREE.SphereGeometry(0.16, 16, 12)), centerAltMat);
-        bud.scale.y = 0.84;
-        bud.position.y = 0.18;
+        const bud = new THREE.Mesh(geo(new THREE.SphereGeometry(0.245, 24, 16)), petalMat);
+        bud.scale.y = 0.83;
+        bud.position.y = 0.145;
         head.add(bud);
         setInsectPerch(head, 0.05, 0.34, 0.02);
       }

@@ -110,36 +110,36 @@
     "rose-common": {
       "url": "./models/flowers/rose-common-v2.glb",
       "modelId": "rose-common-v2",
-      "triangles": 17708,
-      "bytes": 506588,
+      "triangles": 41052,
+      "bytes": 1158596,
       "label": "疏瓣杯形"
     },
     "rose-fine": {
       "url": "./models/flowers/rose-fine-v2.glb",
       "modelId": "rose-fine-v2",
-      "triangles": 20748,
-      "bytes": 592148,
+      "triangles": 47012,
+      "bytes": 1325916,
       "label": "螺旋高心"
     },
     "rose-rare": {
       "url": "./models/flowers/rose-rare-v2.glb",
       "modelId": "rose-rare-v2",
-      "triangles": 23788,
-      "bytes": 677712,
+      "triangles": 52972,
+      "bytes": 1493232,
       "label": "舒展莲座"
     },
     "rose-epic": {
       "url": "./models/flowers/rose-epic-v2.glb",
       "modelId": "rose-epic-v2",
-      "triangles": 23788,
-      "bytes": 677716,
+      "triangles": 52972,
+      "bytes": 1493232,
       "label": "卷边重瓣"
     },
     "rose-legendary": {
       "url": "./models/flowers/rose-legendary-v2.glb",
       "modelId": "rose-legendary-v2",
-      "triangles": 26220,
-      "bytes": 746204,
+      "triangles": 57740,
+      "bytes": 1627116,
       "label": "密瓣花心"
     },
     "sunflower-common": {
