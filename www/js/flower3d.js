@@ -603,6 +603,10 @@
       return geometry;
     }
 
+    const soilHeight = -0.845;
+    const soilDepth = 0.035;
+    const stemAnchor = soilHeight + soilDepth / 2 - 0.012;
+
     function addPot(root) {
       const palettes = [
         { body: 0xb97c60, rim: 0x587d73, ink: 0xf4e5c5, accent: 0xe3b36d },
@@ -783,8 +787,8 @@
       }), 64)), mat({ color: palette.body, roughness: surface.roughness, metalness: surface.metalness }));
       root.add(saucer);
       const soilRadius = [0.71, 0.65, 0.67, 0.64][potShapeIndex];
-      const soil = new THREE.Mesh(geo(new THREE.CylinderGeometry(soilRadius, soilRadius, 0.035, 48)), soilMat);
-      soil.position.y = -0.845;
+      const soil = new THREE.Mesh(geo(new THREE.CylinderGeometry(soilRadius, soilRadius, soilDepth, 48)), soilMat);
+      soil.position.y = soilHeight;
       root.add(soil);
       const pebbleGeo = geo(new THREE.SphereGeometry(0.052, 8, 6));
       const pebbleMat = mat({ color: 0x6d5742, roughness: 1 });
@@ -930,7 +934,7 @@
     let insectPerch = null;
     if (stage !== 'seed') {
       plant = new THREE.Group();
-      plant.position.y = -0.82;
+      plant.position.y = stemAnchor;
       root.add(plant);
       swayTarget = plant;
 

@@ -5,596 +5,596 @@
     "daisy-common": {
       "url": "./models/flowers/daisy-common-v2.glb",
       "modelId": "daisy-common-v2",
-      "triangles": 7900,
-      "bytes": 242924,
+      "triangles": 8038,
+      "bytes": 248152,
       "label": "单轮平瓣"
     },
     "daisy-fine": {
       "url": "./models/flowers/daisy-fine-v2.glb",
       "modelId": "daisy-fine-v2",
-      "triangles": 10060,
-      "bytes": 303932,
+      "triangles": 10198,
+      "bytes": 309160,
       "label": "细瓣小杯"
     },
     "daisy-rare": {
       "url": "./models/flowers/daisy-rare-v2.glb",
       "modelId": "daisy-rare-v2",
-      "triangles": 15100,
-      "bytes": 446284,
+      "triangles": 15238,
+      "bytes": 451516,
       "label": "双轮舒展"
     },
     "daisy-epic": {
       "url": "./models/flowers/daisy-epic-v2.glb",
       "modelId": "daisy-epic-v2",
-      "triangles": 19420,
-      "bytes": 568308,
+      "triangles": 19558,
+      "bytes": 573536,
       "label": "卷瓣重轮"
     },
     "daisy-legendary": {
       "url": "./models/flowers/daisy-legendary-v2.glb",
       "modelId": "daisy-legendary-v2",
-      "triangles": 28780,
-      "bytes": 832728,
+      "triangles": 28918,
+      "bytes": 837956,
       "label": "绒球叠瓣"
     },
     "tulip-common": {
       "url": "./models/flowers/tulip-common-v2.glb",
       "modelId": "tulip-common-v2",
-      "triangles": 7518,
-      "bytes": 226912,
+      "triangles": 7624,
+      "bytes": 230096,
       "label": "经典杯形"
     },
     "tulip-fine": {
       "url": "./models/flowers/tulip-fine-v2.glb",
       "modelId": "tulip-fine-v2",
-      "triangles": 7518,
-      "bytes": 226908,
+      "triangles": 7624,
+      "bytes": 230096,
       "label": "尖瓣百合型"
     },
     "tulip-rare": {
       "url": "./models/flowers/tulip-rare-v2.glb",
       "modelId": "tulip-rare-v2",
-      "triangles": 7518,
-      "bytes": 226912,
+      "triangles": 7624,
+      "bytes": 230100,
       "label": "流苏杯形"
     },
     "tulip-epic": {
       "url": "./models/flowers/tulip-epic-v2.glb",
       "modelId": "tulip-epic-v2",
-      "triangles": 11982,
-      "bytes": 352432,
+      "triangles": 12088,
+      "bytes": 355620,
       "label": "重瓣碗形"
     },
     "tulip-legendary": {
       "url": "./models/flowers/tulip-legendary-v2.glb",
       "modelId": "tulip-legendary-v2",
-      "triangles": 9750,
-      "bytes": 289720,
+      "triangles": 9856,
+      "bytes": 292904,
       "label": "鹦鹉卷瓣"
     },
     "hyacinth-common": {
       "url": "./models/flowers/hyacinth-common-v2.glb",
       "modelId": "hyacinth-common-v2",
-      "triangles": 31900,
-      "bytes": 937360,
+      "triangles": 27076,
+      "bytes": 803872,
       "label": "疏花长穗"
     },
     "hyacinth-fine": {
       "url": "./models/flowers/hyacinth-fine-v2.glb",
       "modelId": "hyacinth-fine-v2",
-      "triangles": 45196,
-      "bytes": 1326208,
+      "triangles": 38228,
+      "bytes": 1133384,
       "label": "紧簇锥穗"
     },
     "hyacinth-rare": {
       "url": "./models/flowers/hyacinth-rare-v2.glb",
       "modelId": "hyacinth-rare-v2",
-      "triangles": 41872,
-      "bytes": 1229000,
+      "triangles": 35440,
+      "bytes": 1051000,
       "label": "舒展宽穗"
     },
     "hyacinth-epic": {
       "url": "./models/flowers/hyacinth-epic-v2.glb",
       "modelId": "hyacinth-epic-v2",
-      "triangles": 55168,
-      "bytes": 1617832,
+      "triangles": 46592,
+      "bytes": 1380524,
       "label": "卷口密穗"
     },
     "hyacinth-legendary": {
       "url": "./models/flowers/hyacinth-legendary-v2.glb",
       "modelId": "hyacinth-legendary-v2",
-      "triangles": 61816,
-      "bytes": 1812296,
+      "triangles": 52168,
+      "bytes": 1545312,
       "label": "复瓣花塔"
     },
     "rose-common": {
       "url": "./models/flowers/rose-common-v2.glb",
       "modelId": "rose-common-v2",
-      "triangles": 41052,
-      "bytes": 1158596,
+      "triangles": 37840,
+      "bytes": 1068264,
       "label": "疏瓣杯形"
     },
     "rose-fine": {
       "url": "./models/flowers/rose-fine-v2.glb",
       "modelId": "rose-fine-v2",
-      "triangles": 47012,
-      "bytes": 1325916,
+      "triangles": 43800,
+      "bytes": 1235588,
       "label": "螺旋高心"
     },
     "rose-rare": {
       "url": "./models/flowers/rose-rare-v2.glb",
       "modelId": "rose-rare-v2",
-      "triangles": 52972,
-      "bytes": 1493232,
+      "triangles": 49760,
+      "bytes": 1402904,
       "label": "舒展莲座"
     },
     "rose-epic": {
       "url": "./models/flowers/rose-epic-v2.glb",
       "modelId": "rose-epic-v2",
-      "triangles": 52972,
-      "bytes": 1493232,
+      "triangles": 49760,
+      "bytes": 1402904,
       "label": "卷边重瓣"
     },
     "rose-legendary": {
       "url": "./models/flowers/rose-legendary-v2.glb",
       "modelId": "rose-legendary-v2",
-      "triangles": 57740,
-      "bytes": 1627116,
+      "triangles": 54528,
+      "bytes": 1536788,
       "label": "密瓣花心"
     },
     "sunflower-common": {
       "url": "./models/flowers/sunflower-common-v2.glb",
       "modelId": "sunflower-common-v2",
-      "triangles": 12640,
-      "bytes": 391628,
+      "triangles": 12778,
+      "bytes": 396856,
       "label": "单轮长瓣"
     },
     "sunflower-fine": {
       "url": "./models/flowers/sunflower-fine-v2.glb",
       "modelId": "sunflower-fine-v2",
-      "triangles": 23440,
-      "bytes": 696680,
+      "triangles": 23578,
+      "bytes": 701912,
       "label": "细瓣双轮"
     },
     "sunflower-rare": {
       "url": "./models/flowers/sunflower-rare-v2.glb",
       "modelId": "sunflower-rare-v2",
-      "triangles": 26320,
-      "bytes": 778028,
+      "triangles": 26458,
+      "bytes": 783256,
       "label": "宽瓣复轮"
     },
     "sunflower-epic": {
       "url": "./models/flowers/sunflower-epic-v2.glb",
       "modelId": "sunflower-epic-v2",
-      "triangles": 34240,
-      "bytes": 1001732,
+      "triangles": 34378,
+      "bytes": 1006960,
       "label": "卷瓣菊型"
     },
     "sunflower-legendary": {
       "url": "./models/flowers/sunflower-legendary-v2.glb",
       "modelId": "sunflower-legendary-v2",
-      "triangles": 48640,
-      "bytes": 1408520,
+      "triangles": 48778,
+      "bytes": 1413748,
       "label": "密瓣环冠"
     },
     "hydrangea-common": {
       "url": "./models/flowers/hydrangea-common-v2.glb",
       "modelId": "hydrangea-common-v2",
-      "triangles": 16880,
-      "bytes": 524888,
+      "triangles": 23072,
+      "bytes": 704960,
       "label": "疏簇球形"
     },
     "hydrangea-fine": {
       "url": "./models/flowers/hydrangea-fine-v2.glb",
       "modelId": "hydrangea-fine-v2",
-      "triangles": 23260,
-      "bytes": 722456,
+      "triangles": 31912,
+      "bytes": 972724,
       "label": "紧簇圆球"
     },
     "hydrangea-rare": {
       "url": "./models/flowers/hydrangea-rare-v2.glb",
       "modelId": "hydrangea-rare-v2",
-      "triangles": 20708,
-      "bytes": 643432,
+      "triangles": 28376,
+      "bytes": 865620,
       "label": "舒展扁球"
     },
     "hydrangea-epic": {
       "url": "./models/flowers/hydrangea-epic-v2.glb",
       "modelId": "hydrangea-epic-v2",
-      "triangles": 41240,
-      "bytes": 1242364,
+      "triangles": 50384,
+      "bytes": 1506680,
       "label": "双瓣花簇"
     },
     "hydrangea-legendary": {
       "url": "./models/flowers/hydrangea-legendary-v2.glb",
       "modelId": "hydrangea-legendary-v2",
-      "triangles": 50056,
-      "bytes": 1507216,
+      "triangles": 61168,
+      "bytes": 1827680,
       "label": "重瓣密球"
     },
     "lily-common": {
       "url": "./models/flowers/lily-common-v2.glb",
       "modelId": "lily-common-v2",
-      "triangles": 13984,
-      "bytes": 405012,
+      "triangles": 15064,
+      "bytes": 442912,
       "label": "疏铃弯枝"
     },
     "lily-fine": {
       "url": "./models/flowers/lily-fine-v2.glb",
       "modelId": "lily-fine-v2",
-      "triangles": 17984,
-      "bytes": 519216,
+      "triangles": 19424,
+      "bytes": 569752,
       "label": "小铃直穗"
     },
     "lily-rare": {
       "url": "./models/flowers/lily-rare-v2.glb",
       "modelId": "lily-rare-v2",
-      "triangles": 15984,
-      "bytes": 462120,
+      "triangles": 17244,
+      "bytes": 506340,
       "label": "宽口垂铃"
     },
     "lily-epic": {
       "url": "./models/flowers/lily-epic-v2.glb",
       "modelId": "lily-epic-v2",
-      "triangles": 21984,
-      "bytes": 633420,
+      "triangles": 23784,
+      "bytes": 696588,
       "label": "卷口串铃"
     },
     "lily-legendary": {
       "url": "./models/flowers/lily-legendary-v2.glb",
       "modelId": "lily-legendary-v2",
-      "triangles": 25984,
-      "bytes": 747664,
+      "triangles": 28144,
+      "bytes": 823464,
       "label": "密铃花穗"
     },
     "cosmos-common": {
       "url": "./models/flowers/cosmos-common-v2.glb",
       "modelId": "cosmos-common-v2",
-      "triangles": 5740,
-      "bytes": 181920,
+      "triangles": 5878,
+      "bytes": 187148,
       "label": "八瓣平展"
     },
     "cosmos-fine": {
       "url": "./models/flowers/cosmos-fine-v2.glb",
       "modelId": "cosmos-fine-v2",
-      "triangles": 5740,
-      "bytes": 181916,
+      "triangles": 5878,
+      "bytes": 187144,
       "label": "窄瓣浅杯"
     },
     "cosmos-rare": {
       "url": "./models/flowers/cosmos-rare-v2.glb",
       "modelId": "cosmos-rare-v2",
-      "triangles": 7900,
-      "bytes": 242940,
+      "triangles": 8038,
+      "bytes": 248168,
       "label": "双轮蝶瓣"
     },
     "cosmos-epic": {
       "url": "./models/flowers/cosmos-epic-v2.glb",
       "modelId": "cosmos-epic-v2",
-      "triangles": 9340,
-      "bytes": 283612,
+      "triangles": 9478,
+      "bytes": 288840,
       "label": "卷边复瓣"
     },
     "cosmos-legendary": {
       "url": "./models/flowers/cosmos-legendary-v2.glb",
       "modelId": "cosmos-legendary-v2",
-      "triangles": 11500,
-      "bytes": 344672,
+      "triangles": 11638,
+      "bytes": 349900,
       "label": "重瓣花冠"
     },
     "carnation-common": {
       "url": "./models/flowers/carnation-common-v2.glb",
       "modelId": "carnation-common-v2",
-      "triangles": 23416,
-      "bytes": 666168,
+      "triangles": 23652,
+      "bytes": 672864,
       "label": "疏瓣细齿"
     },
     "carnation-fine": {
       "url": "./models/flowers/carnation-fine-v2.glb",
       "modelId": "carnation-fine-v2",
-      "triangles": 30072,
-      "bytes": 853244,
+      "triangles": 30308,
+      "bytes": 859940,
       "label": "浅杯褶瓣"
     },
     "carnation-rare": {
       "url": "./models/flowers/carnation-rare-v2.glb",
       "modelId": "carnation-rare-v2",
-      "triangles": 35896,
-      "bytes": 1016940,
+      "triangles": 36132,
+      "bytes": 1023636,
       "label": "宽瓣波边"
     },
     "carnation-epic": {
       "url": "./models/flowers/carnation-epic-v2.glb",
       "modelId": "carnation-epic-v2",
-      "triangles": 41720,
-      "bytes": 1180636,
+      "triangles": 41956,
+      "bytes": 1187332,
       "label": "密褶重瓣"
     },
     "carnation-legendary": {
       "url": "./models/flowers/carnation-legendary-v2.glb",
       "modelId": "carnation-legendary-v2",
-      "triangles": 46712,
-      "bytes": 1320980,
+      "triangles": 46948,
+      "bytes": 1327676,
       "label": "绒球流苏"
     },
     "peony-common": {
       "url": "./models/flowers/peony-common-v2.glb",
       "modelId": "peony-common-v2",
-      "triangles": 26676,
-      "bytes": 806520,
+      "triangles": 26996,
+      "bytes": 816356,
       "label": "单瓣露蕊"
     },
     "peony-fine": {
       "url": "./models/flowers/peony-fine-v2.glb",
       "modelId": "peony-fine-v2",
-      "triangles": 41652,
-      "bytes": 1227456,
+      "triangles": 41972,
+      "bytes": 1237296,
       "label": "半重瓣浅碗"
     },
     "peony-rare": {
       "url": "./models/flowers/peony-rare-v2.glb",
       "modelId": "peony-rare-v2",
-      "triangles": 46448,
-      "bytes": 1318104,
+      "triangles": 46684,
+      "bytes": 1324800,
       "label": "重瓣莲座"
     },
     "peony-epic": {
       "url": "./models/flowers/peony-epic-v2.glb",
       "modelId": "peony-epic-v2",
-      "triangles": 57264,
-      "bytes": 1622092,
+      "triangles": 57500,
+      "bytes": 1628788,
       "label": "卷瓣楼台"
     },
     "peony-legendary": {
       "url": "./models/flowers/peony-legendary-v2.glb",
       "modelId": "peony-legendary-v2",
-      "triangles": 69744,
-      "bytes": 1972884,
+      "triangles": 69980,
+      "bytes": 1979580,
       "label": "千层花冠"
     },
     "iris-common": {
       "url": "./models/flowers/iris-common-v2.glb",
       "modelId": "iris-common-v2",
-      "triangles": 4832,
-      "bytes": 146280,
+      "triangles": 4684,
+      "bytes": 141740,
       "label": "窄旗垂瓣"
     },
     "iris-fine": {
       "url": "./models/flowers/iris-fine-v2.glb",
       "modelId": "iris-fine-v2",
-      "triangles": 4832,
-      "bytes": 146280,
+      "triangles": 4684,
+      "bytes": 141740,
       "label": "高旗浅垂"
     },
     "iris-rare": {
       "url": "./models/flowers/iris-rare-v2.glb",
       "modelId": "iris-rare-v2",
-      "triangles": 4832,
-      "bytes": 146280,
+      "triangles": 4684,
+      "bytes": 141740,
       "label": "宽旗舒展"
     },
     "iris-epic": {
       "url": "./models/flowers/iris-epic-v2.glb",
       "modelId": "iris-epic-v2",
-      "triangles": 4832,
-      "bytes": 146280,
+      "triangles": 4684,
+      "bytes": 141740,
       "label": "波边旗瓣"
     },
     "iris-legendary": {
       "url": "./models/flowers/iris-legendary-v2.glb",
       "modelId": "iris-legendary-v2",
-      "triangles": 4832,
-      "bytes": 146316,
+      "triangles": 4684,
+      "bytes": 141776,
       "label": "卷边花冠"
     },
     "orchid-common": {
       "url": "./models/flowers/orchid-common-v2.glb",
       "modelId": "orchid-common-v2",
-      "triangles": 6604,
-      "bytes": 195220,
+      "triangles": 6772,
+      "bytes": 201512,
       "label": "双花垂枝"
     },
     "orchid-fine": {
       "url": "./models/flowers/orchid-fine-v2.glb",
       "modelId": "orchid-fine-v2",
-      "triangles": 8914,
-      "bytes": 261616,
+      "triangles": 9166,
+      "bytes": 271052,
       "label": "三花小蝶"
     },
     "orchid-rare": {
       "url": "./models/flowers/orchid-rare-v2.glb",
       "modelId": "orchid-rare-v2",
-      "triangles": 8914,
-      "bytes": 261616,
+      "triangles": 9166,
+      "bytes": 271048,
       "label": "宽瓣蝶翼"
     },
     "orchid-epic": {
       "url": "./models/flowers/orchid-epic-v2.glb",
       "modelId": "orchid-epic-v2",
-      "triangles": 11224,
-      "bytes": 328012,
+      "triangles": 11560,
+      "bytes": 340588,
       "label": "卷唇花序"
     },
     "orchid-legendary": {
       "url": "./models/flowers/orchid-legendary-v2.glb",
       "modelId": "orchid-legendary-v2",
-      "triangles": 13534,
-      "bytes": 394452,
+      "triangles": 13954,
+      "bytes": 410172,
       "label": "五花展翅"
     },
     "jasmine-common": {
       "url": "./models/flowers/jasmine-common-v2.glb",
       "modelId": "jasmine-common-v2",
-      "triangles": 10100,
-      "bytes": 301176,
+      "triangles": 11044,
+      "bytes": 327964,
       "label": "疏枝星瓣"
     },
     "jasmine-fine": {
       "url": "./models/flowers/jasmine-fine-v2.glb",
       "modelId": "jasmine-fine-v2",
-      "triangles": 14012,
-      "bytes": 413668,
+      "triangles": 15192,
+      "bytes": 447148,
       "label": "风车旋瓣"
     },
     "jasmine-rare": {
       "url": "./models/flowers/jasmine-rare-v2.glb",
       "modelId": "jasmine-rare-v2",
-      "triangles": 17044,
-      "bytes": 498080,
+      "triangles": 17988,
+      "bytes": 524864,
       "label": "双轮小簇"
     },
     "jasmine-epic": {
       "url": "./models/flowers/jasmine-epic-v2.glb",
       "modelId": "jasmine-epic-v2",
-      "triangles": 22692,
-      "bytes": 659788,
+      "triangles": 23872,
+      "bytes": 693268,
       "label": "卷瓣重轮"
     },
     "jasmine-legendary": {
       "url": "./models/flowers/jasmine-legendary-v2.glb",
       "modelId": "jasmine-legendary-v2",
-      "triangles": 36772,
-      "bytes": 1060640,
+      "triangles": 38188,
+      "bytes": 1100816,
       "label": "密簇重瓣"
     },
     "true-lily-common": {
       "url": "./models/flowers/true-lily-common-v2.glb",
       "modelId": "true-lily-common-v2",
-      "triangles": 13238,
-      "bytes": 389600,
+      "triangles": 13198,
+      "bytes": 388480,
       "label": "六瓣平展"
     },
     "true-lily-fine": {
       "url": "./models/flowers/true-lily-fine-v2.glb",
       "modelId": "true-lily-fine-v2",
-      "triangles": 13238,
-      "bytes": 389600,
+      "triangles": 13198,
+      "bytes": 388480,
       "label": "长筒喇叭"
     },
     "true-lily-rare": {
       "url": "./models/flowers/true-lily-rare-v2.glb",
       "modelId": "true-lily-rare-v2",
-      "triangles": 13238,
-      "bytes": 389600,
+      "triangles": 13198,
+      "bytes": 388480,
       "label": "反卷垂花"
     },
     "true-lily-epic": {
       "url": "./models/flowers/true-lily-epic-v2.glb",
       "modelId": "true-lily-epic-v2",
-      "triangles": 13238,
-      "bytes": 389600,
+      "triangles": 13198,
+      "bytes": 388480,
       "label": "宽瓣星形"
     },
     "true-lily-legendary": {
       "url": "./models/flowers/true-lily-legendary-v2.glb",
       "modelId": "true-lily-legendary-v2",
-      "triangles": 18926,
-      "bytes": 541332,
+      "triangles": 18886,
+      "bytes": 540212,
       "label": "复轮重瓣"
     },
     "gardenia-common": {
       "url": "./models/flowers/gardenia-common-v2.glb",
       "modelId": "gardenia-common-v2",
-      "triangles": 10166,
-      "bytes": 299688,
+      "triangles": 10486,
+      "bytes": 309536,
       "label": "单轮风车"
     },
     "gardenia-fine": {
       "url": "./models/flowers/gardenia-fine-v2.glb",
       "modelId": "gardenia-fine-v2",
-      "triangles": 16822,
-      "bytes": 486764,
+      "triangles": 17142,
+      "bytes": 496616,
       "label": "半重瓣"
     },
     "gardenia-rare": {
       "url": "./models/flowers/gardenia-rare-v2.glb",
       "modelId": "gardenia-rare-v2",
-      "triangles": 21814,
-      "bytes": 627076,
+      "triangles": 22134,
+      "bytes": 636928,
       "label": "宽瓣旋心"
     },
     "gardenia-epic": {
       "url": "./models/flowers/gardenia-epic-v2.glb",
       "modelId": "gardenia-epic-v2",
-      "triangles": 30026,
-      "bytes": 855972,
+      "triangles": 30262,
+      "bytes": 862668,
       "label": "卷边重瓣"
     },
     "gardenia-legendary": {
       "url": "./models/flowers/gardenia-legendary-v2.glb",
       "modelId": "gardenia-legendary-v2",
-      "triangles": 35018,
-      "bytes": 996304,
+      "triangles": 35254,
+      "bytes": 1003000,
       "label": "密心叠瓣"
     },
     "camellia-common": {
       "url": "./models/flowers/camellia-common-v2.glb",
       "modelId": "camellia-common-v2",
-      "triangles": 16348,
-      "bytes": 504880,
+      "triangles": 16668,
+      "bytes": 514720,
       "label": "单瓣金蕊"
     },
     "camellia-fine": {
       "url": "./models/flowers/camellia-fine-v2.glb",
       "modelId": "camellia-fine-v2",
-      "triangles": 23836,
-      "bytes": 715336,
+      "triangles": 24156,
+      "bytes": 725180,
       "label": "半重瓣浅杯"
     },
     "camellia-rare": {
       "url": "./models/flowers/camellia-rare-v2.glb",
       "modelId": "camellia-rare-v2",
-      "triangles": 34948,
-      "bytes": 993652,
+      "triangles": 35184,
+      "bytes": 1000348,
       "label": "莲座重瓣"
     },
     "camellia-epic": {
       "url": "./models/flowers/camellia-epic-v2.glb",
       "modelId": "camellia-epic-v2",
-      "triangles": 40772,
-      "bytes": 1157348,
+      "triangles": 41008,
+      "bytes": 1164044,
       "label": "抱心重瓣"
     },
     "camellia-legendary": {
       "url": "./models/flowers/camellia-legendary-v2.glb",
       "modelId": "camellia-legendary-v2",
-      "triangles": 51588,
-      "bytes": 1461380,
+      "triangles": 51824,
+      "bytes": 1468076,
       "label": "规整叠瓣"
     },
     "gypsophila-common": {
       "url": "./models/flowers/gypsophila-common-v2.glb",
       "modelId": "gypsophila-common-v2",
-      "triangles": 18292,
-      "bytes": 558552,
+      "triangles": 20432,
+      "bytes": 619792,
       "label": "轻疏三枝"
     },
     "gypsophila-fine": {
       "url": "./models/flowers/gypsophila-fine-v2.glb",
       "modelId": "gypsophila-fine-v2",
-      "triangles": 26396,
-      "bytes": 808696,
+      "triangles": 29896,
+      "bytes": 908896,
       "label": "细密五枝"
     },
     "gypsophila-rare": {
       "url": "./models/flowers/gypsophila-rare-v2.glb",
       "modelId": "gypsophila-rare-v2",
-      "triangles": 33936,
-      "bytes": 1039628,
+      "triangles": 38796,
+      "bytes": 1178788,
       "label": "宽幅云簇"
     },
     "gypsophila-epic": {
       "url": "./models/flowers/gypsophila-epic-v2.glb",
       "modelId": "gypsophila-epic-v2",
-      "triangles": 54236,
-      "bytes": 1623444,
+      "triangles": 55696,
+      "bytes": 1667400,
       "label": "双瓣云簇"
     },
     "gypsophila-legendary": {
       "url": "./models/flowers/gypsophila-legendary-v2.glb",
       "modelId": "gypsophila-legendary-v2",
-      "triangles": 65004,
-      "bytes": 1945580,
+      "triangles": 66752,
+      "bytes": 1998304,
       "label": "满枝重瓣"
     }
   }

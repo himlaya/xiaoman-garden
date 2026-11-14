@@ -307,11 +307,19 @@ def stamens(filaments, anthers, origin, axes, count, spread, height, size):
         elliptical_tip(anthers,points[-1],(tangent,radial,n),size,size*.42,size*.34)
 
 
+def receptacle(mesh, origin, axes, base, tip, radius, taper=.7):
+    """Connect whorls from underneath, keeping the support inside the crown."""
+    n = axes[2]
+    tube(mesh,[add(origin,mul(n,base)),add(origin,mul(n,tip))],
+         radius,14,taper)
+
+
 def layered_bloom(petals, center, axes, rings, count, radius, fid, rank):
+    gap = radius*(.071 if fid=='peony' else .061)
+    receptacle(petals,center,axes,-.014,gap*(rings-1)+.02,radius*.135,.37)
     for ring in range(rings):
         scale = 1-ring*.81/(rings+.3)
         petals_in_ring = max(4,count-ring//2)
-        gap = radius*(.071 if fid=='peony' else .061)
         for i in range(petals_in_ring):
             noise = math.sin(i*4.76+ring*2.14+rank)
             irregularity = .025 if fid=='camellia' else .065
@@ -331,7 +339,8 @@ def layered_bloom(petals, center, axes, rings, count, radius, fid, rank):
 def small_flower(petals, centers, greens, origin, axis, length, count, rings, twist, resolution=None):
     axes = basis(axis)
     throat = add(origin,mul(axes[2],length*.24))
-    tube(greens,[origin,throat],length*.18,6,.73)
+    tube(greens,[origin,add(throat,mul(axes[2],length*.04))],length*.18,6,.8)
+    receptacle(petals,throat,axes,-length*.035,length*(.22*(rings-1)+.065),length*.145,.97)
     resolution = resolution or ((5,4) if length < .065 else (8,6))
     for ring in range(rings):
         for i in range(count):
@@ -342,7 +351,7 @@ def small_flower(petals, centers, greens, origin, axis, length, count, rings, tw
             corolla(petals,root,axes,angle,length*(1-ring*.22),length*.30,
                     length*.16,length*.10,i,length*twist,.70,length*.014,
                     resolution=resolution,sector=(base,math.pi/count-.025),layer_gap=gap)
-    elliptical_tip(centers,throat,axes,length*.14,length*.14,length*.11)
+    elliptical_tip(centers,add(throat,mul(axes[2],length*.07)),axes,length*.08,length*.08,length*.07)
 
 
 def realistic_bloom(fid, form, rank, stem, height, p, s, c, pollen):
@@ -368,6 +377,7 @@ def realistic_bloom(fid, form, rank, stem, height, p, s, c, pollen):
                            core_width,core_width,.018)
         if rings <= 3:
             core = add(center,mul(axes[2],radius*.095))
+            receptacle(c,center,axes,-.013,radius*.107,radius*.13,.90)
             if fid == 'gardenia':
                 elliptical_tip(c,core,axes,.034,.035,.022)
             else:
@@ -391,7 +401,7 @@ def realistic_bloom(fid, form, rank, stem, height, p, s, c, pollen):
                         form['lift']*(1-ring*.42),-form['curl'],i+ring*.42,.028*math.sin(i*1.7),
                         .55,.008,.095 if rank==1 else .046,resolution=(24,10),
                         sector=(.026,math.pi/6-.013),layer_gap=.062 if form['rings']>1 else None)
-        elliptical_tip(p,add(center,mul(axes[2],.009)),axes,.024,.024,.015)
+        receptacle(p,center,axes,-.008,(form['rings']-1)*.062+.016,.032,.94)
         elliptical_tip(s,add(center,mul(axes[2],-.024)),axes,.053,.053,.027)
         if rank != 4:
             stamens(c,pollen,center,axes,6,.15,.38+form['lift']*.23,.045)
@@ -435,7 +445,7 @@ def realistic_bloom(fid, form, rank, stem, height, p, s, c, pollen):
                         orb(p,tip,size*.54,1.12,4,7)
                     else:
                         small_flower(p,c,s,tip,add(mul(direction,.43),(0,.87,side*.30)),
-                                     size,5,form['rings'],0)
+                                     size,5,form["rings"],0,resolution=(4,4))
         small_flower(p,c,s,center,(0,.85,.40),.037,5,form['rings'],0)
 
 
@@ -481,7 +491,11 @@ def build(flower, form, rank):
             for k in range(count):
                 petal(p,add(center,(0,ring*.061,0)),TAU*(k+ring*.618)/count,length*(1-ring*.12),math.pi/count*.94,radius*.92,-.035,.08,form['ruffle']*.11, fid=='sunflower')
         top = .035+(form['rings']-1)*.061
-        orb(s,add(center,(0,-.026,0)),radius*.95,.46)
+        head_axes = basis((0,1,0))
+        receptacle(c,center,head_axes,-.027,top,radius*.985,.98)
+        tilt = .65 if fid=='sunflower' else .32
+        tube(s,[add(center,(0,-.045,0)),add(center,(0,-.026*math.cos(tilt),-.026*math.sin(tilt)))],.023,9)
+        orb(s,add(center,(0,-.026*math.cos(tilt),-.026*math.sin(tilt))),radius*.95,.46)
         orb(c,add(center,(0,top,0)),radius,.44)
         for k in range(64 if fid=='sunflower' else 26):
             a=k*2.399963; r=radius*.9*math.sqrt((k+.5)/(64 if fid=='sunflower' else 26))
@@ -489,42 +503,37 @@ def build(flower, form, rank):
     elif fid=='rose':
         layers = form['layers']+2
         radius = .55*form['width']
-        profile = .27+rank*.024
-
-        # A closed, petal-coloured bud underlies the inner petals. It also
-        # covers their attachment points when the flower is seen from above.
-        orb(p,add(center,(0,.128,0)),radius*.44,1.04,15,32)
-
-        # A low continuous cup joins the petal roots beneath the overlapping
-        # edges, so gaps between the guard petals reveal pink tissue.
-        def cup(t,u):
+        depth = .24+rank*.018
+        axes = basis((.04,.94,.34))
+        receptacle(p,center,axes,-.015,.242,radius*.129,.63)
+        def outer_base(t,u):
             angle = u*TAU
-            r = radius*(.012+.894*t)
-            y = -.009+(profile-.073)*t**2.7
-            y += .008*math.cos(7*angle)*t**3
-            return add(center,(r*math.cos(angle),y,r*math.sin(angle)))
+            r = radius*(.01+.88*t)
+            y = -.015+depth*(r/radius)**2.2
+            return local_point(center,axes,r*math.cos(angle),y,r*math.sin(angle))
 
-        p.surface(cup,20,72)
-        orb(s,add(center,(0,-.034,0)),radius*.36,.43,8,16)
+        p.surface(outer_base,18,64)
+        elliptical_tip(s,add(center,mul(axes[2],-.039)),axes,
+                       radius*.20,radius*.20,.065)
         for ring in range(layers):
             fraction = ring/(layers-1)
-            reach = radius*(1-.75*fraction)
+            reach = radius*(1-.76*fraction)
             count = max(4,7-ring//2)
+            root = radius*(.12-.043*fraction)
             for k in range(count):
                 angle = TAU*(k+ring*.618)/count
                 wobble = math.sin(k*2.39+ring*1.7)
 
                 def surface(t,u):
                     v = 2*u-1
-                    shoulder = math.sin(t*math.pi*.5)
-                    # Petals flare from a shared base and overlap like shingles.
-                    # A signed lift lifts one edge over its neighbour.
-                    theta = angle+v*math.pi/count*(.16+1.08*shoulder**.7)+.12*t*t
-                    r = reach*(.20+.80*shoulder)*(1-.14*v*v*t**4)
-                    y = .023+.19*fraction+(profile-.12*fraction)*t**1.8
-                    y += (.025*v-.025*v*v+.012*wobble)*t**1.6
-                    y -= (.062-.032*fraction)*t**9
-                    return add(center,(r*math.cos(theta),y,r*math.sin(theta)))
+                    span = .09+.91*math.sin(math.pi*t*.74)**.7
+                    theta = angle+v*(math.pi/count-.011)*span+.10*t*t
+                    r = root+(reach-root)*t*(1-.17*v*v*t**4)
+                    # A common bowl keeps successive petals vertically ordered
+                    # at the same radius even when viewed from the side.
+                    y = .015+.22*fraction+depth*(r/radius)**2.2
+                    y += (.009*v+.006*wobble)*t**2-.009*t**9
+                    return local_point(center,axes,r*math.cos(theta),y,r*math.sin(theta))
 
                 p.surface(surface,22,12)
     elif fid == 'carnation':
@@ -548,7 +557,7 @@ def build(flower, form, rank):
                     y+=form['ruffle']*.11*math.sin(u*15)*t**9
                     return add(center,(r*math.cos(theta),y,r*math.sin(theta)))
                 p.surface(fn,16,10)
-        orb(s,add(center,(0,.006,0)),.173,.31,7,13)
+        orb(s,add(center,(0,.021,0)),.183,.29,9,16)
         stamens(c,pollen,add(center,(0,.047,0)),basis((0,1,0)),6,.038,.24,.022)
     elif fid=='hydrangea':
         count=form['florets']
@@ -564,8 +573,19 @@ def build(flower, form, rank):
             pos=add(center,offset)
             clearance=min(math.dist(offset,other) for j,other in enumerate(centers) if j!=k)
             axis=(offset[0],offset[1]/form['roundness'],offset[2])
-            small_flower(p,c,s,pos,axis,clearance*.34,4,2 if form['double'] else 1,.04,resolution=(5,4))
-            tube(s,[center,pos],.004,5,.65)
+            small_flower(p,c,s,pos,axis,clearance*.38,4,2 if form['double'] else 1,.04,resolution=(5,4))
+            # Branch in groups, so the back of the cluster does not look
+            # like a bare hub with one straight spoke per flower.
+            azimuth = math.atan2(offset[2],offset[0])
+            sector = round(azimuth*4/math.pi)*math.pi/4
+            fork = add(center,(.19*math.cos(sector),.036,.19*math.sin(sector)))
+            twig = add(add(center,mul(offset,.72)),(0,-.015,0))
+            if k == 0:
+                for index in range(8):
+                    angle = index*math.pi/4
+                    hub = add(center,(.19*math.cos(angle),.036,.19*math.sin(angle)))
+                    tube(s,[center,hub],.006,6,.72)
+            tube(s,[fork,twig,pos],.004,5,.68)
     elif fid=='hyacinth':
         count=form['florets']; per=5 if rank<3 else 6
         tiers=math.ceil(count/per)
@@ -574,7 +594,7 @@ def build(flower, form, rank):
             y=.65+tier*.18
             n=(math.cos(a),.26,math.sin(a)); pos=add(stem(y),mul(n,.125))
             tube(s,[stem(y),pos],.007,5)
-            small_flower(p,c,s,pos,n,.075+rank*.002,6,1,.07)
+            small_flower(p,c,s,pos,n,.075+rank*.002,6,1,.07,resolution=(6,5))
     elif fid=='lily':
         for k in range(form['bells']):
             y=.65+k*.112
@@ -589,6 +609,8 @@ def build(flower, form, rank):
                 y=-size*t+.013*math.cos(a*6)*t**10
                 return add(pos,(r*math.cos(a),y,r*math.sin(a)))
             p.surface(fn,18,24)
+            orb(s,pos,size*.15,.6,6,12)
+            tube(c,[pos,add(pos,(0,-size*.72,0))],.005,6,.7)
             orb(c,add(pos,(0,-size*.7,0)),.018,1,4,6)
     elif fid=='iris':
         for k in range(3):
@@ -596,7 +618,7 @@ def build(flower, form, rank):
             petal(p,center,a,.38,.83,.055,.4+form['standard']*.15,.09,form['ruffle']*.16)
             petal(p,add(center,(0,-.02,0)),a+math.pi/3,.58,.73,.08,-.2,-.12,form['ruffle']*.2)
             petal(c,add(center,(0,-.005,0)),a+math.pi/3,.25,.1,.1,-.1,-.03)
-        orb(c,add(center,(0,.08,0)),.063,1.4)
+        elliptical_tip(c,add(center,(0,.017,0)),basis((0,1,0)),.114,.114,.066)
     elif fid=='orchid':
         count=form['blooms']
         # A flowering arch spaces complete blossoms instead of stacking petals.
@@ -610,6 +632,7 @@ def build(flower, form, rank):
                 angle=math.pi/2+j*TAU/5
                 petal(p,pos,angle,.218 if j in (1,4) else .19,.56 if j in (1,4) else .39,.025,.015,.035,.004,axes=ax)
             petal(p,add(pos,(0,-.02,.076)),-math.pi/2,.11*form['lip'],.52,.01,.055,.02,.008,axes=ax)
+            receptacle(c,pos,ax,-.013,.077,.034,.83)
             orb(c,add(pos,(0,0,.075)),.035,.65,5,8)
     if fid in ('daisy','sunflower','cosmos'):
         tilt=.65 if fid=='sunflower' else .32
