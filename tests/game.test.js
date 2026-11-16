@@ -110,6 +110,63 @@ test('每日签到：领取花种、同一天不能重复领、连续签到会�
   assert.equal(h.Game.getSeedItems('tulip').length, 2);
 });
 
+test('金币补签：日期越早越贵，补上缺口后恢复连续签到，重复操作不扣款', () => {
+  const h = makeHarness(new Date(2026, 9, 30, 10).getTime());
+  h.Game.boot();
+  h.Game.claimCheckin();
+  h.setNow(new Date(2026, 10, 2, 10).getTime());
+  const today = h.Game.claimCheckin();
+  const before = h.Game.getState();
+  const coins = before.player.coins;
+  const itemCount = before.items.length;
+  const total = before.checkin.total;
+  const [recent, earlier] = h.Game.checkinView().makeup;
+  assert.equal(recent.date, '2026-11-01');
+  assert.equal(recent.cost, 30);
+  assert.equal(earlier.date, '2026-10-31');
+  assert.equal(earlier.cost, 60);
+  assert.equal(h.Game.claimMakeup(earlier.date, earlier.cost).ok, true);
+  assert.equal(h.Game.checkinView().streak, 1);
+  assert.equal(h.Game.claimMakeup(recent.date, recent.cost).ok, true);
+  assert.equal(h.Game.checkinView().streak, 4);
+  assert.equal(h.Game.checkinView().reward.label, today.reward.label);
+  assert.equal(h.Game.claimMakeup(recent.date, recent.cost).reason, 'makeup_changed');
+  assert.equal(h.Game.getState().player.coins, coins - 90);
+  assert.equal(h.Game.getState().items.length, itemCount);
+  assert.equal(h.Game.getState().checkin.total, total + 2);
+  const restored = makeHarness(h.now, h.store.get('xiaoman-garden-save-v1'));
+  restored.Game.boot();
+  restored.setNow(new Date(2026, 10, 3, 10).getTime());
+  assert.equal(restored.Game.checkinView().dayNumber, 5);
+  assert.equal(restored.Game.checkinView().makeup.length, 0);
+});
+
+test('金币补签：兼容旧存档，校验最近七天、报价和余额', () => {
+  const start = new Date(2026, 9, 20, 10).getTime();
+  const saved = makeHarness(start);
+  saved.Game.boot();
+  saved.Game.claimCheckin();
+  const raw = JSON.parse(saved.store.get('xiaoman-garden-save-v1'));
+  raw.checkin = { lastDate: '2026-10-20', streak: 3, total: 3 };
+  raw.player.coins = 100;
+  const h = makeHarness(new Date(2026, 10, 2, 10).getTime(), JSON.stringify(raw));
+  h.Game.boot();
+  const options = h.Game.checkinView().makeup;
+  assert.equal(options.length, 7);
+  assert.equal(options[6].date, '2026-10-26');
+  assert.equal(options[6].cost, 210);
+  assert.equal(options[6].affordable, false);
+  assert.equal(h.Game.claimMakeup('2026-10-25', 240).reason, 'makeup_changed');
+  assert.equal(h.Game.claimMakeup('2026-11-02', 0).reason, 'makeup_changed');
+  assert.equal(h.Game.claimMakeup(options[6].date, options[6].cost).reason, 'coins');
+  assert.equal(h.Game.claimMakeup(options[0].date, 0).reason, 'makeup_changed');
+  assert.equal(h.Game.getState().player.coins, 100);
+  assert.equal(h.Game.getState().checkin.total, 3);
+  assert.equal(h.Game.claimMakeup(options[0].date, options[0].cost).ok, true);
+  assert.equal(h.Game.checkinView().dayNumber, 2);
+  assert.equal(h.Game.claimCheckin().dayNumber, 2);
+});
+
 test('漏签会重新开始连续签到，并回到第 1 天奖励', () => {
   const h = makeHarness();
   h.Game.boot();

@@ -6,6 +6,8 @@
   const Items = window.GardenItems;
   const SAVE_KEY = DATA.saveKey;
   const DAY_MS = 24 * 60 * 60 * 1000;
+  const MAKEUP_DAYS = 7;
+  const MAKEUP_COINS_PER_DAY = 30;
   const NAME_CHANGE_PRICE = 3000;
   const NAME_CHANGE_COOLDOWN = 30 * DAY_MS;
   const MAX_GARDEN = DATA.maxPots;
@@ -28,6 +30,15 @@
     const aTime = Date.UTC(a[0], a[1] - 1, a[2]);
     const bTime = Date.UTC(b[0], b[1] - 1, b[2]);
     return Math.round((bTime - aTime) / DAY_MS);
+  }
+
+  function shiftDate(key, days) {
+    return new Date(Date.parse(key + 'T00:00:00Z') + days * DAY_MS).toISOString().slice(0, 10);
+  }
+
+  function validDateKey(key) {
+    return typeof key === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(key) &&
+      Number.isFinite(Date.parse(key)) && shiftDate(key, 0) === key;
   }
 
   function integer(value, fallback) {
@@ -78,7 +89,10 @@
       checkin: {
         lastDate: null,
         streak: 0,
-        total: 0
+        total: 0,
+        since: null,
+        runs: [],
+        lastRewardDay: null
       },
       daily: emptyDaily(),
       settings: {
@@ -159,13 +173,7 @@
       potCount: Math.max(1, Math.min(MAX_GARDEN, integer(raw.potCount, DATA.initialPots))),
       garden: new Array(MAX_GARDEN).fill(null),
       collection: {},
-      checkin: {
-        lastDate: typeof raw.checkin?.lastDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.checkin.lastDate)
-          ? raw.checkin.lastDate
-          : null,
-        streak: integer(raw.checkin?.streak, 0),
-        total: integer(raw.checkin?.total, 0)
-      },
+      checkin: normalizeCheckin(raw.checkin),
       daily: emptyDaily(),
       settings: {
         sound: raw.settings?.sound !== false,
@@ -513,6 +521,72 @@
     return plantView(state.garden[slot] || null, slot, Date.now());
   }
 
+  function mergeCheckinRuns(runs) {
+    const merged = [];
+    runs.slice().sort((a, b) => a.start.localeCompare(b.start)).forEach(function (run) {
+      const previous = merged[merged.length - 1];
+      if (previous && dayDistance(previous.end, run.start) <= 1) {
+        if (run.end > previous.end) previous.end = run.end;
+      } else {
+        merged.push({ start: run.start, end: run.end });
+      }
+    });
+    return merged;
+  }
+
+  function normalizeCheckin(raw) {
+    const lastDate = validDateKey(raw?.lastDate) ? raw.lastDate : null;
+    const total = integer(raw?.total, 0);
+    if (!lastDate) return { lastDate: null, streak: 0, total, since: null, runs: [], lastRewardDay: null };
+
+    const runs = Array.isArray(raw.runs) ? mergeCheckinRuns(raw.runs.filter(function (run) {
+      return validDateKey(run?.start) && validDateKey(run?.end) && run.start <= run.end && run.end <= lastDate;
+    })) : [];
+    const latest = runs[runs.length - 1];
+    if (latest?.end === lastDate) {
+      const since = validDateKey(raw.since) && raw.since <= runs[0].start ? raw.since : runs[0].start;
+      const streak = dayDistance(latest.start, lastDate) + 1;
+      const lastRewardDay = clamp(integer(raw.lastRewardDay ?? rewardDay(streak), 1), 1, DATA.checkinRewards.length);
+      return { lastDate, streak, total, since, runs, lastRewardDay };
+    }
+
+    // Older saves only identify the most recent uninterrupted run.
+    const earliest = '0000-01-01';
+    const maxStreak = Math.round((Date.parse(lastDate) - Date.parse(earliest)) / DAY_MS) + 1;
+    const streak = clamp(integer(raw.streak, 1), 1, maxStreak);
+    const since = shiftDate(lastDate, 1 - streak);
+    return { lastDate, streak, total, since, runs: [{ start: since, end: lastDate }], lastRewardDay: rewardDay(streak) };
+  }
+
+  function recordCheckin(date, today) {
+    const checkin = state.checkin;
+    const runs = mergeCheckinRuns(checkin.runs.concat({ start: date, end: date }));
+    const latest = runs[runs.length - 1];
+    checkin.since = checkin.since || date;
+    checkin.lastDate = latest.end;
+    checkin.streak = dayDistance(latest.start, latest.end) + 1;
+    checkin.runs = runs.filter(run => run === latest || dayDistance(run.end, today) <= MAKEUP_DAYS + 1);
+    checkin.total += 1;
+  }
+
+  function makeupOptions(today) {
+    const { since, runs, lastDate } = state.checkin;
+    const options = [];
+    if (!since || lastDate > today) return options;
+    for (let daysAgo = 1; daysAgo <= MAKEUP_DAYS; daysAgo += 1) {
+      const date = shiftDate(today, -daysAgo);
+      if (date < since) break;
+      if (runs.some(run => run.start <= date && date <= run.end)) continue;
+      const cost = daysAgo * MAKEUP_COINS_PER_DAY;
+      options.push({ date, cost, affordable: state.player.coins >= cost });
+    }
+    return options;
+  }
+
+  function rewardDay(streak) {
+    return Math.max(0, (streak - 1) % DATA.checkinRewards.length) + 1;
+  }
+
   function checkinView() {
     const now = Date.now();
     const today = dateKey(now);
@@ -521,7 +595,8 @@
     const contiguous = last && dayDistance(last, today) === 1;
     const displayStreak = claimedToday ? state.checkin.streak : (contiguous ? state.checkin.streak : 0);
     const nextStreak = claimedToday ? state.checkin.streak : (contiguous ? state.checkin.streak + 1 : 1);
-    const activeIndex = Math.max(0, ((nextStreak - 1) % DATA.checkinRewards.length));
+    const activeIndex = rewardDay(nextStreak) - 1;
+    const dayNumber = claimedToday ? state.checkin.lastRewardDay : activeIndex + 1;
     const cells = DATA.checkinRewards.map(function (reward, index) {
       let status = 'future';
       if (claimedToday) {
@@ -534,16 +609,18 @@
       return Object.assign({}, reward, { status: status });
     });
     return {
-      available: !claimedToday,
+      available: !last || last < today,
       claimedToday: claimedToday,
       streak: displayStreak,
       total: state.checkin.total,
       nextStreak: nextStreak,
       activeIndex: activeIndex,
-      dayNumber: activeIndex + 1,
-      reward: DATA.checkinRewards[activeIndex],
+      dayNumber: dayNumber,
+      reward: DATA.checkinRewards[dayNumber - 1],
       cells: cells,
-      today: today
+      today: today,
+      makeup: makeupOptions(today),
+      makeupDays: MAKEUP_DAYS
     };
   }
 
@@ -562,9 +639,8 @@
     const view = checkinView();
     if (!view.available) return { ok: false, reason: 'already_claimed' };
     const items = applyReward(view.reward);
-    state.checkin.lastDate = dateKey();
-    state.checkin.streak = view.nextStreak;
-    state.checkin.total += 1;
+    recordCheckin(view.today, view.today);
+    state.checkin.lastRewardDay = view.dayNumber;
     persist();
     return {
       ok: true,
@@ -573,6 +649,17 @@
       dayNumber: view.dayNumber,
       streak: view.nextStreak
     };
+  }
+
+  function claimMakeup(date, quotedCost) {
+    const today = dateKey();
+    const option = makeupOptions(today).find(item => item.date === date);
+    if (!option || option.cost !== quotedCost) return { ok: false, reason: 'makeup_changed' };
+    if (!option.affordable) return { ok: false, reason: 'coins' };
+    state.player.coins -= option.cost;
+    recordCheckin(date, today);
+    persist();
+    return { ok: true };
   }
 
   function dailyQuestViews() {
@@ -863,6 +950,7 @@
     getPlantView: getPlantView,
     checkinView: checkinView,
     claimCheckin: claimCheckin,
+    claimMakeup: claimMakeup,
     dailyQuestViews: dailyQuestViews,
     claimQuest: claimQuest,
     plantSeed: plantSeed,

@@ -3362,6 +3362,29 @@ svg {
   font-weight: 700;
 }
 
+.makeup-list {
+  margin-top: 12px;
+}
+
+.makeup-list .today-reward-head,
+.makeup-list .setting-row {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.makeup-list .sheet-sub {
+  margin: 6px 0;
+  font-size: 12px;
+}
+
+.makeup-list .ghost-button {
+  min-height: 44px;
+}
+
+.makeup-list .ghost-button:disabled {
+  opacity: 0.65;
+}
+
 .reward-chips {
   display: flex;
   flex-wrap: wrap;

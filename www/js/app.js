@@ -279,6 +279,7 @@
       empty: '这里还没有种花。',
       occupied: '这个花盆已经有花了。',
       already_claimed: '今天已经领过啦，明天再来。',
+      makeup_changed: '补签日期或价格已变化，请重新选择。',
       not_done: '这件事还没完成。',
       max_pots: '花园里的花盆已经全部扩建好了。',
       unknown_flower: '没有找到这颗种子。',
@@ -986,6 +987,12 @@
 
   function modalContent(current) {
     if (current.type === 'checkin') return checkinModal();
+    if (current.type === 'checkin-makeup') {
+      const { date, cost } = current.payload;
+      return sheetHeader('补签', '确认补签？') +
+        '<p class="confirm-copy">花费 ' + cost + ' 金币补签 ' + esc(date) + '。补签计入累计和连续签到，不补发当日奖励。</p>' +
+        '<div class="confirm-actions"><button class="ghost-button" data-action="back-to-checkin">取消</button><button class="primary-button" data-action="confirm-makeup">确认补签</button></div>';
+    }
     if (current.type === 'seeds') return seedPickerModal(current.payload);
     if (current.type === 'plant') return plantModal(current.payload);
     if (current.type === 'harvest') return harvestModal(current.payload);
@@ -1011,7 +1018,6 @@
 
   function checkinModal() {
     const view = Game.checkinView();
-    const seedId = seedIdFromReward(view.reward) || 'daisy';
     const cells = view.cells.map(function (reward) {
       const id = seedIdFromReward(reward) || 'daisy';
       const extra = rewardExtras(reward);
@@ -1038,12 +1044,20 @@
       '<p class="sheet-sub">' + subtitle + '</p>' +
       '<div class="streak-board">' + cells + '</div>' +
       '<div class="today-reward">' +
-        '<div class="today-reward-head"><span>第 ' + view.dayNumber + ' 天 · 今日可领</span><span class="today-seed-name">' + view.reward.label + '</span></div>' +
+        '<div class="today-reward-head"><span>第 ' + view.dayNumber + ' 天 · ' + (view.claimedToday ? '今日已签' : '今日可领') + '</span><span class="today-seed-name">' + view.reward.label + '</span></div>' +
         '<div class="reward-chips">' + rewardChips(view.reward) + '</div>' +
       '</div>' +
-      '<button class="primary-button ' + (view.claimedToday ? 'is-claimed' : '') + '" data-action="claim-checkin"' + (view.claimedToday ? ' disabled' : ' data-autofocus') + '>' +
+      '<button class="primary-button ' + (view.claimedToday ? 'is-claimed' : '') + '" data-action="claim-checkin"' + (view.available ? ' data-autofocus' : ' disabled') + '>' +
         (view.claimedToday ? ICONS.check + ' 已收下 · 明天见' : ICONS.seed + ' 领取今日花种') +
       '</button>' +
+      '<div class="today-reward makeup-list"><div class="today-reward-head"><strong>补签</strong><span>余额 ' + Game.getState().player.coins + ' 金币</span></div>' +
+        '<p class="sheet-sub">可补最近 ' + view.makeupDays + ' 天的漏签，日期越早费用越高。</p>' +
+        (view.makeup.length ? view.makeup.map(function (option) {
+          return '<div class="setting-row"><time datetime="' + esc(option.date) + '">' + esc(option.date) + '</time>' +
+            '<button class="ghost-button" data-action="quote-makeup" data-date="' + esc(option.date) + '"' +
+            (option.affordable ? '' : ' disabled') + '>' + option.cost + ' 金币 · ' + (option.affordable ? '补签' : '余额不足') + '</button></div>';
+        }).join('') : '<p class="sheet-sub">暂无可补签的日期。</p>') +
+      '</div>' +
       '<p class="sheet-foot">' + ICONS.sparkle + ' 每天 0 点更新，连续第 7 天会送出铃兰种子。</p>';
   }
 
@@ -1484,6 +1498,23 @@
       openModal('checkin');
     },
     'claim-checkin': handleClaimCheckin,
+    'quote-makeup': function (target) {
+      const option = Game.checkinView().makeup.find(item => item.date === target.dataset.date);
+      if (option?.affordable) openModal('checkin-makeup', option);
+      else paintModal(false);
+    },
+    'back-to-checkin': function () {
+      openModal('checkin');
+    },
+    'confirm-makeup': function () {
+      if (modalState?.type !== 'checkin-makeup') return;
+      const { date, cost } = modalState.payload;
+      const result = Game.claimMakeup(date, cost);
+      if (result.ok) renderAll({ resetScroll: false });
+      openModal('checkin');
+      showToast(result.ok ? '已补签 ' + date + '，花费 ' + cost + ' 金币。' : errorMessage(result.reason),
+        { tone: result.ok ? 'success' : 'error' });
+    },
     'close-modal': function () { closeModal(); },
     'finish-intro': finishIntro,
     'open-seeds': function (element) {
