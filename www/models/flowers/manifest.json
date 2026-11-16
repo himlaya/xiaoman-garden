@@ -110,8 +110,8 @@
     "rose-common": {
       "url": "./models/flowers/rose-common-v2.glb",
       "modelId": "rose-common-v2",
-      "triangles": 37840,
-      "bytes": 1068264,
+      "triangles": 69564,
+      "bytes": 1965040,
       "label": "疏瓣杯形"
     },
     "rose-fine": {

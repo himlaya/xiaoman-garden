@@ -60,7 +60,7 @@ class BotanicalMesh:
         self.thin = thin
         self.vertices, self.faces, self.uvs, self.colours = [], [], [], []
 
-    def surface(self, fn, rows=12, cols=6, wrap=False):
+    def surface(self, fn, rows=12, cols=6, wrap=False, color=None):
         start = len(self.vertices)
         for i in range(rows+1):
             t = i/rows
@@ -75,7 +75,8 @@ class BotanicalMesh:
                 else:
                     pigment = .64 + .33*t + .025*math.cos(u*42 + t*9)
                 base = self.mat.diffuse_color
-                self.colours.append(tuple(c*pigment for c in base[:3]) + (1,))
+                rgb = color(u, t) if color else tuple(c*pigment for c in base[:3])
+                self.colours.append((*rgb, 1))
         for i in range(rows):
             for j in range(cols):
                 a = start+i*(cols+1)+j
@@ -449,11 +450,107 @@ def realistic_bloom(fid, form, rank, stem, height, p, s, c, pollen):
         small_flower(p,c,s,center,(0,.85,.40),.037,5,form['rings'],0)
 
 
-def build(flower, form, rank):
+def common_rose(name, collection):
+    pa = material('Blush rose · thin petal', '#e795a2', .65)
+    la = material('Rose leaf · cuticle', '#3d6433', .43)
+    st = material('Rose cane and calyx', '#536a35', .55)
+    parts = [BotanicalMesh(name + '-' + role, role, mat, collection, thin=True)
+             for role, mat in [('petal', pa), ('leaf', la), ('stem', st)]]
+    petals, leaves, stem = parts
+
+    def tint(a, b, weight):
+        return tuple(x+(y-x)*weight for x, y in zip(a, b))
+
+    pigments = [rgb(hex_code) for hex_code in ['#f8d8b9', '#f1a4b4', '#d96782', '#f8c2cb']]
+
+    def petal_tint(u, t, fraction, seed):
+        foot, blush, heart, edge = pigments
+        grain = math.cos(32*u + 9*t + seed) * math.cos(18*u - 6*t)
+        ribs = .012 * math.cos(44*(u-.5)*(1+.35*t)+4*t)
+        color = tint(blush, heart, .09+.64*fraction+.06*math.sin(seed)+ribs)
+        color = tint(color, foot, .56*(1-t)**4)
+        color = tint(color, edge, .19*t**5+.11*abs(u*2-1)**5)
+        return tuple(c*(1+.024*grain) for c in color)
+
+    def stem_at(height):
+        return (.05*(height/1.25)**2, height, -.038*math.sin(2.2*height))
+
+    head = stem_at(1.25)
+    axes = basis((.14,.91,.40))
+    tube(stem, [stem_at(1.25*i/20) for i in range(21)], .018, 9, .59)
+    orb(stem, add(head, mul(axes[2], -.032)), .073, .71, 10, 18)
+    for i in range(5):
+        angle = i*math.tau/5+.15
+        def sepal(t, u):
+            v = u*2-1
+            radius = .043+.105*t
+            theta = angle+.23*v*math.sin(math.pi*t)**.9
+            y = -.055+.044*t-.052*t*t-.013*v*v*math.sin(math.pi*t)
+            return local_point(head, axes, radius*math.cos(theta), y, radius*math.sin(theta))
+        stem.surface(sepal, 14, 7)
+    for tier, height in enumerate((.31,.57,.80)):
+        angle = tier*2.40+.16
+        forward = (math.cos(angle),0,math.sin(angle))
+        axis = stem_at(height)
+        points = [add(add(axis,mul(forward,t)),(0,t*.47,0)) for t in (0,.19,.32)]
+        tube(stem, points, .009, 7, .44)
+        for side in (-1,1):
+            blade(leaves, points[1], angle+side*.86, .237, .048, .078, .034, teeth=.18)
+        blade(leaves, points[2], angle, .244, .058, .093, .040, teeth=.16)
+
+    # Outer guard petals bend back where inner overlapping petals stay tightly furled.
+    radius = .60
+    # Receptacle and hidden petal bases form a continuous flower head.
+    receptacle(petals, head, axes, -.043, .116, .088, .78)
+    for ring, count in enumerate((6, 7, 7, 6, 5, 4)):
+        fraction = ring/5
+        for i in range(count):
+            seed = i*2.399963 + ring*1.163
+            theta0 = math.tau*(i+.42*ring)/count + .049*math.sin(seed)
+            r_end = radius*(1-.84*fraction)*(1+.082*math.sin(seed))
+            height = .25+.10*fraction+.026*math.sin(seed+.4)
+            spread = math.pi/count*(1.17+.085*math.cos(seed))
+            curl = .105*(1-fraction)**2+.023
+
+            def petal_surface(t,u):
+                v = 2*u-1
+                outline = max(.016, math.sin(math.pi*t*.77)**.7)
+                fold = (abs(v)**1.8*t**1.8)
+                angle = theta0+v*spread*outline+.12*math.sin(seed)*t*t+.41*fraction*t*t
+                reach = .039+(r_end-.039)*(math.sin(t*1.32)/math.sin(1.32))
+                reach *= 1-.17*v**4*t**1.6
+                reach += .014*math.sin(4*v+seed)*t**4
+                axial = -.019+fraction*.038+height*t**1.22
+                axial -= curl*t**7*(.87+.33*math.cos(v*2.8+seed))
+                axial += (.025+.024*fraction)*fold + (.02+.004*math.sin(seed))*v*t*t
+                axial += .011*math.sin(v*7.5+seed)*(t**5)
+                return local_point(head, axes, reach*math.cos(angle), axial, reach*math.sin(angle))
+
+            petals.surface(petal_surface, 24, 16, color=lambda u,t: petal_tint(u,t,fraction,seed))
+
+    study = [part.finish() for part in parts]
+    for m in (pa, la):
+        tree = m.node_tree
+        shader = tree.nodes.get('Principled BSDF')
+        shader.inputs['Specular IOR Level'].default_value = .24 if m == pa else .33
+        shader.inputs['Sheen Weight'].default_value = .21 if m == pa else .04
+        shader.inputs['Subsurface Weight'].default_value = .15 if m == pa else .02
+        shader.inputs['Subsurface Scale'].default_value = .018
+        noise = tree.nodes.new('ShaderNodeTexNoise')
+        noise.inputs['Scale'].default_value = 260 if m == pa else 135
+        noise.inputs['Detail'].default_value = 2
+        bump = tree.nodes.new('ShaderNodeBump')
+        bump.inputs['Strength'].default_value = .12 if m == pa else .17
+        bump.inputs['Distance'].default_value = .003
+        tree.links.new(noise.outputs['Fac'], bump.inputs['Height'])
+        tree.links.new(bump.outputs['Normal'], shader.inputs['Normal'])
+    return study
+
+
+def build_geometry(flower, form, rank, name, collection):
     fid = flower['id']
-    name = fid+'-'+form['grade']+'-v2'
-    collection=bpy.data.collections.new(name)
-    bpy.context.scene.collection.children.link(collection)
+    if fid == 'rose' and form['grade'] == 'common':
+        return common_rose(name, collection)
     palette=flower['colors']
     materials={role: material(fid+'-'+role,palette[key]) for role,key in [('petal','petal'),('leaf','leaf'),('stem','stem'),('center','center'),('pollen','centerAlt')]}
     waxy = fid in ('gardenia','camellia','orchid','tulip')
@@ -643,7 +740,15 @@ def build(flower, form, rank):
                 yy=center[1]+dy*math.cos(tilt)-dz*math.sin(tilt)
                 zz=center[2]+dy*math.sin(tilt)+dz*math.cos(tilt)
                 part.vertices[index]=(x,-zz,yy)
-    objects=[part.finish() for part in parts.values() if part.vertices]
+    return [part.finish() for part in parts.values() if part.vertices]
+
+
+def build(flower, form, rank):
+    fid = flower['id']
+    name = fid+'-'+form['grade']+'-v2'
+    collection=bpy.data.collections.new(name)
+    bpy.context.scene.collection.children.link(collection)
+    objects = build_geometry(flower, form, rank, name, collection)
     # The GLB's root origin is the soil surface. The web app retains its own pot.
     bpy.ops.object.select_all(action='DESELECT')
     for obj in objects: obj.select_set(True)

@@ -76,6 +76,27 @@ test('cached bytes create independently disposable meshes and materials', async 
   await assert.rejects(assets.load(THREE, '../unknown', 'rare', {}));
 });
 
+test('the common garden rose retains its authored pink petal and green foliage pigments', async () => {
+  const model = await assets.load(THREE, 'rose', 'common', {});
+  const parts = new Map();
+  model.traverse(node => {
+    if (node.isMesh) parts.set(node.userData.botanical, node.geometry.getAttribute('color'));
+  });
+  const petals = parts.get('petal');
+  assert(petals.count > 1000);
+  let greenMin = 1, greenMax = 0;
+  for (let i = 0; i < petals.count; i++) {
+    greenMin = Math.min(greenMin, petals.getY(i));
+    greenMax = Math.max(greenMax, petals.getY(i));
+  }
+  assert(greenMax - greenMin > 0.22, 'petals retain the darker heart and paler outer petals');
+  for (const role of ['leaf', 'stem']) {
+    const pigment = parts.get(role);
+    assert(pigment.getY(0) > pigment.getX(0));
+  }
+  assets.dispose(model);
+});
+
 test('failed downloads can retry instead of poisoning the asset cache', async () => {
   const previous = context.fetch;
   context.fetch = async () => ({ ok: false, status: 503 });

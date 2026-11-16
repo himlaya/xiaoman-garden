@@ -826,7 +826,7 @@
     const waxyPetals = ['gardenia', 'camellia', 'orchid', 'tulip'].includes(shape);
     const petalRoughness = waxyPetals ? 120 : ['peony', 'carnation', 'rose'].includes(shape) ? 151 : 135;
 
-    function botanicalTexture(leaf) {
+    function botanicalTexture(leaf, bakedPigment = false) {
       const width = 128, height = 256;
       const colour = new Uint8Array(width * height * 4);
       const relief = new Uint8Array(colour.length);
@@ -835,8 +835,8 @@
         const value = parseInt(hex.replace('#', ''), 16);
         return [value >> 16 & 255, value >> 8 & 255, value & 255];
       };
-      const base = rgb(leaf ? flower.colors.leaf : flower.colors.petal);
-      const deep = rgb(leaf ? flower.colors.stem : flower.colors.petalAlt);
+      const base = bakedPigment ? [255, 255, 255] : rgb(leaf ? flower.colors.leaf : flower.colors.petal);
+      const deep = bakedPigment ? base : rgb(leaf ? flower.colors.stem : flower.colors.petalAlt);
       const tint = variant ? rgb(variant.template.tint) : base;
       const finish = variant ? variant.template.id : '';
       const spotted = ['orchid', 'iris', 'true-lily'].includes(shape);
@@ -890,7 +890,9 @@
         map.needsUpdate = true;
         return map;
       }
-      return { colour: texture(colour, true), bump: texture(relief, false), roughness: texture(roughness, false) };
+      const colourMap = texture(colour, true);
+      if (bakedPigment) return { colour: colourMap };
+      return { colour: colourMap, bump: texture(relief, false), roughness: texture(roughness, false) };
     }
     const leafTexture = botanicalTexture(true);
     const petalTexture = botanicalTexture(false);
@@ -1430,6 +1432,19 @@
         });
         replaced.forEach(function (geometry) { geometry.dispose(); });
         for (let i = geos.length - 1; i >= 0; i--) { if (replaced.has(geos[i])) geos.splice(i, 1); }
+        if (flower.id === 'rose' && form.grade === 'common') {
+          // Use the Blender mesh's individual petal tones under the item's
+          // finish texture. The procedural/offline fallback uses its old maps.
+          for (const [material, leaf] of [[petalMat, false], [leafMat, true]]) {
+            material.map.dispose();
+            material.map = botanicalTexture(leaf, true).colour;
+            material.vertexColors = true;
+            material.needsUpdate = true;
+          }
+          greenDark.color.set(0xffffff);
+          greenDark.vertexColors = true;
+          greenDark.needsUpdate = true;
+        }
         plant.add(asset);
         asset.traverse(function (mesh) { if (mesh.geometry) geos.push(mesh.geometry); });
         root.userData.modelId = asset.userData.modelId;

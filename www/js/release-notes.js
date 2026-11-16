@@ -1,7 +1,7 @@
 window.XIAOMAN_RELEASE_NOTES = {
-  "version": "0.7.7",
-  "build": 34,
+  "version": "0.7.8",
+  "build": 35,
   "changes": [
-    "签到小花册支持金币补签，日期越早费用越高。"
+    "花园玫瑰的普通品质采用新的 Blender 模型，更新了花瓣曲线、色差与复叶。"
   ]
 };
