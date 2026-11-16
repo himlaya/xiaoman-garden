@@ -142,6 +142,19 @@ def create_app(test_config: dict | None = None) -> Flask:
 
         return wrapped
 
+    def admin_required(view):
+        @wraps(view)
+        def wrapped(*args, **kwargs):
+            user = current_user()
+            if user is None:
+                session.clear()
+                return redirect(url_for("login"))
+            if user["id"] != app.config["ADMIN_USER_ID"]:
+                abort(403)
+            return view(*args, **kwargs)
+
+        return wrapped
+
     @app.get("/")
     @login_required
     def game():
@@ -544,10 +557,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         return render_template("feedback.html", content=content)
 
     @app.get("/admin/feedback")
-    @login_required
+    @admin_required
     def feedback_inbox():
-        if current_user()["id"] != app.config["ADMIN_USER_ID"]:
-            abort(403)
         before = max(1, min(request.args.get("before", default=2**63 - 1, type=int), 2**63 - 1))
         rows = get_db().execute(
             """SELECT feedback.id, content, feedback.created_at, username
@@ -556,6 +567,28 @@ def create_app(test_config: dict | None = None) -> Flask:
             (before,),
         ).fetchall()
         return render_template("feedback-inbox.html", messages=rows, next_id=rows[-1]["id"] if len(rows) == 50 else None)
+
+    @app.get("/admin/users")
+    @admin_required
+    def admin_users():
+        page_size = 50
+        before = request.args.get("before", type=int)
+        query = "SELECT id, username, created_at, last_login_at FROM users"
+        params = ()
+        if before is not None:
+            query += " WHERE id < ?"
+            params = (max(1, min(before, 2**63 - 1)),)
+        database = get_db()
+        rows = database.execute(query + " ORDER BY id DESC LIMIT ?", (*params, page_size + 1)).fetchall()
+        total = database.execute("SELECT COUNT(*) AS total FROM users").fetchone()["total"]
+        return render_template(
+            "admin-users.html",
+            users=rows[:page_size],
+            total=total,
+            before=before,
+            next_id=rows[page_size - 1]["id"] if len(rows) > page_size else None,
+            admin_id=app.config["ADMIN_USER_ID"],
+        )
 
     @app.get("/health")
     def health():
@@ -581,7 +614,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     def security_headers(response):
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("Referrer-Policy", "same-origin")
-        if request.endpoint in {"game", "login", "register", "health", "ready", "api_get_save", "feedback", "feedback_inbox"}:
+        if request.endpoint in {"game", "login", "register", "health", "ready", "api_get_save", "feedback", "feedback_inbox", "admin_users"}:
             response.headers["Cache-Control"] = "no-store"
         return response
 

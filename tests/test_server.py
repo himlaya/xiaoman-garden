@@ -178,6 +178,46 @@ class AccountServerTests(DatabaseTestCase):
         self.assertEqual(self.client.get("/").status_code, 302)
         self.assertNotIn("Expires=", self._login("园丁小明", "secret123").headers["Set-Cookie"])
 
+    def test_user_directory_only_visible_to_admin_and_paginates_registered_users(self):
+        self.assertEqual(self.client.get("/admin/users").headers["Location"], "/login")
+        self._register("普通园丁")
+        member = self.client
+        self.assertEqual(member.get("/admin/users?before=2").status_code, 403)
+        self.client = self.app.test_client()
+        self._register("管理员")
+        self.app.config["ADMIN_USER_ID"] = self._account_payload()["account"]["id"]
+
+        database = connect_db(self.app.config["DATABASE"])
+        try:
+            for index in range(50):
+                database.execute(
+                    "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
+                    (f"PageGardener{index:02d}", "private-password-hash", "2026-11-16T08:30:00+00:00"),
+                )
+            database.commit()
+        finally:
+            database.close()
+
+        first = self.client.get("/admin/users")
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(first.headers["Cache-Control"], "no-store")
+        html = first.get_data(as_text=True)
+        self.assertIn("共 52 个账号", html)
+        self.assertIn("PageGardener49", html)
+        self.assertIn("PageGardener00", html)
+        self.assertIn("2026-11-16 08:30", html)
+        self.assertIn("暂无记录", html)
+        self.assertNotIn("private-password-hash", html)
+        self.assertNotIn("普通园丁", html)
+        next_page = re.search(r'rel="next" href="([^"]+)"', html).group(1)
+
+        last = self.client.get(next_page).get_data(as_text=True)
+        self.assertIn("普通园丁", last)
+        self.assertIn("· 管理员", last)
+        self.assertNotIn("PageGardener00", last)
+        self.assertNotIn('rel="next"', last)
+        self.assertEqual(member.get(next_page).status_code, 403)
+
     def test_readiness_queries_database_and_reports_connection_failure(self):
         from unittest.mock import patch
 

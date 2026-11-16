@@ -263,3 +263,18 @@ a:hover { text-decoration: underline; }
 .feedback-message { margin: 16px 0; padding: 16px; border: 1px solid #dedecf; border-radius: 12px; background: #fffdf5; }
 .feedback-message small { display: block; margin-top: 5px; color: #84907b; }
 .feedback-message p { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.admin-user-list { margin: 18px 0; padding: 0; list-style: none; }
+.admin-user-list li { padding: 12px 0; border-bottom: 1px solid #dedecf; }
+.admin-user-list strong { overflow-wrap: anywhere; }
+.admin-user-id { margin-inline-start: 6px; font-size: 12px; color: var(--sage-deep); }
+.admin-user-list dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+.admin-user-list dd { margin: 0; }
+.admin-user-nav { display: flex; justify-content: space-between; gap: 12px; }
+.admin-user-nav a { display: inline-grid; align-items: center; min-height: 44px; text-decoration: underline; }

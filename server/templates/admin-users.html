@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}用户列表 · 小小花园{% endblock %}
+{% block content %}
+  <h1>用户列表</h1>
+  <p class="auth-lead">共 {{ total }} 个账号 · 最新注册在前 · 时间为 UTC</p>
+  {% if users %}
+  <ul class="admin-user-list" aria-label="注册用户">
+    {% for user in users %}
+    <li>
+      <strong>{{ user.username }}</strong>
+      <span class="admin-user-id">#{{ user.id }}{% if user.id == admin_id %} · 管理员{% endif %}</span>
+      <dl>
+        <dt>注册时间</dt>
+        <dd><time datetime="{{ user.created_at }}">{{ user.created_at[:16] | replace('T', ' ') }}</time></dd>
+        <dt>最近登录</dt>
+        <dd>{% if user.last_login_at %}<time datetime="{{ user.last_login_at }}">{{ user.last_login_at[:16] | replace('T', ' ') }}</time>{% else %}暂无记录{% endif %}</dd>
+      </dl>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>这一页没有用户。</p>
+  {% endif %}
+  {% if before is not none or next_id %}
+  <nav class="admin-user-nav" aria-label="用户列表分页">
+    {% if before is not none %}<a href="{{ url_for('admin_users') }}">返回第一页</a>{% endif %}
+    {% if next_id %}<a rel="next" href="{{ url_for('admin_users', before=next_id) }}">下一页</a>{% endif %}
+  </nav>
+  {% endif %}
+  <p class="auth-switch"><a href="{{ url_for('game') }}">返回花园</a></p>
+{% endblock %}

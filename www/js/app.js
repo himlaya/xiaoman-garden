@@ -869,7 +869,10 @@
       '<div class="settings-card">' +
         '<div class="settings-head"><h2>花园设置</h2><span>安静地种花</span></div>' +
         (ACCOUNT ? '<div class="setting-row"><div class="setting-copy"><strong>留言反馈</strong><p>遇到问题，给花园留句话</p></div><a class="text-action simple" href="/feedback">去留言 ' + ICONS.arrow + '</a></div>' : '') +
-        (ACCOUNT && ACCOUNT.isAdmin ? '<div class="setting-row"><div class="setting-copy"><strong>管理员</strong><p>仅你可以查看所有留言</p></div><a class="text-action simple" href="/admin/feedback">反馈收件箱 ' + ICONS.arrow + '</a></div>' : '') +
+        (ACCOUNT && ACCOUNT.isAdmin
+          ? '<div class="setting-row"><div class="setting-copy"><strong>用户列表</strong></div><a class="text-action simple" href="/admin/users">查看 ' + ICONS.arrow + '</a></div>' +
+            '<div class="setting-row"><div class="setting-copy"><strong>反馈收件箱</strong></div><a class="text-action simple" href="/admin/feedback">查看 ' + ICONS.arrow + '</a></div>'
+          : '') +
         '<div class="setting-row"><div class="setting-copy"><strong>更新内容</strong><p>看看花园最近的变化</p></div><button class="text-action simple" data-action="open-release-notes">查看 ' + ICONS.arrow + '</button></div>' +
         '<div class="setting-row name-row"><div class="setting-copy"><strong>花园名字</strong><p>' + renameHint + '</p></div>' +
           '<div class="name-edit"><input class="name-input" data-name-input maxlength="12" value="' + esc(state.player.name) + '" aria-label="输入花园名字"><button class="name-save" data-action="save-name"' + (rename.wait > 0 ? ' disabled' : '') + '>' + (rename.wait > 0 ? '冷却中' : rename.first ? '免费修改' : '3000 金币') + '</button></div>' +
