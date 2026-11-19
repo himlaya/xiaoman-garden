@@ -1432,7 +1432,7 @@
         });
         replaced.forEach(function (geometry) { geometry.dispose(); });
         for (let i = geos.length - 1; i >= 0; i--) { if (replaced.has(geos[i])) geos.splice(i, 1); }
-        if (flower.id === 'rose' && form.grade === 'common') {
+        if (flower.id === 'rose') {
           // Use the Blender mesh's individual petal tones under the item's
           // finish texture. The procedural/offline fallback uses its old maps.
           for (const [material, leaf] of [[petalMat, false], [leafMat, true]]) {

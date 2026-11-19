@@ -450,7 +450,22 @@ def realistic_bloom(fid, form, rank, stem, height, p, s, c, pollen):
         small_flower(p,c,s,center,(0,.85,.40),.037,5,form['rings'],0)
 
 
-def common_rose(name, collection):
+ROSE_SHAPES = {
+    'common': {'counts': (6, 7, 7, 6, 5, 4), 'radius': .60, 'height': .25,
+               'heart_height': .10, 'curl': .105, 'twist': .41, 'ruffle': .011},
+    'fine': {'counts': (6, 7, 7, 6, 5, 4), 'radius': .57, 'height': .23,
+             'heart_height': .23, 'curl': .085, 'twist': .67, 'ruffle': .010},
+    'rare': {'counts': (7, 8, 8, 7, 6, 5), 'radius': .68, 'height': .21,
+             'heart_height': .11, 'curl': .115, 'twist': .37, 'ruffle': .010},
+    'epic': {'counts': (7, 8, 8, 7, 6, 5), 'radius': .62, 'height': .26,
+             'heart_height': .13, 'curl': .135, 'twist': .46, 'ruffle': .027},
+    'legendary': {'counts': (8, 9, 9, 8, 7, 6, 5), 'radius': .65, 'height': .26,
+                  'heart_height': .18, 'curl': .100, 'twist': .56, 'ruffle': .015},
+}
+
+
+def garden_rose(name, collection, grade='common'):
+    shape = ROSE_SHAPES[grade]
     pa = material('Blush rose · thin petal', '#e795a2', .65)
     la = material('Rose leaf · cuticle', '#3d6433', .43)
     st = material('Rose cane and calyx', '#536a35', .55)
@@ -499,34 +514,35 @@ def common_rose(name, collection):
         blade(leaves, points[2], angle, .244, .058, .093, .040, teeth=.16)
 
     # Outer guard petals bend back where inner overlapping petals stay tightly furled.
-    radius = .60
+    radius = shape['radius']
     # Receptacle and hidden petal bases form a continuous flower head.
     receptacle(petals, head, axes, -.043, .116, .088, .78)
-    for ring, count in enumerate((6, 7, 7, 6, 5, 4)):
-        fraction = ring/5
+    for ring, count in enumerate(shape['counts']):
+        fraction = ring/(len(shape['counts'])-1)
         for i in range(count):
             seed = i*2.399963 + ring*1.163
             theta0 = math.tau*(i+.42*ring)/count + .049*math.sin(seed)
             r_end = radius*(1-.84*fraction)*(1+.082*math.sin(seed))
-            height = .25+.10*fraction+.026*math.sin(seed+.4)
+            height = shape['height']+shape['heart_height']*fraction+.026*math.sin(seed+.4)
             spread = math.pi/count*(1.17+.085*math.cos(seed))
-            curl = .105*(1-fraction)**2+.023
+            curl = shape['curl']*(1-fraction)**2+.023
 
             def petal_surface(t,u):
                 v = 2*u-1
                 outline = max(.016, math.sin(math.pi*t*.77)**.7)
                 fold = (abs(v)**1.8*t**1.8)
-                angle = theta0+v*spread*outline+.12*math.sin(seed)*t*t+.41*fraction*t*t
+                angle = theta0+v*spread*outline+.12*math.sin(seed)*t*t+shape['twist']*fraction*t*t
                 reach = .039+(r_end-.039)*(math.sin(t*1.32)/math.sin(1.32))
                 reach *= 1-.17*v**4*t**1.6
                 reach += .014*math.sin(4*v+seed)*t**4
                 axial = -.019+fraction*.038+height*t**1.22
                 axial -= curl*t**7*(.87+.33*math.cos(v*2.8+seed))
                 axial += (.025+.024*fraction)*fold + (.02+.004*math.sin(seed))*v*t*t
-                axial += .011*math.sin(v*7.5+seed)*(t**5)
+                axial += shape['ruffle']*math.sin(v*7.5+seed)*(t**5)
                 return local_point(head, axes, reach*math.cos(angle), axial, reach*math.sin(angle))
 
-            petals.surface(petal_surface, 24, 16, color=lambda u,t: petal_tint(u,t,fraction,seed))
+            resolution = (24, 16) if grade == 'common' else (20, 12)
+            petals.surface(petal_surface, *resolution, color=lambda u,t: petal_tint(u,t,fraction,seed))
 
     study = [part.finish() for part in parts]
     for m in (pa, la):
@@ -549,8 +565,8 @@ def common_rose(name, collection):
 
 def build_geometry(flower, form, rank, name, collection):
     fid = flower['id']
-    if fid == 'rose' and form['grade'] == 'common':
-        return common_rose(name, collection)
+    if fid == 'rose':
+        return garden_rose(name, collection, form['grade'])
     palette=flower['colors']
     materials={role: material(fid+'-'+role,palette[key]) for role,key in [('petal','petal'),('leaf','leaf'),('stem','stem'),('center','center'),('pollen','centerAlt')]}
     waxy = fid in ('gardenia','camellia','orchid','tulip')
