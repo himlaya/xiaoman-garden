@@ -76,6 +76,17 @@ class BotanicalMesh:
                     pigment = .64 + .33*t + .025*math.cos(u*42 + t*9)
                 base = self.mat.diffuse_color
                 rgb = color(u, t) if color else tuple(c*pigment for c in base[:3])
+                if self.name.startswith('jasmine-') and self.role in ('leaf', 'petal'):
+                    across = abs(2*u-1)
+                    if self.role == 'leaf':
+                        midrib = math.exp(-26*across)
+                        vein = max(0, math.cos((t-.32*across-.10*across**2)*36))**7
+                        tone = .62 + .18*t + .12*vein + .24*midrib
+                        rgb = (base[0]*tone*.84, base[1]*tone, base[2]*tone*.83)
+                    else:
+                        rib = math.cos((u-.5)*(24+9*t)+.7*math.sin(t*5))
+                        warm = (1-t)**2
+                        rgb = (.97+.012*rib, .95-.07*warm+.012*rib, .89-.16*warm+.014*rib)
                 self.colours.append((*rgb, 1))
         for i in range(rows):
             for j in range(cols):
@@ -355,6 +366,31 @@ def small_flower(petals, centers, greens, origin, axis, length, count, rings, tw
     elliptical_tip(centers,add(throat,mul(axes[2],length*.07)),axes,length*.08,length*.08,length*.07)
 
 
+def jasmine_flower(petals, centers, greens, base, axis, size, form):
+    axes = basis(axis)
+    normal = axes[2]
+    throat = add(base, mul(normal, size*.32))
+    tube(greens, [base, throat], size*.13, 9, .8)
+    for i in range(5):
+        corolla(greens, base, axes, i*TAU/5, size*.19, size*.032,
+                size*.28, 0, i, resolution=(6, 4))
+    tube(petals, [base, throat], size*.11, 10, 1.45)
+    for ring in range(form['rings']):
+        scale = 1-.24*ring
+        count = form['petals']-ring
+        origin = add(throat, mul(normal, size*.095*ring))
+        receptacle(petals, throat, axes, 0, size*(.1*ring+.04), size*.15)
+        for i in range(count):
+            angle = TAU*(i+.46*ring)/count
+            wave = math.sin(i*2.4+ring)
+            corolla(petals, origin, axes, angle, size*scale*(1+.055*wave),
+                    size*scale*(.28+.04*ring), size*(.22+.20*ring)*form['cup'],
+                    size*.16*form['curl'], i+ring, sweep=size*(.23 if form['grade']=='fine' else .08),
+                    shoulder=.60, edge=size*form['ruffle'], throat=size*.10, resolution=(13,8))
+    elliptical_tip(centers, add(throat, mul(normal,size*.11*form['rings'])), axes,
+                   size*.09,size*.09,size*.055)
+
+
 def realistic_bloom(fid, form, rank, stem, height, p, s, c, pollen):
     center = stem(height)
     if fid in ('gardenia','camellia','peony'):
@@ -422,10 +458,12 @@ def realistic_bloom(fid, form, rank, stem, height, p, s, c, pollen):
             tube(s,[joint,bend,tip],.0075,6,.48)
             if i < form['blooms']:
                 axis = add(mul(direction,.43),(0,.89,.42))
-                small_flower(p,c,s,tip,axis,.117*form['width'],form['petals'],form['rings'],.21)
+                jasmine_flower(p,c,s,tip,axis,.136*form['width'],form)
             else:
-                orb(p,add(tip,(0,.031,0)),.028,1.58,6,10)
-        small_flower(p,c,s,center,(.04,.8,.59),.13,form['petals'],form['rings'],.18)
+                bud_axes = basis(add(mul(direction,.35),(0,.92,.22)))
+                elliptical_tip(p,add(tip,mul(bud_axes[2],.043)),bud_axes,.025,.024,.049)
+                elliptical_tip(s,tip,bud_axes,.021,.020,.017)
+        jasmine_flower(p,c,s,center,(.04,.8,.59),.145*form['width'],form)
     elif fid == 'gypsophila':
         for i in range(form['sprays']):
             angle = i*2.399963

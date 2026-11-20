@@ -847,7 +847,10 @@
           const across = (u - 0.5) * 2;
           const edge = Math.abs(across);
           const central = Math.exp(-edge * (leaf ? 65 : 40));
-          const veins = leaf
+          const veins = flower.id === 'jasmine'
+            ? (leaf ? Math.pow(Math.max(0, Math.cos((v-.32*edge-.10*edge*edge)*36)), 12)
+                    : Math.pow(Math.max(0, Math.cos(across*(24+9*v)+.7*Math.sin(v*5))), 6))
+            : leaf
             ? Math.pow(Math.max(0, Math.cos((v - edge * 0.34) * 86)), 18)
             : Math.pow(Math.max(0, Math.cos((across + Math.sin(v * 6 + phase) * 0.018) * 58 + v * 5)), 10);
           const fine = Math.sin(u * 191 + v * 137 + phase) * Math.sin(u * 71 - v * 257);
@@ -1432,7 +1435,7 @@
         });
         replaced.forEach(function (geometry) { geometry.dispose(); });
         for (let i = geos.length - 1; i >= 0; i--) { if (replaced.has(geos[i])) geos.splice(i, 1); }
-        if (flower.id === 'rose') {
+        if (flower.id === 'rose' || flower.id === 'jasmine') {
           // Use the Blender mesh's individual petal tones under the item's
           // finish texture. The procedural/offline fallback uses its old maps.
           for (const [material, leaf] of [[petalMat, false], [leafMat, true]]) {

@@ -425,36 +425,36 @@
     "jasmine-common": {
       "url": "./models/flowers/jasmine-common-v2.glb",
       "modelId": "jasmine-common-v2",
-      "triangles": 11044,
-      "bytes": 327964,
+      "triangles": 17964,
+      "bytes": 533708,
       "label": "疏枝星瓣"
     },
     "jasmine-fine": {
       "url": "./models/flowers/jasmine-fine-v2.glb",
       "modelId": "jasmine-fine-v2",
-      "triangles": 15192,
-      "bytes": 447148,
+      "triangles": 26322,
+      "bytes": 773412,
       "label": "风车旋瓣"
     },
     "jasmine-rare": {
       "url": "./models/flowers/jasmine-rare-v2.glb",
       "modelId": "jasmine-rare-v2",
-      "triangles": 17988,
-      "bytes": 524864,
+      "triangles": 30908,
+      "bytes": 898608,
       "label": "双轮小簇"
     },
     "jasmine-epic": {
       "url": "./models/flowers/jasmine-epic-v2.glb",
       "modelId": "jasmine-epic-v2",
-      "triangles": 23872,
-      "bytes": 693268,
+      "triangles": 42502,
+      "bytes": 1229548,
       "label": "卷瓣重轮"
     },
     "jasmine-legendary": {
       "url": "./models/flowers/jasmine-legendary-v2.glb",
       "modelId": "jasmine-legendary-v2",
-      "triangles": 38188,
-      "bytes": 1100816,
+      "triangles": 66512,
+      "bytes": 1910624,
       "label": "密簇重瓣"
     },
     "true-lily-common": {
