@@ -230,6 +230,15 @@ test('种植、浇水、施肥、开花和采摘构成完整循环', () => {
   assert.ok(Data.itemTemplates.some(function (template) { return template.id === result.item.templateId; }));
   assert.ok(result.item.wear >= 0 && result.item.wear <= 1);
   assert.equal(Game.getBouquetItems('daisy').length, 1);
+  const balance = Game.getState().player.coins;
+  const price = h.Items.suggestedPrice(result.item);
+  assert.equal(Game.sellBouquet(Game.getSeedItems('daisy')[0].id).ok, false);
+  assert.equal(Game.sellBouquet(result.item.id).coins, price);
+  assert.equal(Game.sellBouquet(result.item.id).ok, false);
+  const reopened = makeHarness(h.now, h.store.get('xiaoman-garden-save-v1')).Game;
+  assert.equal(reopened.getItem(result.item.id), null);
+  assert.equal(reopened.getState().player.coins, balance + price);
+  assert.equal(reopened.getState().collection.daisy.count, 1);
 });
 
 test('花开久了新鲜度会下降，但依然可以采摘', () => {

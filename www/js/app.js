@@ -557,7 +557,7 @@
     });
   }
 
-  function renderOwnedItem(item, allowList, externalListingId) {
+  function renderOwnedItem(item, allowList, externalListingId, allowSale) {
     const flower = DATA.flowerMap[item.flowerId];
     if (!flower) return '';
     const summary = Items.itemSummary(item);
@@ -574,6 +574,7 @@
       '</div>' +
       '<div class="owned-item-actions">' +
         button +
+        (allowSale && item.kind === 'bouquet' ? '<button class="item-list-button" type="button" data-action="sell-bouquet" data-item="' + esc(item.id) + '">直接出售</button>' : '') +
         (allowList ? '<button class="item-list-button" type="button" data-action="market-list" data-item="' + esc(item.id) + '">上架</button>' : '') +
       '</div>' +
     '</article>';
@@ -582,7 +583,7 @@
   function inventoryModal() {
     const items = sortedItems(Game.getItems());
     const body = items.length
-      ? '<div class="owned-list">' + items.map(function (item) { return renderOwnedItem(item, false); }).join('') + '</div>'
+      ? '<div class="owned-list">' + items.map(function (item) { return renderOwnedItem(item, false, null, true); }).join('') + '</div>'
       : '<div class="empty-pouch"><span class="big-icon">' + ICONS.sparkle + '</span><h3>还没有收藏品</h3><p>种下一颗种子，等它开成独一无二的花束。</p></div>';
     return sheetHeader('COLLECTION', '我的收藏品') +
       '<p class="sheet-sub">每颗种子和每束花都是独立物品：品质、模板和品相会一直保留，也可以通过 3D 查看。</p>' +
@@ -593,7 +594,7 @@
     const state = Game.getState();
     const items = sortedItems(Game.getItems());
     const inventory = items.length
-      ? items.map(function (item) { return renderOwnedItem(item, true); }).join('')
+      ? items.map(function (item) { return renderOwnedItem(item, true, null, true); }).join('')
       : '<div class="market-empty">还没有可上架的物品。先去种一束花吧。</div>';
     return '<section class="screen market-screen">' +
       '<div class="page-heading"><p class="eyebrow">GARDEN EXCHANGE</p><h1>玩家市场</h1><p>每一颗种子和每一束花，都有自己的模板与品相。</p></div>' +
@@ -1536,6 +1537,16 @@
     'buy-fertilizer': handleBuyFertilizer,
     'buy-pot': handleBuyPot,
     'open-pot-shop': function () { closeModal(); switchTab('shop'); },
+    'sell-bouquet': function (element) {
+      const item = Game.getItem(element.dataset.item);
+      if (!item || item.kind !== 'bouquet') return;
+      const price = Items.suggestedPrice(item);
+      const summary = Items.itemSummary(item);
+      if (!window.confirm('以 ' + price + ' 金币出售这束' + summary.grade.label + summary.name + '？出售后会从收藏和花架移除。')) return;
+      const result = Game.sellBouquet(item.id);
+      renderAll({ resetScroll: false });
+      showToast(result.ok ? '花束已出售，获得 ' + result.coins + ' 金币' : '这束花已不在收藏中');
+    },
     'open-inventory': function () { openModal('inventory'); },
     'open-flower-shelf': function () {
       closeModal();

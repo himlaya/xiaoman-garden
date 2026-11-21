@@ -832,6 +832,16 @@
     };
   }
 
+  function sellBouquet(itemId) {
+    const item = getItem(itemId);
+    if (!item || item.kind !== 'bouquet') return { ok: false };
+    const coins = Items.suggestedPrice(item);
+    state.items.splice(state.items.indexOf(item), 1);
+    state.player.coins += coins;
+    persist();
+    return { ok: true, coins: coins };
+  }
+
   function buySeed(flowerId) {
     const flower = DATA.flowerMap[flowerId];
     if (!flower) return { ok: false, reason: 'unknown_flower' };
@@ -957,6 +967,7 @@
     waterPlant: waterPlant,
     fertilizePlant: fertilizePlant,
     harvest: harvest,
+    sellBouquet: sellBouquet,
     buySeed: buySeed,
     buyFertilizer: buyFertilizer,
     buyPot: buyPot,
